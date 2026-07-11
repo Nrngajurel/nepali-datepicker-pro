@@ -27,6 +27,22 @@ function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): 
   return document.body;
 }
 
+function trackPosition(trigger: HTMLElement, portal: HTMLElement, options: { opens?: 'left' | 'right' | 'center' | 'auto'; drops?: 'down' | 'up' | 'auto' }, getOpen: () => boolean): () => void {
+  let raf = 0;
+  function reposition() {
+    if (!getOpen() || portal.style.display === 'none') return;
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => positionPopup(trigger, portal, options));
+  }
+  document.addEventListener('scroll', reposition, { passive: true, capture: true });
+  window.addEventListener('resize', reposition);
+  return () => {
+    cancelAnimationFrame(raf);
+    document.removeEventListener('scroll', reposition, true);
+    window.removeEventListener('resize', reposition);
+  };
+}
+
 export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, options: DateRangePickerOptions = {}): PickerInstance<DateRangeResult, DateRangePickerOptions> {
   const merged = { ...defaults, ...options } as DateRangePickerOptions;
   const controller = createDateRangeController(merged);
@@ -47,6 +63,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   const outside = (event: MouseEvent) => {
     if (!portal.contains(event.target as Node) && event.target !== trigger) controller.hide();
   };
+  const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
   function updateInput(value = controller.getValue()): void {
     if (!(trigger instanceof HTMLInputElement)) {
@@ -64,8 +81,6 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderRangePanel(portal, controller);
-      // Only position on the open transition — repositioning on every hover
-      // re-render makes the popup jitter under the cursor.
       if (!wasOpen) positionPopup(trigger, portal, merged);
     } else {
       portal.innerHTML = '';
@@ -85,6 +100,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   const baseDestroy = controller.destroy;
   controller.destroy = () => {
     unsubscribe();
+    stopTracking();
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();
@@ -111,6 +127,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   const outside = (event: MouseEvent) => {
     if (!portal.contains(event.target as Node) && event.target !== trigger) controller.hide();
   };
+  const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
   function updateInput(value = controller.getValue()): void {
     const label = value?.formatted ?? 'Select date';
@@ -145,6 +162,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   const baseDestroy = controller.destroy;
   controller.destroy = () => {
     unsubscribe();
+    stopTracking();
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();
@@ -171,6 +189,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   const outside = (event: MouseEvent) => {
     if (!portal.contains(event.target as Node) && event.target !== trigger) controller.hide();
   };
+  const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
   function updateInput(value = controller.getValue()): void {
     const label = value?.formatted ?? '';
@@ -205,6 +224,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   const baseDestroy = controller.destroy;
   controller.destroy = () => {
     unsubscribe();
+    stopTracking();
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();

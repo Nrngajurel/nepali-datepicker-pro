@@ -426,10 +426,19 @@ export function renderMonthPickerPanel(root: HTMLElement, controller: MonthPicke
 }
 
 export function positionPopup(trigger: HTMLElement, popup: HTMLElement, options: { opens?: 'left' | 'right' | 'center' | 'auto'; drops?: 'down' | 'up' | 'auto' } = {}): void {
+  // Set fixed position + a throwaway top/left so the browser computes
+  // the correct shrink-wrap box before we measure it. On first open the
+  // portal is position:static and spans the full viewport width — the
+  // inner panel is much narrower, so measuring in static flow gives a
+  // wildly wrong width. All four assignments happen in one synchronous
+  // block; the browser won't paint until we return.
+  popup.style.position = 'fixed';
+  popup.style.top = '0px';
+  popup.style.left = '0px';
+  void popup.offsetHeight;
   const rect = trigger.getBoundingClientRect();
   const popupRect = popup.getBoundingClientRect();
-  const pos = computePopupPosition(rect, { width: popupRect.width || 360, height: popupRect.height || 360 }, { width: window.innerWidth, height: window.innerHeight }, options);
-  popup.style.position = 'fixed';
+  const pos = computePopupPosition(rect, { width: popupRect.width, height: popupRect.height }, { width: window.innerWidth, height: window.innerHeight }, options);
   popup.style.top = `${pos.top}px`;
   popup.style.left = `${pos.left}px`;
 }
