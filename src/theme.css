@@ -36,11 +36,40 @@
 
 .ndp-trigger-wrap {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--ndp-color-border);
+  border-radius: var(--ndp-radius);
+  background: var(--ndp-color-surface);
+  overflow: hidden;
 }
 
 .ndp-trigger-wrap .ndp-trigger {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.ndp-trigger-wrap .ndp-clear {
+  position: relative;
+  top: unset;
+  right: unset;
+  transform: none;
+  flex: 0 0 auto;
+  align-self: center;
+  margin-right: 2px;
+}
+
+.ndp-trigger-wrap .ndp-mode-switch {
+  flex: 0 0 auto;
+  border-left: 1px solid var(--ndp-color-border);
+  background: #f3f6f7;
+  border-radius: 0;
+}
+
+.ndp-trigger-wrap .ndp-mode-opt {
+  padding: 5px 10px;
 }
 
 .ndp-clear {
@@ -220,19 +249,6 @@
 
 .ndp-panel--datetime .ndp-cal-col {
   padding-bottom: 4px;
-}
-
-.ndp-datetime-mode-bar {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-
-.ndp-datetime-mode-bar .ndp-mode-switch {
-  border: 1px solid var(--ndp-color-border);
-  border-radius: var(--ndp-radius);
-  border-left: 1px solid var(--ndp-color-border);
-  background: var(--ndp-color-surface);
 }
 
 .ndp-presets {

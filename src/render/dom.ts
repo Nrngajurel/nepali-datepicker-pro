@@ -372,12 +372,6 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   const calCol = el('div', 'ndp-cal-col');
   calCol.appendChild(renderHeader(controller));
 
-  if (state.allowModeToggle) {
-    const modeBar = el('div', 'ndp-datetime-mode-bar');
-    modeBar.appendChild(renderModeSwitch(state.mode, () => controller.toggleMode()));
-    calCol.appendChild(modeBar);
-  }
-
   if (state.view === 'day') {
     calCol.appendChild(renderWeekdays());
     const grid = el('div', 'ndp-grid', { role: 'grid' });
