@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Nepali Date Picker — playground</title>
+    <style>
+      :root { color-scheme: light dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: #f4f6f5;
+        color: #1c2622;
+        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif;
+      }
+      main { max-width: 620px; margin: 0 auto; padding: 56px 20px 80px; display: grid; gap: 26px; }
+      header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
+      header p { margin: 0; color: #5b6560; }
+      .field { display: grid; gap: 8px; }
+      .field > span { font-weight: 700; font-size: 14px; }
+      .field > small { color: #8a9793; font-weight: 400; }
+      .out {
+        padding: 12px 14px; border: 1px dashed #c6d0cb; border-radius: 8px; min-height: 20px;
+        font: 500 13px ui-monospace, "SF Mono", Menlo, monospace; color: #33403a; background: #fff;
+      }
+      @media (prefers-color-scheme: dark) {
+        body { background: #10161a; color: #e7eeeb; }
+        header p { color: #9fb0aa; }
+        .out { background: #1b262c; color: #cfe0d9; border-color: #2c3941; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Nepali Date Picker</h1>
+        <p>Live dev playground — edit <code>src/</code> and it hot-reloads.</p>
+      </header>
+
+      <label class="field">
+        <span>Date only</span>
+        <input type="text" data-nepali-datepicker readonly />
+      </label>
+
+      <label class="field">
+        <span>Date &amp; time <small>— 24-hour</small></span>
+        <input type="text" data-nepali-datepicker data-with-time="true" readonly />
+      </label>
+
+      <label class="field">
+        <span>Date &amp; time <small>— 12-hour · 5-min steps</small></span>
+        <input
+          type="text"
+          data-nepali-datepicker
+          data-with-time="true"
+          data-time-format="12h"
+          data-minute-step="5"
+          readonly
+        />
+      </label>
+
+      <label class="field">
+        <span>Date range</span>
+        <input type="text" data-nepali-daterange data-fiscal-start-month="4" readonly />
+      </label>
+
+      <label class="field">
+        <span>Month <small>— for a monthly report / payslip</small></span>
+        <input type="text" data-nepali-monthpicker readonly />
+      </label>
+
+      <div class="field">
+        <span>Last committed value</span>
+        <div class="out" id="out">— pick a date, then press Done / Apply —</div>
+      </div>
+    </main>
+
+    <script type="module" src="/playground/main.ts"></script>
+  </body>
+</html>

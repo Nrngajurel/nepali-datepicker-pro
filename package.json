@@ -1,0 +1,72 @@
+{
+  "name": "nepali-datepicker",
+  "version": "0.1.0",
+  "description": "Framework-agnostic Nepali BS/AD date, datetime, and range picker with a same-screen time picker. Works from vanilla JS, a <script> tag, jQuery, Vue, and React.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": [
+    "*.css"
+  ],
+  "main": "./dist/nepali-datepicker.umd.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/nepali-datepicker.umd.cjs",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/nepali-datepicker.umd.cjs"
+    },
+    "./jquery": {
+      "types": "./dist/jquery.d.ts",
+      "import": "./dist/jquery.js"
+    },
+    "./vue": {
+      "types": "./dist/vue.d.ts",
+      "import": "./dist/vue.js"
+    },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.js"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build && vite build --config vite.umd.config.ts",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "tsc --noEmit",
+    "prepare:data": "node scripts/extract-bs-data.mjs",
+    "gen:fixtures": "node scripts/gen-fixtures.mjs"
+  },
+  "peerDependencies": {
+    "jquery": ">=3",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "vue": ">=3"
+  },
+  "peerDependenciesMeta": {
+    "jquery": { "optional": true },
+    "react": { "optional": true },
+    "react-dom": { "optional": true },
+    "vue": { "optional": true }
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "jsdom": "^24.1.3",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "typescript": "^5.5.0",
+    "vite": "^8.1.4",
+    "vite-plugin-dts": "^5.0.3",
+    "vitest": "^4.1.10",
+    "vue": "^3.5.39"
+  }
+}
