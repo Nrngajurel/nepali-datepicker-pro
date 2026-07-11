@@ -20,11 +20,34 @@ export function setDefaults(options: Partial<DateTimePickerOptions & DateRangePi
 function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): HTMLElement {
   if (appendTo instanceof HTMLElement) return appendTo;
   if (typeof appendTo === 'string') return document.querySelector<HTMLElement>(appendTo) ?? document.body;
-  // Default to <body>, NOT the trigger's parent. The popup is position:fixed, so
-  // body placement keeps it out of overflow:hidden containers AND — crucially —
-  // out of framework-managed DOM (Vue/React), whose re-render would otherwise
-  // trip over the foreign portal node and break hide/update.
   return document.body;
+}
+
+/** Wraps the trigger in a container with a × clear button that calls the given
+ *  clear function. The button only shows when there's something to clear. */
+function withClearButton(trigger: HTMLElement, shouldShow: () => boolean, onClear: () => void): { wrapper: HTMLElement; updateVisibility: () => void } {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'ndp-trigger-wrap';
+  trigger.parentNode?.insertBefore(wrapper, trigger);
+  wrapper.appendChild(trigger);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'ndp-clear';
+  clearBtn.setAttribute('type', 'button');
+  clearBtn.setAttribute('aria-label', 'Clear');
+  clearBtn.innerHTML = '&#215;';
+  clearBtn.style.display = 'none';
+  clearBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    onClear();
+  });
+  wrapper.appendChild(clearBtn);
+
+  function updateVisibility() {
+    clearBtn.style.display = shouldShow() ? '' : 'none';
+  }
+
+  return { wrapper, updateVisibility };
 }
 
 function trackPosition(trigger: HTMLElement, portal: HTMLElement, options: { opens?: 'left' | 'right' | 'center' | 'auto'; drops?: 'down' | 'up' | 'auto' }, getOpen: () => boolean): () => void {
@@ -65,6 +88,10 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
+  const clear = merged.clearable !== false && trigger instanceof HTMLInputElement
+    ? withClearButton(trigger, () => controller.getValue() !== null, () => controller.setValue(null))
+    : null;
+
   function updateInput(value = controller.getValue()): void {
     if (!(trigger instanceof HTMLInputElement)) {
       trigger.textContent = value?.formatted ?? 'Select date range';
@@ -78,6 +105,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     const state = controller.getState();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
+    clear?.updateVisibility();
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderRangePanel(portal, controller);
@@ -93,14 +121,18 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   document.addEventListener('mousedown', outside, true);
   controller.onChange((value) => {
     updateInput(value);
+    clear?.updateVisibility();
     target.dispatchEvent(new CustomEvent('apply.nepaliDateRangePicker', { bubbles: true, detail: value }));
   });
   render();
 
+  let clearWrapper: HTMLElement | null = null;
+  if (clear) clearWrapper = clear.wrapper;
   const baseDestroy = controller.destroy;
   controller.destroy = () => {
     unsubscribe();
     stopTracking();
+    if (clearWrapper) clearWrapper.remove();
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();
@@ -129,6 +161,10 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
+  const clear = merged.clearable !== false && trigger instanceof HTMLInputElement
+    ? withClearButton(trigger, () => controller.getValue() !== null, () => controller.setValue(null))
+    : null;
+
   function updateInput(value = controller.getValue()): void {
     const label = value?.formatted ?? 'Select date';
     if (trigger instanceof HTMLInputElement) trigger.value = label === 'Select date' ? '' : label;
@@ -140,6 +176,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     const state = controller.getState();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
+    clear?.updateVisibility();
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderDateTimePanel(portal, controller);
@@ -155,14 +192,18 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   document.addEventListener('mousedown', outside, true);
   controller.onChange((value) => {
     updateInput(value);
+    clear?.updateVisibility();
     target.dispatchEvent(new CustomEvent('select.nepaliDatePicker', { bubbles: true, detail: value }));
   });
   render();
 
+  let clearWrapper: HTMLElement | null = null;
+  if (clear) clearWrapper = clear.wrapper;
   const baseDestroy = controller.destroy;
   controller.destroy = () => {
     unsubscribe();
     stopTracking();
+    if (clearWrapper) clearWrapper.remove();
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();
@@ -191,6 +232,10 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
+  const clear = merged.clearable !== false && trigger instanceof HTMLInputElement
+    ? withClearButton(trigger, () => controller.getValue() !== null, () => controller.setValue(null))
+    : null;
+
   function updateInput(value = controller.getValue()): void {
     const label = value?.formatted ?? '';
     if (trigger instanceof HTMLInputElement) trigger.value = label;
@@ -202,6 +247,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     const state = controller.getState();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
+    clear?.updateVisibility();
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderMonthPickerPanel(portal, controller);
@@ -217,14 +263,18 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   document.addEventListener('mousedown', outside, true);
   controller.onChange((value) => {
     updateInput(value);
+    clear?.updateVisibility();
     target.dispatchEvent(new CustomEvent('select.nepaliMonthPicker', { bubbles: true, detail: value }));
   });
   render();
 
+  let clearWrapper: HTMLElement | null = null;
+  if (clear) clearWrapper = clear.wrapper;
   const baseDestroy = controller.destroy;
   controller.destroy = () => {
     unsubscribe();
     stopTracking();
+    if (clearWrapper) clearWrapper.remove();
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();

@@ -34,6 +34,38 @@
   outline-offset: 2px;
 }
 
+.ndp-trigger-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.ndp-trigger-wrap .ndp-trigger {
+  width: 100%;
+}
+
+.ndp-clear {
+  appearance: none;
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--ndp-color-text-faint);
+  color: var(--ndp-color-surface);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  padding: 0;
+}
+
+.ndp-clear:hover {
+  background: var(--ndp-color-text-muted);
+}
+
 .ndp-panel-root {
   z-index: var(--ndp-z-index);
   font-family: var(--ndp-font);

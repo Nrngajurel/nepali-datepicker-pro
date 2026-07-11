@@ -166,6 +166,7 @@ export interface DateRangePickerOptions {
   valueFormat?: DateValueFormat;
   altField?: { start: string | HTMLElement; end: string | HTMLElement };
   altFormat?: string;
+  clearable?: boolean;
   onApply?: (range: DateRangeResult) => void;
   onChange?: (partial: { start?: Date; end?: Date }) => void;
   onOpen?: () => void;
@@ -183,6 +184,7 @@ export interface MonthPickerOptions {
   locale?: PickerLocale;
   value?: MonthValue | null;
   defaultValue?: MonthValue | null;
+  clearable?: boolean;
   displayFormat?: string;
   minYear?: number;
   maxYear?: number;
