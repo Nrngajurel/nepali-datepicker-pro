@@ -56,32 +56,20 @@ function withInputGroup(
   // ---- mode switch segment ----
   let updateMode = () => {};
   if (modeSwitch) {
-    const seg = document.createElement('div');
-    seg.className = 'ndp-mode-switch';
-    seg.setAttribute('role', 'group');
-    seg.setAttribute('aria-label', 'Calendar system');
-    (['BS', 'AD'] as const).forEach((option) => {
-      const btn = document.createElement('button');
-      btn.className = `ndp-mode-opt${modeSwitch.mode() === option ? ' is-active' : ''}`;
-      btn.setAttribute('type', 'button');
-      btn.setAttribute('aria-pressed', (modeSwitch.mode() === option).toString());
-      btn.textContent = option;
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (modeSwitch.mode() !== option) modeSwitch.toggle();
-      });
-      seg.appendChild(btn);
+    const btn = document.createElement('button');
+    btn.className = 'ndp-mode-toggle';
+    btn.setAttribute('type', 'button');
+    btn.setAttribute('aria-label', `Switch to ${modeSwitch.mode() === 'BS' ? 'AD' : 'BS'}`);
+    btn.innerHTML = '&#8694;';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      modeSwitch.toggle();
     });
-    wrapper.appendChild(seg);
+    wrapper.appendChild(btn);
 
     updateMode = () => {
-      const current = modeSwitch.mode();
-      const buttons = seg.querySelectorAll('.ndp-mode-opt');
-      buttons.forEach((button) => {
-        const isActive = button.textContent === current;
-        button.classList.toggle('is-active', isActive);
-        button.setAttribute('aria-pressed', isActive.toString());
-      });
+      btn.setAttribute('aria-label', `Switch to ${modeSwitch.mode() === 'BS' ? 'AD' : 'BS'}`);
+      btn.setAttribute('data-mode', modeSwitch.mode());
     };
   }
 

@@ -160,17 +160,13 @@ function renderYearGrid(controller: ViewControls): HTMLElement {
   return grid;
 }
 
-// A segmented BS/AD switch with a swap glyph, styled as one input-group control.
+// A single-button BS/AD toggle with a swap glyph.
 function renderModeSwitch(mode: CalendarMode, toggle: () => void): HTMLElement {
-  const sw = el('div', 'ndp-mode-switch', { role: 'group', 'aria-label': 'Calendar system' });
-  sw.appendChild(setText(el('span', 'ndp-mode-icon', { 'aria-hidden': 'true' }), '⇄'));
-  (['BS', 'AD'] as const).forEach((option) => {
-    const active = mode === option;
-    const btn = setText(el('button', `ndp-mode-opt${active ? ' is-active' : ''}`, { type: 'button', 'aria-pressed': active ? 'true' : 'false' }), option);
-    btn.addEventListener('click', () => { if (mode !== option) toggle(); });
-    sw.appendChild(btn);
-  });
-  return sw;
+  const btn = el('button', 'ndp-mode-toggle', { type: 'button', 'aria-label': `Switch to ${mode === 'BS' ? 'AD' : 'BS'}` });
+  btn.setAttribute('data-mode', mode);
+  btn.innerHTML = '&#8694;';
+  btn.addEventListener('click', toggle);
+  return btn;
 }
 
 export function renderRangePanel(root: HTMLElement, controller: DateRangeController): void {
