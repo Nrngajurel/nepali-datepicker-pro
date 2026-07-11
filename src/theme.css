@@ -222,6 +222,19 @@
   padding-bottom: 4px;
 }
 
+.ndp-datetime-mode-bar {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.ndp-datetime-mode-bar .ndp-mode-switch {
+  border: 1px solid var(--ndp-color-border);
+  border-radius: var(--ndp-radius);
+  border-left: 1px solid var(--ndp-color-border);
+  background: var(--ndp-color-surface);
+}
+
 .ndp-presets {
   width: 190px;
   flex: 0 0 auto;

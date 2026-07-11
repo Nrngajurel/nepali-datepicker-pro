@@ -8,6 +8,7 @@ import type { CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, Pi
 export interface DateTimeControllerState {
   isOpen: boolean;
   mode: CalendarMode;
+  allowModeToggle: boolean;
   viewYear: number;
   viewMonth: number;
   selected: DateValue | null;
@@ -52,6 +53,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   let state: DateTimeControllerState = {
     isOpen: false,
     mode: options.mode ?? 'BS',
+    allowModeToggle: options.allowModeToggle !== false,
     viewYear: initialValue.bs.year,
     viewMonth: initialValue.bs.month,
     selected: options.value === null || options.defaultValue === null ? null : initialValue,
@@ -133,7 +135,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     update(patch) {
       options = { ...options, ...patch };
       const next: Partial<DateTimeControllerState> = {};
-      if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '24h';
+      if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
       if ('minuteStep' in patch) next.minuteStep = options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1;
       if ('withTime' in patch) {
         if (options.withTime && !state.time) {
@@ -221,6 +223,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       options.onChangeMonthYear?.(y, state.viewMonth);
     },
     toggleMode() {
+      if (!state.allowModeToggle) return;
       setState({ mode: state.mode === 'BS' ? 'AD' : 'BS' });
     },
     isDisabled(value) {

@@ -9,6 +9,7 @@ import { normalizePresets } from './presets.js';
 export interface DateRangeControllerState {
   isOpen: boolean;
   mode: CalendarMode;
+  allowModeToggle: boolean;
   viewYear: number;
   viewMonth: number;
   range: DateRange | null;
@@ -56,6 +57,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   let state: DateRangeControllerState = {
     isOpen: false,
     mode: options.mode ?? 'BS',
+    allowModeToggle: options.allowModeToggle !== false,
     viewYear: adapter.adToBs(defaultRange.end).year,
     viewMonth: adapter.adToBs(defaultRange.end).month,
     range: createDateRange(createDateValue(adapter, defaultRange.start), createDateValue(adapter, defaultRange.end)),
@@ -129,7 +131,9 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     update(patch) {
       options = { ...options, ...patch };
       presets = normalizePresets(options, adapter, dateMath);
-      setState({});
+      const next: Partial<DateRangeControllerState> = {};
+      if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
+      setState(next);
     },
     destroy() {
       listeners = [];
@@ -186,6 +190,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       setState({ viewYear: clampYear(year), view: 'month' });
     },
     toggleMode() {
+      if (!state.allowModeToggle) return;
       setState({ mode: state.mode === 'BS' ? 'AD' : 'BS' });
     },
     selectPreset(id) {

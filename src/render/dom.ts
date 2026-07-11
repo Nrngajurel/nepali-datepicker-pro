@@ -218,7 +218,10 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
   startField.append(setText(el('span', 'ndp-ig-label'), 'Start'), setText(el('span', 'ndp-ig-value'), startText));
   const endField = el('div', `ndp-ig-field${awaitingEnd ? ' is-active' : ''}`);
   endField.append(setText(el('span', 'ndp-ig-label'), 'End'), setText(el('span', 'ndp-ig-value'), endText));
-  group.append(startField, setText(el('span', 'ndp-ig-arrow', { 'aria-hidden': 'true' }), '→'), endField, renderModeSwitch(state.mode, () => controller.toggleMode()));
+  group.append(startField, setText(el('span', 'ndp-ig-arrow', { 'aria-hidden': 'true' }), '→'), endField);
+  if (state.allowModeToggle) {
+    group.appendChild(renderModeSwitch(state.mode, () => controller.toggleMode()));
+  }
   calCol.appendChild(group);
 
   // Guidance shown while picking a custom range, so clicking "Custom Range" has
@@ -368,6 +371,12 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   const panel = el('div', panelClass, { role: 'dialog', 'aria-label': 'Date time picker' });
   const calCol = el('div', 'ndp-cal-col');
   calCol.appendChild(renderHeader(controller));
+
+  if (state.allowModeToggle) {
+    const modeBar = el('div', 'ndp-datetime-mode-bar');
+    modeBar.appendChild(renderModeSwitch(state.mode, () => controller.toggleMode()));
+    calCol.appendChild(modeBar);
+  }
 
   if (state.view === 'day') {
     calCol.appendChild(renderWeekdays());
