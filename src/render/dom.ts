@@ -398,13 +398,6 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
     calCol.appendChild(renderYearGrid(controller));
   }
 
-  const footer = el('div', 'ndp-button-row');
-  const clear = setText(el('button', 'ndp-secondary', { type: 'button' }), 'Clear');
-  const done = setText(el('button', 'ndp-apply', { type: 'button' }), 'Done');
-  clear.addEventListener('click', () => controller.clear());
-  done.addEventListener('click', () => controller.confirm());
-  footer.append(clear, done);
-
   // Calendar and time sit side by side on one screen (stacks on narrow widths);
   // the action row spans the full width beneath both. The time panel only shows
   // in the day view — month/year views are just for navigating.
@@ -412,7 +405,21 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   body.appendChild(calCol);
   const timeControls = state.view === 'day' ? renderTimeControls(controller) : null;
   if (timeControls) body.appendChild(timeControls);
-  panel.append(body, footer);
+  panel.appendChild(body);
+
+  // Show Clear/Done only when the panel stays open after selecting a date
+  // (i.e. withTime mode). In date-only mode the panel auto-closes on pick
+  // so the footer buttons would never be seen.
+  if (timeControls) {
+    const footer = el('div', 'ndp-button-row');
+    const clear = setText(el('button', 'ndp-secondary', { type: 'button' }), 'Clear');
+    const done = setText(el('button', 'ndp-apply', { type: 'button' }), 'Done');
+    clear.addEventListener('click', () => controller.clear());
+    done.addEventListener('click', () => controller.confirm());
+    footer.append(clear, done);
+    panel.appendChild(footer);
+  }
+
   root.appendChild(panel);
 }
 
