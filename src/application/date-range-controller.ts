@@ -1,5 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
+import { isDayDisabled } from './constraints.js';
 import { createDateRange, createDateValue, dateValueFromBs, isSameDateValue } from '../domain/date-value.js';
 import { formatRange } from '../format/index.js';
 import type { CalendarMode, DateRange, DateRangePickerOptions, DateRangeResult, DateValue, PickerInstance, PresetDefinition } from '../types.js';
@@ -37,6 +38,7 @@ export interface DateRangeController extends PickerInstance<DateRangeResult, Dat
   toggleSubmenu(id: string): void;
   startCustomRange(): void;
   apply(): void;
+  isDisabled(value: DateValue): boolean;
   cellForBs(year: number, month: number, day: number): DateValue;
   buildMonthCells(year: number, month: number): Array<DateValue | null>;
 }
@@ -140,6 +142,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       };
     },
     selectDay(value) {
+      if (controller.isDisabled(value)) return;
       if (!state.pendingStart) {
         setState({ pendingStart: value, range: null, activePresetId: null, hoverDate: null });
         options.onChange?.({ start: value.ad });
@@ -217,6 +220,9 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if (!state.range) return;
       emit(state.range);
       controller.hide();
+    },
+    isDisabled(value) {
+      return isDayDisabled(value.ad, options, dateMath);
     },
     cellForBs(year, month, day) {
       return dateValueFromBs(adapter, { year, month, day });

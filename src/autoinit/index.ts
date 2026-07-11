@@ -20,7 +20,11 @@ export function setDefaults(options: Partial<DateTimePickerOptions & DateRangePi
 function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): HTMLElement {
   if (appendTo instanceof HTMLElement) return appendTo;
   if (typeof appendTo === 'string') return document.querySelector<HTMLElement>(appendTo) ?? document.body;
-  return target.parentElement ?? document.body;
+  // Default to <body>, NOT the trigger's parent. The popup is position:fixed, so
+  // body placement keeps it out of overflow:hidden containers AND — crucially —
+  // out of framework-managed DOM (Vue/React), whose re-render would otherwise
+  // trip over the foreign portal node and break hide/update.
+  return document.body;
 }
 
 export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, options: DateRangePickerOptions = {}): PickerInstance<DateRangeResult, DateRangePickerOptions> {

@@ -315,6 +315,17 @@
   cursor: default;
 }
 
+.ndp-cell.is-disabled {
+  cursor: not-allowed;
+  color: var(--ndp-color-text-faint);
+  text-decoration: line-through;
+  opacity: 0.55;
+}
+
+.ndp-cell.is-disabled:hover {
+  background: transparent;
+}
+
 .ndp-cell:not(.ndp-cell--empty):hover {
   background: var(--ndp-color-primary-bg);
 }

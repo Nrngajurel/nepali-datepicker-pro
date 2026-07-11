@@ -3,78 +3,156 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Nepali Date Picker — playground</title>
+    <title>Advance Nepali DatePicker — docs</title>
     <style>
-      :root { color-scheme: light dark; }
-      body {
-        margin: 0;
-        min-height: 100vh;
-        background: #f4f6f5;
-        color: #1c2622;
-        font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif;
-      }
-      main { max-width: 620px; margin: 0 auto; padding: 56px 20px 80px; display: grid; gap: 26px; }
-      header h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: -0.02em; }
-      header p { margin: 0; color: #5b6560; }
-      .field { display: grid; gap: 8px; }
-      .field > span { font-weight: 700; font-size: 14px; }
-      .field > small { color: #8a9793; font-weight: 400; }
-      .out {
-        padding: 12px 14px; border: 1px dashed #c6d0cb; border-radius: 8px; min-height: 20px;
-        font: 500 13px ui-monospace, "SF Mono", Menlo, monospace; color: #33403a; background: #fff;
+      :root {
+        color-scheme: light dark;
+        --bg: #eef1f0;
+        --panel: #ffffff;
+        --panel-2: #f6f8f7;
+        --ink: #1b2420;
+        --ink-soft: #55635c;
+        --ink-faint: #8a9891;
+        --line: #dde4e0;
+        --brand: #2f8f4e;
+        --brand-ink: #1c6b38;
+        --code-bg: #0f1613;
+        --code-ink: #d7e4dc;
+        --mono: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+        --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif;
       }
       @media (prefers-color-scheme: dark) {
-        body { background: #10161a; color: #e7eeeb; }
-        header p { color: #9fb0aa; }
-        .out { background: #1b262c; color: #cfe0d9; border-color: #2c3941; }
+        :root {
+          --bg: #0e1412; --panel: #161d1a; --panel-2: #121815; --ink: #e6efe9;
+          --ink-soft: #9db0a7; --ink-faint: #6b7d74; --line: #253029; --brand: #4bbf72;
+          --brand-ink: #7ad598; --code-bg: #0b1210; --code-ink: #cfe0d7;
+        }
       }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; background: var(--bg); color: var(--ink);
+        font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased;
+      }
+      a { color: var(--brand-ink); }
+      .doc-header {
+        position: sticky; top: 0; z-index: 5;
+        display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+        padding: 14px 24px; border-bottom: 1px solid var(--line);
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(8px);
+      }
+      .doc-header h1 { margin: 0; font-size: 17px; letter-spacing: -0.01em; }
+      .doc-header .tag {
+        font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em;
+        color: #fff; background: var(--brand); padding: 4px 8px; border-radius: 999px;
+      }
+      .doc-header nav { margin-left: auto; display: flex; gap: 4px; }
+      .doc-header nav a {
+        text-decoration: none; color: var(--ink-soft); font-weight: 600; font-size: 13px;
+        padding: 6px 10px; border-radius: 7px;
+      }
+      .doc-header nav a:hover { background: var(--panel-2); color: var(--ink); }
+      main { max-width: 1040px; margin: 0 auto; padding: 28px 24px 80px; display: grid; gap: 26px; }
+      #app { display: grid; gap: 26px; }
+      .hero { padding: 30px 4px 6px; }
+      .hero-title { margin: 0 0 12px; font-size: clamp(30px, 6vw, 48px); line-height: 1.02; letter-spacing: -0.03em; font-weight: 800; text-wrap: balance; }
+      .hero-title span { color: var(--brand); }
+      .hero-sub { margin: 0 0 20px; max-width: 60ch; color: var(--ink-soft); font-size: 16px; }
+      .install {
+        appearance: none; display: inline-flex; align-items: center; gap: 10px;
+        border: 1px solid var(--line); border-radius: 10px; background: var(--code-bg); color: var(--code-ink);
+        font: 500 14px var(--mono); padding: 11px 14px; cursor: pointer;
+      }
+      .install .dollar { color: var(--brand); }
+      .install .copyhint { font-size: 11px; color: var(--ink-faint); border-left: 1px solid rgba(255,255,255,0.14); padding-left: 10px; }
+      .hero-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+      .hero-badges span {
+        font: 600 11px var(--mono); color: var(--ink-soft); background: var(--panel-2);
+        border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px;
+      }
+      .section-head { padding-top: 8px; border-top: 1px solid var(--line); }
+      .section-head h2 { margin: 14px 0 3px; font-size: 22px; letter-spacing: -0.01em; }
+      .section-head p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+      .card {
+        border: 1px solid var(--line); border-radius: 16px; background: var(--panel); overflow: hidden;
+      }
+      .card > header { padding: 18px 20px 6px; }
+      .card > header h2 { margin: 0 0 3px; font-size: 20px; letter-spacing: -0.01em; }
+      .card > header p { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+      .card-body { display: grid; grid-template-columns: 1.05fr 1fr; gap: 0; }
+      @media (max-width: 760px) { .card-body { grid-template-columns: 1fr; } }
+      .preview, .options { padding: 18px 20px; }
+      .preview { border-right: 1px solid var(--line); }
+      @media (max-width: 760px) { .preview { border-right: 0; border-bottom: 1px solid var(--line); } }
+      .preview .field { display: grid; gap: 8px; }
+      .preview label { font-weight: 700; font-size: 13px; }
+      .preview .result {
+        margin-top: 14px; padding: 10px 12px; border-radius: 9px; min-height: 20px;
+        background: var(--panel-2); border: 1px dashed var(--line);
+        font: 500 12.5px var(--mono); color: var(--ink-soft); word-break: break-word;
+      }
+      .opt-section-title {
+        font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.07em;
+        color: var(--ink-faint); margin-bottom: 12px;
+      }
+      .opt { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 7px 0; }
+      .opt + .opt { border-top: 1px solid var(--line); }
+      .opt label { font-size: 13.5px; font-weight: 600; }
+      .opt .hint { display: block; font-weight: 400; color: var(--ink-faint); font-size: 11.5px; }
+      .opt.is-disabled { opacity: 0.42; pointer-events: none; }
+      .opt input[type="text"], .opt input[type="number"], .opt select {
+        font: inherit; font-size: 13px; padding: 6px 8px; min-width: 120px;
+        border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--ink);
+      }
+      .opt input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--brand); }
+      .snippet { border-top: 1px solid var(--line); }
+      .snippet-tabs { display: flex; gap: 2px; padding: 10px 12px 0; flex-wrap: wrap; }
+      .snippet-tabs button {
+        appearance: none; border: 0; background: transparent; color: var(--ink-soft);
+        font: 600 12.5px var(--sans); padding: 6px 11px; border-radius: 7px 7px 0 0; cursor: pointer;
+      }
+      .snippet-tabs button[aria-selected="true"] { background: var(--code-bg); color: #fff; }
+      .snippet-body { position: relative; }
+      .snippet-body pre {
+        margin: 0; overflow-x: auto; background: var(--code-bg); color: var(--code-ink);
+        padding: 16px 18px; font: 500 12.5px/1.6 var(--mono);
+      }
+      .copy-btn {
+        position: absolute; top: 10px; right: 10px;
+        appearance: none; border: 1px solid rgba(255,255,255,0.16); border-radius: 7px;
+        background: rgba(255,255,255,0.08); color: #dfeee6; font: 600 12px var(--sans);
+        padding: 5px 10px; cursor: pointer;
+      }
+      .copy-btn:hover { background: rgba(255,255,255,0.16); }
+      .copy-btn.copied { background: var(--brand); border-color: var(--brand); color: #fff; }
+      .foot { color: var(--ink-faint); font-size: 12.5px; text-align: center; }
+      .fw-bar { display: flex; align-items: center; gap: 12px; }
+      .fw-label { font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); }
+      .fw-tabs { display: flex; gap: 3px; padding: 4px; border: 1px solid var(--line); border-radius: 11px; background: var(--panel); }
+      .fw-tabs button {
+        appearance: none; border: 0; background: transparent; color: var(--ink-soft);
+        font: 600 13px var(--sans); padding: 7px 13px; border-radius: 8px; cursor: pointer;
+      }
+      .fw-tabs button[aria-selected="true"] { background: var(--brand); color: #fff; }
+      .cards { display: grid; gap: 26px; margin-top: 16px; }
+      /* the live picker input inside a card */
+      .preview .ndp-trigger { width: 100%; }
     </style>
   </head>
   <body>
+    <header class="doc-header">
+      <span class="tag">advance-nepali-datepicker</span>
+      <h1>Docs</h1>
+      <nav>
+        <a href="#components">Components</a>
+        <a href="#helpers">Helpers</a>
+        <a href="#events">Events</a>
+      </nav>
+    </header>
     <main>
-      <header>
-        <h1>Nepali Date Picker</h1>
-        <p>Live dev playground — edit <code>src/</code> and it hot-reloads.</p>
-      </header>
-
-      <label class="field">
-        <span>Date only</span>
-        <input type="text" data-nepali-datepicker readonly />
-      </label>
-
-      <label class="field">
-        <span>Date &amp; time <small>— 24-hour</small></span>
-        <input type="text" data-nepali-datepicker data-with-time="true" readonly />
-      </label>
-
-      <label class="field">
-        <span>Date &amp; time <small>— 12-hour · 5-min steps</small></span>
-        <input
-          type="text"
-          data-nepali-datepicker
-          data-with-time="true"
-          data-time-format="12h"
-          data-minute-step="5"
-          readonly
-        />
-      </label>
-
-      <label class="field">
-        <span>Date range</span>
-        <input type="text" data-nepali-daterange data-fiscal-start-month="4" readonly />
-      </label>
-
-      <label class="field">
-        <span>Month <small>— for a monthly report / payslip</small></span>
-        <input type="text" data-nepali-monthpicker readonly />
-      </label>
-
-      <div class="field">
-        <span>Last committed value</span>
-        <div class="out" id="out">— pick a date, then press Done / Apply —</div>
-      </div>
+      <div id="app"></div>
+      <p class="foot">Built from <code>src/</code> · run <code>npm run dev</code> to edit live.</p>
     </main>
-
     <script type="module" src="/playground/main.ts"></script>
   </body>
 </html>

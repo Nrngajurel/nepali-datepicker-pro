@@ -1,5 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
+import { isDayDisabled } from './constraints.js';
 import { createDateValue, dateValueFromBs } from '../domain/date-value.js';
 import { formatDateValue } from '../format/index.js';
 import type { CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, PickerInstance, TimeValue } from '../types.js';
@@ -34,6 +35,7 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   selectMonthView(month: number): void;
   selectYearView(year: number): void;
   toggleMode(): void;
+  isDisabled(value: DateValue): boolean;
   cellForBs(year: number, month: number, day: number): DateValue;
   buildMonthCells(year: number, month: number): Array<DateValue | null>;
 }
@@ -130,7 +132,19 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     update(patch) {
       options = { ...options, ...patch };
-      setState({});
+      const next: Partial<DateTimeControllerState> = {};
+      if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '24h';
+      if ('minuteStep' in patch) next.minuteStep = options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1;
+      if ('withTime' in patch) {
+        if (options.withTime && !state.time) {
+          const now = new Date();
+          const dt = options.defaultTime ?? { hour: now.getHours(), minute: now.getMinutes() };
+          next.time = { hour: dt.hour, minute: dt.minute, second: 0 };
+        } else if (!options.withTime) {
+          next.time = null;
+        }
+      }
+      setState(next);
     },
     destroy() {
       listeners = [];
@@ -143,6 +157,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       };
     },
     selectDay(value) {
+      if (controller.isDisabled(value)) return;
       setState({ selected: value, viewYear: value.bs.year, viewMonth: value.bs.month });
       if (options.closeOnSelect ?? !options.withTime) {
         emit(value);
@@ -207,6 +222,9 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     toggleMode() {
       setState({ mode: state.mode === 'BS' ? 'AD' : 'BS' });
+    },
+    isDisabled(value) {
+      return isDayDisabled(value.ad, options, nativeDateMath);
     },
     cellForBs(year, month, day) {
       return dateValueFromBs(adapter, { year, month, day });

@@ -146,6 +146,7 @@ export interface DateRangePickerOptions {
   minDate?: Date | string | null;
   maxDate?: Date | string | null;
   disabledDates?: (date: Date) => boolean;
+  disabledWeekdays?: number[];
   maxRangeSpanDays?: number | null;
   presets?: PresetDefinition[] | 'default' | false;
   ranges?: Record<string, [Date, Date]>;

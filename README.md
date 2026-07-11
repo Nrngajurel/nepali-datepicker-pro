@@ -1,4 +1,4 @@
-# Nepali Date Picker
+# Advance Nepali DatePicker
 
 A framework-agnostic Nepali **Bikram Sambat (BS) ↔ Gregorian (AD)** date, **date-time**, and **range** picker. Self-owned calendar engine (no CDN, no third-party Nepali-date dependency), a same-screen time picker, and thin wrappers for a plain `<script>` tag, jQuery, Vue, and React — all over one shared core.
 
@@ -9,8 +9,8 @@ The implementation follows the build spec in `references/`.
 ### Plain `<script>` tag (no build tools)
 
 ```html
-<link rel="stylesheet" href="nepali-datepicker/dist/style.css" />
-<script src="nepali-datepicker/dist/nepali-datepicker.umd.cjs"></script>
+<link rel="stylesheet" href="advance-nepali-datepicker/dist/style.css" />
+<script src="advance-nepali-datepicker/dist/advance-nepali-datepicker.umd.cjs"></script>
 
 <input type="text" data-nepali-datepicker data-with-time="true"
        data-time-format="12h" data-minute-step="5" readonly />
@@ -21,8 +21,8 @@ The implementation follows the build spec in `references/`.
 ### Bundler (Vite / webpack / etc.)
 
 ```ts
-import { mountDateTimePicker } from 'nepali-datepicker';
-import 'nepali-datepicker/style.css';
+import { mountDateTimePicker } from 'advance-nepali-datepicker';
+import 'advance-nepali-datepicker/style.css';
 
 const picker = mountDateTimePicker(document.querySelector('#when'), {
   withTime: true,
@@ -31,7 +31,7 @@ const picker = mountDateTimePicker(document.querySelector('#when'), {
 });
 ```
 
-Framework entry points: `nepali-datepicker/jquery`, `nepali-datepicker/vue`, `nepali-datepicker/react` (each declares the framework as an optional peer dependency).
+Framework entry points: `advance-nepali-datepicker/jquery`, `advance-nepali-datepicker/vue`, `advance-nepali-datepicker/react` (each declares the framework as an optional peer dependency).
 
 ### Month picker (for monthly reports / payslips)
 
@@ -41,7 +41,7 @@ Selects a single BS month and hands back the AD date range it covers:
 <input type="text" data-nepali-monthpicker readonly />
 ```
 ```ts
-import { mountMonthPicker } from 'nepali-datepicker';
+import { mountMonthPicker } from 'advance-nepali-datepicker';
 
 mountMonthPicker(input, {
   onChange: ({ year, month, start, end, formatted }) => {
@@ -60,7 +60,7 @@ src/           all TypeScript — engine, controllers, renderer, autoinit, wrapp
   vue.ts         Vue component entry
   react.tsx      React component entry
   theme.css      the stylesheet
-playground/    Vite dev app (main.ts) — mounted by index.html
+playground/    Vue docs app (App.vue) — interactive, framework-aware snippets
 test/          Vitest suites (engine correctness, DOM, mount) + fixtures/
 scripts/       data-table + fixture generators (from references/)
 dist/          build output (generated, git-ignored)
@@ -69,7 +69,7 @@ dist/          build output (generated, git-ignored)
 ## Scripts
 
 ```sh
-npm run dev            # live playground with hot reload
+npm run dev            # interactive docs: tweak options, live preview, copy per-framework snippets
 npm run build          # library build → dist/ (ES modules + UMD + .d.ts + style.css)
 npm test               # vitest run (add :watch for watch mode)
 npm run lint           # tsc --noEmit

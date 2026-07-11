@@ -239,11 +239,16 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
         grid.appendChild(el('div', 'ndp-cell ndp-cell--empty', { role: 'gridcell' }));
         return;
       }
-      const btn = el('button', classForRange(cell, preview, controller.getToday()), { type: 'button', role: 'gridcell', 'aria-selected': inRange(preview, cell) ? 'true' : 'false' });
+      const disabled = controller.isDisabled(cell);
+      const cls = classForRange(cell, preview, controller.getToday()) + (disabled ? ' is-disabled' : '');
+      const btn = el('button', cls, { type: 'button', role: 'gridcell', 'aria-selected': inRange(preview, cell) ? 'true' : 'false' });
+      if (disabled) btn.setAttribute('aria-disabled', 'true');
       btn.appendChild(setText(el('span', 'ndp-cell-primary'), adapter.toLocaleDigits(cell.bs.day, 'ne')));
       btn.appendChild(setText(el('span', 'ndp-cell-secondary'), String(cell.ad.getDate())));
-      btn.addEventListener('click', () => controller.selectDay(cell));
-      btn.addEventListener('mouseenter', () => controller.hoverDay(cell));
+      if (!disabled) {
+        btn.addEventListener('click', () => controller.selectDay(cell));
+        btn.addEventListener('mouseenter', () => controller.hoverDay(cell));
+      }
       grid.appendChild(btn);
     });
     calCol.appendChild(grid);
@@ -372,13 +377,16 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
         grid.appendChild(el('div', 'ndp-cell ndp-cell--empty', { role: 'gridcell' }));
         return;
       }
+      const disabled = controller.isDisabled(cell);
       const classes = ['ndp-cell'];
       if (isSameDay(cell, today)) classes.push('is-today');
       if (isSameDay(cell, state.selected)) classes.push('is-range-start');
+      if (disabled) classes.push('is-disabled');
       const btn = el('button', classes.join(' '), { type: 'button', role: 'gridcell', 'aria-selected': isSameDay(cell, state.selected) ? 'true' : 'false' });
+      if (disabled) btn.setAttribute('aria-disabled', 'true');
       btn.appendChild(setText(el('span', 'ndp-cell-primary'), adapter.toLocaleDigits(cell.bs.day, 'ne')));
       btn.appendChild(setText(el('span', 'ndp-cell-secondary'), String(cell.ad.getDate())));
-      btn.addEventListener('click', () => controller.selectDay(cell));
+      if (!disabled) btn.addEventListener('click', () => controller.selectDay(cell));
       grid.appendChild(btn);
     });
     calCol.appendChild(grid);
