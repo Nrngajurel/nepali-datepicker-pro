@@ -178,7 +178,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
   const adapter = defaultCalendarAdapter;
   const fmt = (value: DateValue) => formatDateValue(value.ad, adapter, { mode: state.mode, locale: state.mode === 'BS' ? 'ne' : 'en' });
   root.innerHTML = '';
-  const panel = el('div', 'ndp-panel ndp-panel--range', { role: 'dialog', 'aria-label': 'Date range picker' });
+  const panel = el('div', 'ndp-panel ndp-panel--range ndp-panel--compact', { role: 'dialog', 'aria-label': 'Date range picker' });
 
   const presetRail = el('div', 'ndp-presets');
   controller.getPresets().forEach((preset) => {
@@ -363,7 +363,9 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   const state = controller.getState();
   const adapter = defaultCalendarAdapter;
   root.innerHTML = '';
-  const panel = el('div', 'ndp-panel ndp-panel--datetime', { role: 'dialog', 'aria-label': 'Date time picker' });
+  const dateOnly = !state.time;
+  const panelClass = `ndp-panel ndp-panel--datetime${dateOnly ? ' ndp-panel--date-only' : ''}`;
+  const panel = el('div', panelClass, { role: 'dialog', 'aria-label': 'Date time picker' });
   const calCol = el('div', 'ndp-cal-col');
   calCol.appendChild(renderHeader(controller));
 

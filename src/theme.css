@@ -61,6 +61,60 @@
   width: min(560px, calc(100vw - 16px));
 }
 
+/* Date-only is the same panel without the time sidebar — it should be
+   narrower and more compact. */
+.ndp-panel--date-only {
+  width: min(340px, calc(100vw - 16px));
+}
+
+.ndp-panel--date-only .ndp-cell {
+  height: 38px;
+}
+
+.ndp-panel--date-only .ndp-cal-col {
+  padding: 10px;
+}
+
+.ndp-panel--date-only .ndp-weekdays {
+  margin-top: 6px;
+}
+
+.ndp-panel--date-only .ndp-cal-header {
+  padding: 5px 7px;
+}
+
+.ndp-panel--date-only .ndp-button-row {
+  margin-top: 8px;
+}
+
+/* Range picker is also slightly compacted — it has the presets sidebar so
+   width is set by the parent panel, but fewer things to display. */
+.ndp-panel--compact .ndp-cell {
+  height: 38px;
+}
+
+.ndp-panel--compact .ndp-cal-col {
+  padding: 10px;
+}
+
+.ndp-panel--compact .ndp-weekdays {
+  margin-top: 6px;
+}
+
+.ndp-panel--compact .ndp-cal-header {
+  padding: 5px 7px;
+}
+
+.ndp-panel--compact .ndp-preset,
+.ndp-panel--compact .ndp-submenu-item {
+  padding: 7px 14px;
+  font-size: 13px;
+}
+
+.ndp-panel--compact .ndp-presets {
+  width: 170px;
+}
+
 .ndp-panel--month {
   width: min(320px, calc(100vw - 16px));
 }
