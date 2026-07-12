@@ -53,7 +53,7 @@ async function copy() {
 </script>
 
 <template>
-  <section class="card" id="helpers">
+  <section class="card">
     <header>
       <h2>Helper functions</h2>
       <p>A tree-shakeable, <code>NepaliFunctions</code>-compatible toolkit for BS↔AD math — no picker required.</p>

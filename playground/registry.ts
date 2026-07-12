@@ -26,6 +26,19 @@ export interface Control {
   enabledWhen?: (v: Record<string, unknown>) => boolean;
 }
 
+export interface OptionDoc {
+  name: string;
+  type: string;
+  def: string;
+  desc: string;
+}
+
+export interface EventDoc {
+  name: string;
+  payload: string;
+  desc: string;
+}
+
 export interface PickerDef {
   id: string;
   title: string;
@@ -39,14 +52,49 @@ export interface PickerDef {
   dataAttrMap: Record<string, string>;
   eventName: string;
   controls: Control[];
+  /** Every option key `buildOptions` may emit — used to build a full reset
+   *  template so un-setting an option in the live preview actually clears it. */
+  optionKeys: string[];
+  optionDocs: OptionDoc[];
+  events: EventDoc[];
   buildOptions: (v: Record<string, unknown>) => Record<string, unknown>;
   describe: (detail: { formatted: string; start?: Date; end?: Date }) => string;
 }
+
+// Options shared by every picker (popup placement, portal, teardown).
+const COMMON_OPTS: OptionDoc[] = [
+  { name: 'clearable', type: 'boolean', def: 'true', desc: 'Show a × button to clear the current value.' },
+  { name: 'appendTo', type: 'string | HTMLElement', def: 'document.body', desc: 'Where the popup portal is mounted.' },
+  { name: 'opens', type: "'left' | 'right' | 'center' | 'auto'", def: "'auto'", desc: 'Horizontal alignment of the popup relative to the input.' },
+  { name: 'drops', type: "'down' | 'up' | 'auto'", def: "'auto'", desc: 'Whether the popup opens below or above the input.' },
+  { name: 'adapter', type: 'CalendarAdapter', def: 'built-in', desc: 'Swap the BS↔AD conversion engine (advanced).' },
+];
+
+const COMMON_EVENTS: EventDoc[] = [
+  { name: 'onOpen', payload: '()', desc: 'Fires when the popup is shown.' },
+  { name: 'onClose', payload: '()', desc: 'Fires when the popup is hidden.' },
+];
 
 const LOCALE: Choice[] = [
   { value: 'ne', label: 'Nepali (ne)' },
   { value: 'en', label: 'English (en)' },
 ];
+
+const OPENS: Choice[] = [
+  { value: 'auto', label: 'auto' },
+  { value: 'left', label: 'left' },
+  { value: 'right', label: 'right' },
+  { value: 'center', label: 'center' },
+];
+
+const DROPS: Choice[] = [
+  { value: 'auto', label: 'auto' },
+  { value: 'down', label: 'down' },
+  { value: 'up', label: 'up' },
+];
+
+// A self-contained, copy-paste-valid demo predicate for `disabledDates`.
+const disablePastFn = (date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0));
 
 export const DEFS: PickerDef[] = [
   {
@@ -62,27 +110,67 @@ export const DEFS: PickerDef[] = [
     dataAttrMap: { withTime: 'data-with-time', timeFormat: 'data-time-format', minuteStep: 'data-minute-step' },
     eventName: 'select.nepaliDatePicker',
     controls: [
+      { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
+      { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
       { key: 'withTime', label: 'Include time', type: 'bool', def: false },
       { key: 'timeFormat', label: 'Time format', type: 'select', def: '24h', choices: [{ value: '24h', label: '24-hour' }, { value: '12h', label: '12-hour (AM/PM)' }], enabledWhen: (v) => !!v.withTime },
       { key: 'minuteStep', label: 'Minute step', type: 'number', def: 1, min: 1, max: 30, enabledWhen: (v) => !!v.withTime },
+      { key: 'minHour', label: 'Earliest hour', hint: '0–23 (minTime)', type: 'number', def: 0, min: 0, max: 23, enabledWhen: (v) => !!v.withTime },
+      { key: 'maxHour', label: 'Latest hour', hint: '0–23 (maxTime)', type: 'number', def: 23, min: 0, max: 23, enabledWhen: (v) => !!v.withTime },
       { key: 'locale', label: 'Locale', type: 'select', def: 'ne', choices: LOCALE },
       { key: 'closeOnSelect', label: 'Close on select', type: 'select', def: 'default', choices: [{ value: 'default', label: 'Default' }, { value: 'true', label: 'Always' }, { value: 'false', label: 'Never' }] },
       { key: 'minDate', label: 'Min date', hint: "Date | 'today' | '+7d'", type: 'text', def: '', placeholder: 'today' },
       { key: 'maxDate', label: 'Max date', type: 'text', def: '', placeholder: '+1m' },
       { key: 'disableWeekends', label: 'Disable weekends', type: 'bool', def: false },
+      { key: 'disablePast', label: 'Disable past dates', hint: 'disabledDates demo', type: 'bool', def: false },
+      { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
       { key: 'displayFormat', label: 'Display format', hint: 'dayjs-style tokens', type: 'text', def: '', placeholder: 'YYYY-MM-DD HH:mm' },
+      { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
+      { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
+    ],
+    optionKeys: ['mode', 'allowModeToggle', 'withTime', 'timeFormat', 'minuteStep', 'minTime', 'maxTime', 'locale', 'closeOnSelect', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'clearable', 'displayFormat', 'opens', 'drops'],
+    optionDocs: [
+      { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the picker opens in.' },
+      { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
+      { name: 'value / defaultValue', type: 'Date | null', def: 'today', desc: 'Controlled / initial selected date.' },
+      { name: 'withTime', type: 'boolean', def: 'false', desc: 'Show a same-screen time picker under the calendar.' },
+      { name: 'timeFormat', type: "'12h' | '24h'", def: "'24h'", desc: 'Clock style when withTime is on.' },
+      { name: 'minuteStep', type: 'number', def: '1', desc: 'Increment of the minute spinner.' },
+      { name: 'minTime / maxTime', type: '{ hour, minute }', def: '—', desc: 'Clamp the selectable time of day.' },
+      { name: 'defaultTime', type: '{ hour, minute }', def: 'now', desc: 'Time used when withTime turns on with no value.' },
+      { name: 'locale', type: "'ne' | 'en'", def: "'ne'", desc: 'Digit and month-name language.' },
+      { name: 'minDate / maxDate', type: "Date | 'today' | '+7d'", def: '—', desc: 'Earliest / latest selectable day (relative tokens allowed).' },
+      { name: 'disabledWeekdays', type: 'number[]', def: '[]', desc: 'Grey-out weekdays (0 = Sunday … 6 = Saturday).' },
+      { name: 'disabledDates', type: '(date) => boolean', def: '—', desc: 'Return true to disable a specific day.' },
+      { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD[ HH:mm]', desc: 'dayjs-style tokens for the input text.' },
+      { name: 'closeOnSelect', type: 'boolean', def: 'true unless withTime', desc: 'Close the popup right after a day is picked.' },
+      ...COMMON_OPTS,
+    ],
+    events: [
+      { name: 'onChange', payload: 'DateTimeResult', desc: 'A date (and time) was committed.' },
+      { name: 'onChangeMonthYear', payload: '(year, month)', desc: 'Navigated to a different month/year.' },
+      ...COMMON_EVENTS,
+      { name: 'select.nepaliDatePicker', payload: 'CustomEvent<DateTimeResult>', desc: 'Bubbling DOM event dispatched on the input.' },
     ],
     buildOptions(v) {
       const o: Record<string, unknown> = {};
+      if (v.mode && v.mode !== 'BS') o.mode = v.mode;
+      if (v.allowModeToggle === false) o.allowModeToggle = false;
       if (v.withTime) o.withTime = true;
       if (v.withTime && v.timeFormat !== '24h') o.timeFormat = v.timeFormat;
       if (v.withTime && Number(v.minuteStep) !== 1) o.minuteStep = Number(v.minuteStep);
+      if (v.withTime && Number(v.minHour) > 0) o.minTime = { hour: Number(v.minHour), minute: 0 };
+      if (v.withTime && Number(v.maxHour) < 23) o.maxTime = { hour: Number(v.maxHour), minute: 0 };
       if (v.locale !== 'ne') o.locale = v.locale;
       if (v.closeOnSelect !== 'default') o.closeOnSelect = v.closeOnSelect === 'true';
       if (v.minDate) o.minDate = v.minDate;
       if (v.maxDate) o.maxDate = v.maxDate;
       if (v.disableWeekends) o.disabledWeekdays = [0, 6];
+      if (v.disablePast) o.disabledDates = disablePastFn;
+      if (v.clearable === false) o.clearable = false;
       if (v.displayFormat) o.displayFormat = v.displayFormat;
+      if (v.opens && v.opens !== 'auto') o.opens = v.opens;
+      if (v.drops && v.drops !== 'auto') o.drops = v.drops;
       return o;
     },
     describe: (d) => d.formatted,
@@ -101,24 +189,58 @@ export const DEFS: PickerDef[] = [
     eventName: 'apply.nepaliDateRangePicker',
     controls: [
       { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
+      { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
       { key: 'fiscalStartMonth', label: 'Fiscal start month', hint: '1–12 (Shrawan = 4)', type: 'number', def: 4, min: 1, max: 12 },
       { key: 'autoApply', label: 'Auto-apply', hint: 'commit on 2nd click', type: 'bool', def: false },
       { key: 'presets', label: 'Presets', type: 'select', def: 'default', choices: [{ value: 'default', label: 'Default presets' }, { value: 'none', label: 'No presets' }] },
       { key: 'minDate', label: 'Min date', hint: "Date | 'today' | '-1y'", type: 'text', def: '', placeholder: '-1y' },
       { key: 'maxDate', label: 'Max date', type: 'text', def: '', placeholder: 'today' },
       { key: 'disableWeekends', label: 'Disable weekends', type: 'bool', def: false },
+      { key: 'disablePast', label: 'Disable past dates', hint: 'disabledDates demo', type: 'bool', def: false },
+      { key: 'autoUpdateInput', label: 'Auto-update input', hint: 'write range into field', type: 'bool', def: true },
+      { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
       { key: 'displayFormat', label: 'Display format', type: 'text', def: '', placeholder: 'YYYY-MM-DD' },
+      { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
+      { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
+    ],
+    optionKeys: ['mode', 'allowModeToggle', 'fiscalStartMonth', 'autoApply', 'presets', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'autoUpdateInput', 'clearable', 'displayFormat', 'opens', 'drops'],
+    optionDocs: [
+      { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the range opens in.' },
+      { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
+      { name: 'value / defaultValue', type: '{ start, end } | null', def: 'first preset', desc: 'Controlled / initial range.' },
+      { name: 'presets', type: "PresetDefinition[] | 'default' | false", def: "'default'", desc: 'Quick-range rail; false hides it.' },
+      { name: 'defaultPresetId', type: 'string | null', def: '—', desc: 'Preset highlighted when the popup opens.' },
+      { name: 'fiscalStartMonth', type: 'number (1–12)', def: '4', desc: 'BS month the fiscal year starts (Shrawan = 4).' },
+      { name: 'autoApply', type: 'boolean', def: 'false', desc: 'Commit on the second click instead of an Apply button.' },
+      { name: 'minDate / maxDate', type: "Date | 'today' | '-1y'", def: '—', desc: 'Earliest / latest selectable day.' },
+      { name: 'disabledWeekdays', type: 'number[]', def: '[]', desc: 'Grey-out weekdays (0 = Sunday … 6 = Saturday).' },
+      { name: 'maxRangeSpanDays', type: 'number | null', def: '—', desc: 'Reject ranges longer than N days.' },
+      { name: 'autoUpdateInput', type: 'boolean', def: 'true', desc: 'Write the applied range back into the input text.' },
+      { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD', desc: 'dayjs-style tokens for each bound.' },
+      ...COMMON_OPTS,
+    ],
+    events: [
+      { name: 'onApply', payload: 'DateRangeResult', desc: 'A full start→end range was applied.' },
+      { name: 'onChange', payload: '{ start?, end? }', desc: 'Partial change while picking (first click / preset).' },
+      ...COMMON_EVENTS,
+      { name: 'apply.nepaliDateRangePicker', payload: 'CustomEvent<DateRangeResult>', desc: 'Bubbling DOM event dispatched on the input.' },
     ],
     buildOptions(v) {
       const o: Record<string, unknown> = {};
       if (v.mode !== 'BS') o.mode = v.mode;
+      if (v.allowModeToggle === false) o.allowModeToggle = false;
       if (Number(v.fiscalStartMonth) !== 4) o.fiscalStartMonth = Number(v.fiscalStartMonth);
       if (v.autoApply) o.autoApply = true;
       if (v.presets === 'none') o.presets = false;
       if (v.minDate) o.minDate = v.minDate;
       if (v.maxDate) o.maxDate = v.maxDate;
       if (v.disableWeekends) o.disabledWeekdays = [0, 6];
+      if (v.disablePast) o.disabledDates = disablePastFn;
+      if (v.autoUpdateInput === false) o.autoUpdateInput = false;
+      if (v.clearable === false) o.clearable = false;
       if (v.displayFormat) o.displayFormat = v.displayFormat;
+      if (v.opens && v.opens !== 'auto') o.opens = v.opens;
+      if (v.drops && v.drops !== 'auto') o.drops = v.drops;
       return o;
     },
     describe: (d) => d.formatted,
@@ -140,6 +262,22 @@ export const DEFS: PickerDef[] = [
       { key: 'displayFormat', label: 'Display format', type: 'text', def: '', placeholder: 'MMMM YYYY' },
       { key: 'minYear', label: 'Min year (BS)', type: 'text', def: '', placeholder: '1970' },
       { key: 'maxYear', label: 'Max year (BS)', type: 'text', def: '', placeholder: '2100' },
+      { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
+      { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
+      { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
+    ],
+    optionKeys: ['locale', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'opens', 'drops'],
+    optionDocs: [
+      { name: 'value / defaultValue', type: '{ year, month } | null', def: 'this month', desc: 'Controlled / initial selected BS month.' },
+      { name: 'locale', type: "'ne' | 'en'", def: "'ne'", desc: 'Digit and month-name language.' },
+      { name: 'minYear / maxYear', type: 'number (BS)', def: '1970 / 2100', desc: 'Range of BS years the grid can navigate.' },
+      { name: 'displayFormat', type: 'string', def: 'MMMM YYYY', desc: 'dayjs-style tokens for the input text.' },
+      ...COMMON_OPTS,
+    ],
+    events: [
+      { name: 'onChange', payload: 'MonthResult', desc: 'A month was selected; payload includes the AD start/end range it covers.' },
+      ...COMMON_EVENTS,
+      { name: 'select.nepaliMonthPicker', payload: 'CustomEvent<MonthResult>', desc: 'Bubbling DOM event dispatched on the input.' },
     ],
     buildOptions(v) {
       const o: Record<string, unknown> = {};
@@ -147,6 +285,9 @@ export const DEFS: PickerDef[] = [
       if (v.displayFormat) o.displayFormat = v.displayFormat;
       if (v.minYear) o.minYear = Number(v.minYear);
       if (v.maxYear) o.maxYear = Number(v.maxYear);
+      if (v.clearable === false) o.clearable = false;
+      if (v.opens && v.opens !== 'auto') o.opens = v.opens;
+      if (v.drops && v.drops !== 'auto') o.drops = v.drops;
       return o;
     },
     describe: (d) => {
@@ -159,7 +300,10 @@ export const DEFS: PickerDef[] = [
 // ---- snippet generation -----------------------------------------------------
 
 function jsValue(v: unknown): string {
+  if (v === null || v === undefined) return String(v);
   if (Array.isArray(v)) return `[${v.map(jsValue).join(', ')}]`;
+  if (typeof v === 'function') return v.toString().replace(/\s+/g, ' ');
+  if (typeof v === 'object') return `{ ${Object.entries(v).map(([k, val]) => `${k}: ${jsValue(val)}`).join(', ')} }`;
   return typeof v === 'string' ? `'${v}'` : String(v);
 }
 

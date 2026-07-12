@@ -23,13 +23,15 @@ function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): 
   return document.body;
 }
 
-/** Wraps the trigger in an input-group container with an optional clear
- *  button and optional BS/AD mode switch segment on the right edge. */
+/** Wraps the trigger in an input-group container with a clear button and an
+ *  optional BS/AD mode switch. Both buttons are always created; their
+ *  visibility is decided live by the predicates so options like `clearable`
+ *  and `allowModeToggle` can be toggled at runtime via `update()`. */
 function withInputGroup(
   trigger: HTMLElement,
   shouldShowClear: () => boolean,
   onClear: () => void,
-  modeSwitch?: { mode: () => 'BS' | 'AD'; toggle: () => void },
+  modeSwitch?: { mode: () => 'BS' | 'AD'; toggle: () => void; enabled: () => boolean },
 ): { wrapper: HTMLElement; updateClear: () => void; updateMode: () => void } {
   const wrapper = document.createElement('div');
   wrapper.className = 'ndp-trigger-wrap';
@@ -59,7 +61,6 @@ function withInputGroup(
     const btn = document.createElement('button');
     btn.className = 'ndp-mode-toggle';
     btn.setAttribute('type', 'button');
-    btn.setAttribute('aria-label', `Switch to ${modeSwitch.mode() === 'BS' ? 'AD' : 'BS'}`);
     btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -68,12 +69,30 @@ function withInputGroup(
     wrapper.appendChild(btn);
 
     updateMode = () => {
+      btn.style.display = modeSwitch.enabled() ? '' : 'none';
       btn.setAttribute('aria-label', `Switch to ${modeSwitch.mode() === 'BS' ? 'AD' : 'BS'}`);
       btn.setAttribute('data-mode', modeSwitch.mode());
     };
+    updateMode();
   }
 
   return { wrapper, updateClear, updateMode };
+}
+
+/** Wraps a controller's `update` so options captured in the mount closure
+ *  (clearable, allowModeToggle, opens/drops, autoUpdateInput, appendTo)
+ *  take effect live instead of only at construction time. */
+function makeLiveUpdate<T extends { update: (patch: Partial<O>) => void; getState: () => { isOpen: boolean } }, O>(
+  controller: T,
+  merged: O,
+  refresh: () => void,
+): void {
+  const base = controller.update.bind(controller);
+  controller.update = (patch: Partial<O>) => {
+    Object.assign(merged as object, patch);
+    base(patch);
+    refresh();
+  };
 }
 
 function trackPosition(trigger: HTMLElement, portal: HTMLElement, options: { opens?: 'left' | 'right' | 'center' | 'auto'; drops?: 'down' | 'up' | 'auto' }, getOpen: () => boolean): () => void {
@@ -114,14 +133,12 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
-  const inputGroup = trigger instanceof HTMLInputElement && (merged.clearable !== false || merged.allowModeToggle !== false)
+  const inputGroup = trigger instanceof HTMLInputElement
     ? withInputGroup(
       trigger,
       () => merged.clearable !== false && controller.getValue() !== null,
       () => controller.setValue(null),
-      merged.allowModeToggle !== false
-        ? { mode: () => controller.getState().mode, toggle: () => controller.toggleMode() }
-        : undefined,
+      { mode: () => controller.getState().mode, toggle: () => controller.toggleMode(), enabled: () => merged.allowModeToggle !== false },
     )
     : null;
 
@@ -130,7 +147,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
       trigger.textContent = value?.formatted ?? 'Select date range';
       return;
     }
-    if (merged.autoUpdateInput !== false) trigger.value = value?.formatted ?? '';
+    trigger.value = merged.autoUpdateInput !== false ? (value?.formatted ?? '') : trigger.value;
   }
 
   let wasOpen = false;
@@ -160,6 +177,10 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     target.dispatchEvent(new CustomEvent('apply.nepaliDateRangePicker', { bubbles: true, detail: value }));
   });
   render();
+
+  makeLiveUpdate(controller, merged, () => {
+    if (controller.getState().isOpen) positionPopup(trigger, portal, merged);
+  });
 
   let igWrapper: HTMLElement | null = null;
   if (inputGroup) igWrapper = inputGroup.wrapper;
@@ -201,9 +222,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
       trigger,
       () => merged.clearable !== false && controller.getValue() !== null,
       () => controller.setValue(null),
-      merged.allowModeToggle !== false
-        ? { mode: () => controller.getState().mode, toggle: () => controller.toggleMode() }
-        : undefined,
+      { mode: () => controller.getState().mode, toggle: () => controller.toggleMode(), enabled: () => merged.allowModeToggle !== false },
     )
     : null;
 
@@ -241,6 +260,10 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   });
   render();
 
+  makeLiveUpdate(controller, merged, () => {
+    if (controller.getState().isOpen) positionPopup(trigger, portal, merged);
+  });
+
   let igWrapper: HTMLElement | null = null;
   if (inputGroup) igWrapper = inputGroup.wrapper;
   const baseDestroy = controller.destroy;
@@ -276,8 +299,8 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
-  const inputGroup = merged.clearable !== false && trigger instanceof HTMLInputElement
-    ? withInputGroup(trigger, () => controller.getValue() !== null, () => controller.setValue(null))
+  const inputGroup = trigger instanceof HTMLInputElement
+    ? withInputGroup(trigger, () => merged.clearable !== false && controller.getValue() !== null, () => controller.setValue(null))
     : null;
 
   function updateInput(value = controller.getValue()): void {
@@ -311,6 +334,10 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     target.dispatchEvent(new CustomEvent('select.nepaliMonthPicker', { bubbles: true, detail: value }));
   });
   render();
+
+  makeLiveUpdate(controller, merged, () => {
+    if (controller.getState().isOpen) positionPopup(trigger, portal, merged);
+  });
 
   let igWrapper: HTMLElement | null = null;
   if (inputGroup) igWrapper = inputGroup.wrapper;

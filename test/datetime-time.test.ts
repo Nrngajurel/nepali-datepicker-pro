@@ -23,6 +23,19 @@ test('time is null unless withTime is enabled', () => {
   );
 });
 
+test('update() live-patches options without remounting (docs live preview)', () => {
+  const c = createDateTimeController({ value: base() });
+  // Turning time on/off toggles the time panel state in place.
+  c.update({ withTime: true });
+  assert.notEqual(c.getState().time, null, 'withTime on derives a time');
+  c.update({ withTime: false });
+  assert.equal(c.getState().time, null, 'withTime off clears the time');
+  // timeFormat and minuteStep reflect immediately.
+  c.update({ withTime: true, timeFormat: '12h', minuteStep: 15 });
+  assert.equal(c.getState().timeFormat, '12h');
+  assert.equal(c.getState().minuteStep, 15);
+});
+
 test('stepHour / stepMinute wrap around', () => {
   const c = createDateTimeController({ withTime: true, value: new Date(2024, 3, 13, 23, 59, 0) });
   c.stepHour(1);

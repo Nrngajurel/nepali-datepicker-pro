@@ -132,6 +132,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       options = { ...options, ...patch };
       presets = normalizePresets(options, adapter, dateMath);
       const next: Partial<DateRangeControllerState> = {};
+      if ('mode' in patch) next.mode = options.mode ?? 'BS';
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
       setState(next);
     },

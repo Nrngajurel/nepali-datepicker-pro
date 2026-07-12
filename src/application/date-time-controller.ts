@@ -135,8 +135,11 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     update(patch) {
       options = { ...options, ...patch };
       const next: Partial<DateTimeControllerState> = {};
+      if ('mode' in patch) next.mode = options.mode ?? 'BS';
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
+      if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '24h';
       if ('minuteStep' in patch) next.minuteStep = options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1;
+      if (('minTime' in patch || 'maxTime' in patch) && state.time) next.time = clampTime(state.time);
       if ('withTime' in patch) {
         if (options.withTime && !state.time) {
           const now = new Date();

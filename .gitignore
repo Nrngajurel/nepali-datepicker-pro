@@ -3,3 +3,6 @@ dist/
 coverage/
 .DS_Store
 *.tsbuildinfo
+
+# Local reference material (not part of the package)
+references/

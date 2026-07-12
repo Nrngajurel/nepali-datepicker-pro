@@ -61,6 +61,28 @@ test('WITHOUT withTime there is deliberately no time panel', () => {
   assert.equal(panel!.querySelector('.ndp-time-panel'), null, 'no time panel when withTime is off');
 });
 
+test('live update() toggles input-group buttons without remounting', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  const inst = mountDateTimePicker(input, { value: new Date(2024, 3, 13) });
+  const modeBtn = () => document.querySelector('.ndp-mode-toggle') as HTMLElement | null;
+  const clearBtn = () => document.querySelector('.ndp-clear') as HTMLElement | null;
+
+  // Both buttons exist up-front; visibility follows the options.
+  assert.notEqual(modeBtn()!.style.display, 'none', 'mode toggle visible by default');
+  assert.notEqual(clearBtn()!.style.display, 'none', 'clear visible when a value is set');
+
+  inst.update({ allowModeToggle: false });
+  assert.equal(modeBtn()!.style.display, 'none', 'mode toggle hides live');
+
+  inst.update({ clearable: false });
+  assert.equal(clearBtn()!.style.display, 'none', 'clear hides live');
+
+  inst.update({ allowModeToggle: true, clearable: true });
+  assert.notEqual(modeBtn()!.style.display, 'none', 'mode toggle returns live');
+  assert.notEqual(clearBtn()!.style.display, 'none', 'clear returns live');
+});
+
 test('autoInit wires data-with-time="true" to a working time panel', () => {
   document.body.innerHTML = '<input id="dt" type="text" data-nepali-datepicker data-with-time="true" readonly>';
   autoInit();

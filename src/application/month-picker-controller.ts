@@ -24,7 +24,8 @@ export interface MonthPickerController extends PickerInstance<MonthResult, Month
 export function createMonthPickerController(initialOptions: MonthPickerOptions = {}): MonthPickerController {
   let options = { ...initialOptions };
   const adapter = options.adapter ?? defaultCalendarAdapter;
-  const locale: PickerLocale = options.locale ?? 'ne';
+  // Read live so a runtime `update({ locale })` re-labels the month grid.
+  const currentLocale = (): PickerLocale => options.locale ?? 'ne';
   let listeners: Array<(value: MonthResult) => void> = [];
   let stateListeners: Array<() => void> = [];
 
@@ -58,10 +59,10 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
       year,
       month,
       bs: { year, month },
-      monthName: adapter.bsMonthNames(locale)[month - 1],
+      monthName: adapter.bsMonthNames(currentLocale())[month - 1],
       start,
       end,
-      formatted: formatDateValue(start, adapter, { mode: 'BS', format: options.displayFormat ?? 'MMMM YYYY', locale }),
+      formatted: formatDateValue(start, adapter, { mode: 'BS', format: options.displayFormat ?? 'MMMM YYYY', locale: currentLocale() }),
     };
   }
 

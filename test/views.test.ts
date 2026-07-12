@@ -99,14 +99,21 @@ test('range: hover does not thrash (guards the render loop that broke selection)
   assert.equal(renders, 2, 'hovering a different cell re-renders');
 });
 
-test('range: BS/AD switch is a segmented control that toggles mode', () => {
+test('range: toggleMode flips BS/AD and is gated by allowModeToggle', () => {
   const c = createDateRangeController({});
-  c.show();
-  const root = render(c, 'range');
-  const opts = [...root.querySelectorAll('.ndp-mode-opt')] as HTMLButtonElement[];
-  assert.deepEqual(opts.map((o) => o.textContent), ['BS', 'AD']);
-  assert.equal(root.querySelector('.ndp-mode-opt.is-active')!.textContent, 'BS');
-  opts[1].click(); // AD
+  assert.equal(c.getState().mode, 'BS');
+  c.toggleMode();
   assert.equal(c.getState().mode, 'AD');
-  assert.equal(root.querySelector('.ndp-mode-opt.is-active')!.textContent, 'AD');
+  c.toggleMode();
+  assert.equal(c.getState().mode, 'BS');
+
+  const locked = createDateRangeController({ allowModeToggle: false });
+  locked.toggleMode();
+  assert.equal(locked.getState().mode, 'BS', 'no-op when mode toggle is disabled');
+});
+
+test('range: update({ mode }) switches the calendar system live', () => {
+  const c = createDateRangeController({});
+  c.update({ mode: 'AD' });
+  assert.equal(c.getState().mode, 'AD');
 });

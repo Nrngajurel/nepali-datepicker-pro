@@ -9,10 +9,16 @@ const values = reactive<Record<string, unknown>>(
   Object.fromEntries(props.def.controls.map((c) => [c.key, c.def])),
 );
 
+// Minimal options — only the non-default keys. Used for the copy-paste snippet.
 const options = computed(() => props.def.buildOptions(values));
-// Remount the live picker whenever options change so structural options (e.g.
-// toggling `withTime`) are always reflected, not just patched.
-const optionsKey = computed(() => JSON.stringify(options.value));
+// Live options for the mounted picker. We start from a reset template (every
+// possible key set to undefined) so that un-checking an option actually clears
+// it via `update()` — the picker patches in place and never remounts, so the
+// popup no longer disappears when you tweak an option.
+const liveOptions = computed(() => {
+  const reset = Object.fromEntries(props.def.optionKeys.map((k) => [k, undefined]));
+  return { ...reset, ...options.value };
+});
 const code = computed(() => snippet(props.def, options.value, props.framework));
 
 const result = ref('');
@@ -37,7 +43,7 @@ async function copy() {
 </script>
 
 <template>
-  <section class="card" :id="def.id">
+  <section class="card">
     <header>
       <h2>{{ def.title }}</h2>
       <p>{{ def.description }}</p>
@@ -46,7 +52,7 @@ async function copy() {
       <div class="preview" ref="host">
         <div class="field">
           <label>Live preview</label>
-          <component :is="def.component" :options="options" :key="optionsKey" />
+          <component :is="def.component" :options="liveOptions" />
         </div>
         <div class="result">{{ result || '— pick a value to see the result —' }}</div>
       </div>
@@ -66,6 +72,37 @@ async function copy() {
         </div>
       </div>
     </div>
+
+    <div class="reference">
+      <details open>
+        <summary>All options</summary>
+        <table class="ref-table">
+          <thead><tr><th>Option</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+          <tbody>
+            <tr v-for="o in def.optionDocs" :key="o.name">
+              <td><code>{{ o.name }}</code></td>
+              <td><code class="ty">{{ o.type }}</code></td>
+              <td class="def">{{ o.def }}</td>
+              <td>{{ o.desc }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+      <details>
+        <summary>Events &amp; callbacks</summary>
+        <table class="ref-table">
+          <thead><tr><th>Name</th><th>Payload</th><th>Fires when</th></tr></thead>
+          <tbody>
+            <tr v-for="e in def.events" :key="e.name">
+              <td><code>{{ e.name }}</code></td>
+              <td><code class="ty">{{ e.payload }}</code></td>
+              <td>{{ e.desc }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+    </div>
+
     <div class="snippet">
       <div class="snippet-body">
         <button class="copy-btn" :class="{ copied }" @click="copy">{{ copied ? 'Copied!' : 'Copy' }}</button>
@@ -74,3 +111,24 @@ async function copy() {
     </div>
   </section>
 </template>
+
+<style scoped>
+.reference { border-top: 1px solid var(--line); }
+.reference details { border-bottom: 1px solid var(--line); }
+.reference summary {
+  cursor: pointer; padding: 12px 20px; font: 600 12px var(--mono);
+  letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink-faint);
+  user-select: none;
+}
+.reference summary:hover { color: var(--brand-ink); }
+.ref-table { width: 100%; border-collapse: collapse; margin: 0 0 12px; font-size: 12.5px; }
+.ref-table th {
+  text-align: left; padding: 4px 12px; font: 600 10px var(--mono);
+  text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-faint);
+}
+.ref-table td { padding: 7px 12px; border-top: 1px solid var(--line); vertical-align: top; color: var(--ink-soft); }
+.ref-table code { color: var(--brand-ink); font-size: 12px; }
+.ref-table code.ty { color: var(--ink-faint); }
+.ref-table td.def { font: 12px var(--mono); color: var(--ink-faint); white-space: nowrap; }
+.ref-table td:last-child { min-width: 180px; }
+</style>
