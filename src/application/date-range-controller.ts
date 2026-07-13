@@ -2,7 +2,7 @@ import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
 import { isDayDisabled, resolveBound } from './constraints.js';
 import { createDateRange, createDateValue, dateValueFromBs, isSameDateValue } from '../domain/date-value.js';
-import { formatRange } from '../format/index.js';
+import { formatRange, formatMachineValue, stringifyMachineValue } from '../format/index.js';
 import type { CalendarMode, DateRange, DateRangePickerOptions, DateRangeResult, DateValue, PickerInstance, PresetDefinition } from '../types.js';
 import { normalizePresets } from './presets.js';
 
@@ -137,6 +137,9 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   }
 
   function toResult(range: DateRange): DateRangeResult {
+    const vf = options.valueFormat ?? 'iso';
+    const startValue = formatMachineValue({ ad: range.start.ad, bs: range.start.bs }, vf, adapter);
+    const endValue = formatMachineValue({ ad: range.end.ad, bs: range.end.bs }, vf, adapter);
     return {
       start: range.start.ad,
       end: range.end.ad,
@@ -148,6 +151,9 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
         separator: options.locale?.separator,
         locale: state.mode === 'BS' ? 'ne' : 'en',
       }),
+      startValue,
+      endValue,
+      value: `${stringifyMachineValue(startValue)},${stringifyMachineValue(endValue)}`,
     };
   }
 

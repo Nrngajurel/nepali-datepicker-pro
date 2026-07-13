@@ -93,6 +93,18 @@ const DROPS: Choice[] = [
   { value: 'up', label: 'up' },
 ];
 
+// Machine ("server") value shape — independent of the display calendar.
+const VALUE_FORMAT: Choice[] = [
+  { value: 'iso', label: 'AD ISO (default)' },
+  { value: 'iso-bs', label: 'BS ISO' },
+  { value: 'timestamp', label: 'Unix timestamp' },
+];
+
+const VALUE_FORMAT_DOC: OptionDoc = { name: 'valueFormat', type: "'iso' | 'iso-bs' | 'timestamp' | 'date-object' | { calendar, format }", def: "'iso'", desc: 'Shape of the machine value sent to the server — AD ISO by default, stable no matter the display calendar/format. Exposed on onChange/events and written to altField/submitName.' };
+const SUBMIT_NAME_DOC: OptionDoc = { name: 'submitName', type: 'string', def: '—', desc: 'Inject a hidden <input name> carrying the machine value (and drop the name from the visible input) so the form submits the right data — select2-style.' };
+const ALT_FIELD_DOC: OptionDoc = { name: 'altField', type: 'string | HTMLElement', def: '—', desc: 'Write the machine value into an existing element/field (CSS selector or node) — jQuery-UI-style altField.' };
+const ALT_FORMAT_DOC: OptionDoc = { name: 'altFormat', type: 'ValueFormat', def: 'valueFormat', desc: 'Override the format used for altField / submitName only.' };
+
 // A self-contained, copy-paste-valid demo predicate for `disabledDates`.
 const disablePastFn = (date: Date) => date < new Date(new Date().setHours(0, 0, 0, 0));
 
@@ -107,7 +119,7 @@ export const DEFS: PickerDef[] = [
     reactComponent: 'NepaliDateTimePicker',
     jqueryFn: 'nepaliDateTimePicker',
     dataAttr: 'data-nepali-datepicker',
-    dataAttrMap: { withTime: 'data-with-time', timeFormat: 'data-time-format', minuteStep: 'data-minute-step' },
+    dataAttrMap: { withTime: 'data-with-time', timeFormat: 'data-time-format', minuteStep: 'data-minute-step', valueFormat: 'data-value-format', submitName: 'data-submit-name' },
     eventName: 'select.nepaliDatePicker',
     controls: [
       { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
@@ -125,11 +137,13 @@ export const DEFS: PickerDef[] = [
       { key: 'disablePast', label: 'Disable past dates', hint: 'disabledDates demo', type: 'bool', def: false },
       { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
       { key: 'allowInput', label: 'Allow typing', hint: 'masked + validated input', type: 'bool', def: true },
+      { key: 'valueFormat', label: 'Server value', hint: 'sent to backend', type: 'select', def: 'iso', choices: VALUE_FORMAT },
+      { key: 'submitName', label: 'Submit name', hint: 'hidden field name', type: 'text', def: '', placeholder: 'appointment_date' },
       { key: 'displayFormat', label: 'Display format', hint: 'dayjs-style tokens', type: 'text', def: '', placeholder: 'YYYY-MM-DD HH:mm' },
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['mode', 'allowModeToggle', 'withTime', 'timeFormat', 'minuteStep', 'minTime', 'maxTime', 'locale', 'closeOnSelect', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'clearable', 'allowInput', 'displayFormat', 'opens', 'drops'],
+    optionKeys: ['mode', 'allowModeToggle', 'withTime', 'timeFormat', 'minuteStep', 'minTime', 'maxTime', 'locale', 'closeOnSelect', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'clearable', 'allowInput', 'valueFormat', 'submitName', 'displayFormat', 'opens', 'drops'],
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the picker opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
@@ -147,6 +161,10 @@ export const DEFS: PickerDef[] = [
       { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD[ HH:mm]', desc: 'dayjs-style tokens for the input text.' },
       { name: 'closeOnSelect', type: 'boolean', def: 'true unless withTime', desc: 'Close the popup right after a day is picked.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Make the field a native-<input type=date>-style segmented editor: focus selects a section, ↑/↓ step it, digits fill with auto-advance, ←/→ move sections, Backspace clears, separators are always shown. Validated live; Enter/blur commits. Accepts Nepali or ASCII digits. Set false to keep the field read-only.' },
+      VALUE_FORMAT_DOC,
+      SUBMIT_NAME_DOC,
+      ALT_FIELD_DOC,
+      ALT_FORMAT_DOC,
       ...COMMON_OPTS,
     ],
     events: [
@@ -172,6 +190,8 @@ export const DEFS: PickerDef[] = [
       if (v.disablePast) o.disabledDates = disablePastFn;
       if (v.clearable === false) o.clearable = false;
       if (v.allowInput === false) o.allowInput = false;
+      if (v.valueFormat && v.valueFormat !== 'iso') o.valueFormat = v.valueFormat;
+      if (v.submitName) o.submitName = v.submitName;
       if (v.displayFormat) o.displayFormat = v.displayFormat;
       if (v.opens && v.opens !== 'auto') o.opens = v.opens;
       if (v.drops && v.drops !== 'auto') o.drops = v.drops;
@@ -189,7 +209,7 @@ export const DEFS: PickerDef[] = [
     reactComponent: 'NepaliDateRangePicker',
     jqueryFn: 'nepaliDateRangePicker',
     dataAttr: 'data-nepali-daterange',
-    dataAttrMap: { fiscalStartMonth: 'data-fiscal-start-month' },
+    dataAttrMap: { fiscalStartMonth: 'data-fiscal-start-month', valueFormat: 'data-value-format' },
     eventName: 'apply.nepaliDateRangePicker',
     controls: [
       { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
@@ -204,11 +224,12 @@ export const DEFS: PickerDef[] = [
       { key: 'autoUpdateInput', label: 'Auto-update input', hint: 'write range into field', type: 'bool', def: true },
       { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
       { key: 'allowInput', label: 'Allow typing', hint: 'segmented start – end', type: 'bool', def: true },
+      { key: 'valueFormat', label: 'Server value', hint: 'sent to backend', type: 'select', def: 'iso', choices: VALUE_FORMAT },
       { key: 'displayFormat', label: 'Display format', type: 'text', def: '', placeholder: 'YYYY-MM-DD' },
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['mode', 'allowModeToggle', 'fiscalStartMonth', 'autoApply', 'presets', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'autoUpdateInput', 'clearable', 'allowInput', 'displayFormat', 'opens', 'drops'],
+    optionKeys: ['mode', 'allowModeToggle', 'fiscalStartMonth', 'autoApply', 'presets', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'autoUpdateInput', 'clearable', 'allowInput', 'valueFormat', 'displayFormat', 'opens', 'drops'],
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the range opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
@@ -223,6 +244,10 @@ export const DEFS: PickerDef[] = [
       { name: 'autoUpdateInput', type: 'boolean', def: 'true', desc: 'Write the applied range back into the input text.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the range in a segmented `YYYY-MM-DD – YYYY-MM-DD` field (focus selects a section, ↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
       { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD', desc: 'dayjs-style tokens for each bound.' },
+      VALUE_FORMAT_DOC,
+      { name: 'submitName', type: 'string | { start, end }', def: '—', desc: 'Inject hidden field(s) carrying the machine value(s). A string writes a single `start,end` field; `{ start, end }` writes two named fields.' },
+      { name: 'altField', type: 'string | HTMLElement | { start, end }', def: '—', desc: 'Write the machine value(s) into existing field(s) — one combined, or a start/end pair.' },
+      ALT_FORMAT_DOC,
       ...COMMON_OPTS,
     ],
     events: [
@@ -245,6 +270,7 @@ export const DEFS: PickerDef[] = [
       if (v.autoUpdateInput === false) o.autoUpdateInput = false;
       if (v.clearable === false) o.clearable = false;
       if (v.allowInput === false) o.allowInput = false;
+      if (v.valueFormat && v.valueFormat !== 'iso') o.valueFormat = v.valueFormat;
       if (v.displayFormat) o.displayFormat = v.displayFormat;
       if (v.opens && v.opens !== 'auto') o.opens = v.opens;
       if (v.drops && v.drops !== 'auto') o.drops = v.drops;
@@ -262,7 +288,7 @@ export const DEFS: PickerDef[] = [
     reactComponent: 'NepaliMonthPicker',
     jqueryFn: 'nepaliMonthPicker',
     dataAttr: 'data-nepali-monthpicker',
-    dataAttrMap: {},
+    dataAttrMap: { valueFormat: 'data-value-format', submitName: 'data-submit-name' },
     eventName: 'select.nepaliMonthPicker',
     controls: [
       { key: 'locale', label: 'Locale', type: 'select', def: 'ne', choices: LOCALE },
@@ -271,16 +297,22 @@ export const DEFS: PickerDef[] = [
       { key: 'maxYear', label: 'Max year (BS)', type: 'text', def: '', placeholder: '2100' },
       { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
       { key: 'allowInput', label: 'Allow typing', hint: 'segmented YYYY-MM', type: 'bool', def: true },
+      { key: 'valueFormat', label: 'Server value', hint: 'sent to backend', type: 'select', def: 'iso', choices: VALUE_FORMAT },
+      { key: 'submitName', label: 'Submit name', hint: 'hidden field name', type: 'text', def: '', placeholder: 'report_month' },
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['locale', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'allowInput', 'opens', 'drops'],
+    optionKeys: ['locale', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'allowInput', 'valueFormat', 'submitName', 'opens', 'drops'],
     optionDocs: [
       { name: 'value / defaultValue', type: '{ year, month } | null', def: 'this month', desc: 'Controlled / initial selected BS month.' },
       { name: 'locale', type: "'ne' | 'en'", def: "'ne'", desc: 'Digit and month-name language.' },
       { name: 'minYear / maxYear', type: 'number (BS)', def: '1970 / 2100', desc: 'Range of BS years the grid can navigate.' },
       { name: 'displayFormat', type: 'string', def: 'MMMM YYYY', desc: 'dayjs-style tokens for the input text.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the month in a segmented `YYYY-MM` field (↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
+      VALUE_FORMAT_DOC,
+      SUBMIT_NAME_DOC,
+      ALT_FIELD_DOC,
+      ALT_FORMAT_DOC,
       ...COMMON_OPTS,
     ],
     events: [
@@ -296,6 +328,8 @@ export const DEFS: PickerDef[] = [
       if (v.maxYear) o.maxYear = Number(v.maxYear);
       if (v.clearable === false) o.clearable = false;
       if (v.allowInput === false) o.allowInput = false;
+      if (v.valueFormat && v.valueFormat !== 'iso') o.valueFormat = v.valueFormat;
+      if (v.submitName) o.submitName = v.submitName;
       if (v.opens && v.opens !== 'auto') o.opens = v.opens;
       if (v.drops && v.drops !== 'auto') o.drops = v.drops;
       return o;

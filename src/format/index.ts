@@ -1,4 +1,4 @@
-import type { BsDate, CalendarAdapter, CalendarMode, PickerLocale } from '../types.js';
+import type { BsDate, CalendarAdapter, CalendarMode, PickerLocale, ValueFormat } from '../types.js';
 
 const WEEKDAYS_NE = ['आइतबार', 'सोमबार', 'मङ्गलबार', 'बुधबार', 'बिहिबार', 'शुक्रबार', 'शनिबार'];
 const WEEKDAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -68,4 +68,37 @@ export function formatRange(start: Date, end: Date, adapter: CalendarAdapter, op
     formatDateValue(start, adapter, options),
     formatDateValue(end, adapter, options),
   ].join(separator);
+}
+
+/** Resolve the machine ("server") value for one date, independent of the
+ *  display calendar/format. Defaults to AD ISO. Built from local `ad`
+ *  components (no `toISOString()` → no timezone shift). */
+export function formatMachineValue(
+  parts: { ad: Date; bs: BsDate; time?: { hour: number; minute: number; second?: number } },
+  format: ValueFormat,
+  adapter: CalendarAdapter,
+  withTime = false,
+): string | number | Date {
+  if (typeof format === 'object') {
+    return formatDateValue(parts.ad, adapter, { mode: format.calendar, format: format.format, locale: 'en' });
+  }
+  if (format === 'timestamp') return parts.ad.getTime();
+  if (format === 'date-object') return parts.ad;
+  const time = withTime && parts.time ? `${pad2(parts.time.hour)}:${pad2(parts.time.minute)}` : '';
+  if (format === 'iso-bs') {
+    const date = `${parts.bs.year}-${pad2(parts.bs.month)}-${pad2(parts.bs.day)}`;
+    return time ? `${date} ${time}` : date;
+  }
+  // 'iso' (default) — AD ISO from local components.
+  const ad = parts.ad;
+  const date = `${ad.getFullYear()}-${pad2(ad.getMonth() + 1)}-${pad2(ad.getDate())}`;
+  return time ? `${date}T${time}` : date;
+}
+
+/** Coerce a machine value into a string for a DOM/form field (Date → AD ISO). */
+export function stringifyMachineValue(value: string | number | Date): string {
+  if (value instanceof Date) {
+    return `${value.getFullYear()}-${pad2(value.getMonth() + 1)}-${pad2(value.getDate())}`;
+  }
+  return String(value);
 }

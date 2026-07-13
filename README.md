@@ -51,6 +51,33 @@ mountMonthPicker(input, {
 ```
 Also available as `NepaliMonthPicker` (Vue/React) and `$.fn.nepaliMonthPicker` (jQuery).
 
+## Server value / form submission
+
+The visible input shows the localized display (Nepali-digit BS by default), but a
+form must submit a stable, machine-readable value. Use `valueFormat` to choose the
+shape of that value — **independent of the display calendar/format** — and deliver
+it one of three ways:
+
+| Option | What it does |
+| --- | --- |
+| `valueFormat` | `'iso'` (AD ISO, **default**), `'iso-bs'` (BS ISO), `'timestamp'`, `'date-object'`, or `{ calendar, format }`. |
+| `submitName` | Injects a hidden `<input name>` carrying the value and drops the `name` from the visible input, so the form submits the machine value (select2-style). |
+| `altField` | Writes the value into an existing element/field you provide (jQuery-UI-style). |
+| `altFormat` | Overrides the format for `altField` / `submitName` only. |
+
+```html
+<input data-nepali-datepicker data-submit-name="appointment_date" data-value-format="iso">
+```
+```ts
+mountDateTimePicker(input, { submitName: 'appointment_date', valueFormat: 'iso' });
+// user sees २०८१-०१-०१ (BS) · the form submits appointment_date=2024-04-13 (AD ISO)
+```
+
+The value is also on every `onChange`/`onApply` payload and dispatched CustomEvent
+as `.value` (range: `.startValue` / `.endValue` / `.value`). Range delivery accepts
+a `{ start, end }` pair for `submitName` / `altField`; toggling the BS↔AD display
+never changes the submitted value.
+
 ## Project layout
 
 ```

@@ -1,5 +1,5 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
-import { formatDateValue } from '../format/index.js';
+import { formatDateValue, formatMachineValue } from '../format/index.js';
 import type { MonthPickerOptions, MonthResult, MonthValue, PickerInstance, PickerLocale } from '../types.js';
 
 export interface MonthPickerControllerState {
@@ -68,6 +68,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
       start,
       end,
       formatted: formatDateValue(start, adapter, { mode: 'BS', format: options.displayFormat ?? 'MMMM YYYY', locale: currentLocale() }),
+      value: formatMachineValue({ ad: start, bs: { year, month, day: 1 } }, options.valueFormat ?? 'iso', adapter),
     };
   }
 

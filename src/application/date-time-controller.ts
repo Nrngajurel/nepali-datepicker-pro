@@ -2,7 +2,7 @@ import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
 import { isDayDisabled } from './constraints.js';
 import { createDateValue, dateValueFromBs } from '../domain/date-value.js';
-import { formatDateValue } from '../format/index.js';
+import { formatDateValue, formatMachineValue } from '../format/index.js';
 import { tokenizeTyped } from '../format/parse.js';
 import type { CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, PickerInstance, TimeValue } from '../types.js';
 
@@ -184,6 +184,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
           : 'YYYY-MM-DD'),
         locale: options.locale ?? (state.mode === 'BS' ? 'ne' : 'en'),
       }),
+      value: formatMachineValue({ ad, bs: value.bs, time: state.time ?? undefined }, options.valueFormat ?? 'iso', adapter, !!options.withTime),
     };
   }
 

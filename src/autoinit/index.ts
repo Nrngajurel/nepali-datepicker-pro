@@ -1,7 +1,8 @@
 import { createDateRangeController } from '../application/date-range-controller.js';
 import { createDateTimeController } from '../application/date-time-controller.js';
 import { createMonthPickerController } from '../application/month-picker-controller.js';
-import { formatDateValue, formatRange } from '../format/index.js';
+import { formatDateValue, formatRange, formatMachineValue, stringifyMachineValue } from '../format/index.js';
+import type { ValueFormat } from '../types.js';
 import { attachSegmentedField } from './segmented-field.js';
 import type { SegmentedField } from './segmented-field.js';
 import { dateSchema, monthSchema, rangeSchema } from './segment-schemas.js';
@@ -24,6 +25,29 @@ function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): 
   if (appendTo instanceof HTMLElement) return appendTo;
   if (typeof appendTo === 'string') return document.querySelector<HTMLElement>(appendTo) ?? document.body;
   return document.body;
+}
+
+function resolveTarget(ref?: string | HTMLElement): HTMLElement | null {
+  if (ref instanceof HTMLElement) return ref;
+  if (typeof ref === 'string') return document.querySelector<HTMLElement>(ref);
+  return null;
+}
+
+// Write a machine value into a form field (input/textarea/select) or element.
+function writeTargetValue(el: HTMLElement, value: string): void {
+  if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) el.value = value;
+  else el.textContent = value;
+}
+
+// Create a hidden <input name> inside the wrapper to carry the machine value,
+// and stop the visible input from also submitting its (display) value.
+function createHiddenSubmit(name: string, wrapper: HTMLElement, visible: HTMLInputElement): HTMLInputElement {
+  const hidden = document.createElement('input');
+  hidden.type = 'hidden';
+  hidden.name = name;
+  wrapper.appendChild(hidden);
+  if (visible.getAttribute('name')) visible.removeAttribute('name');
+  return hidden;
 }
 
 /** Wraps the trigger in an input-group container with a clear button and an
@@ -147,6 +171,39 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     )
     : null;
 
+  // Machine value targets for the two endpoints (submitName / altField may be a
+  // single combined field or a { start, end } pair).
+  const rangeAdapter = merged.adapter ?? defaultCalendarAdapter;
+  const rangeMachineFormat: ValueFormat = merged.altFormat ?? merged.valueFormat ?? 'iso';
+  const rangeTargets: Array<{ el: HTMLElement; part: 'start' | 'end' | 'combined' }> = [];
+  if (trigger instanceof HTMLInputElement && inputGroup) {
+    const sn = merged.submitName;
+    if (typeof sn === 'string') rangeTargets.push({ el: createHiddenSubmit(sn, inputGroup.wrapper, trigger), part: 'combined' });
+    else if (sn) {
+      rangeTargets.push({ el: createHiddenSubmit(sn.start, inputGroup.wrapper, trigger), part: 'start' });
+      rangeTargets.push({ el: createHiddenSubmit(sn.end, inputGroup.wrapper, trigger), part: 'end' });
+    }
+  }
+  const af = merged.altField;
+  if (af && typeof af === 'object' && !(af instanceof HTMLElement)) {
+    const s = resolveTarget(af.start); if (s) rangeTargets.push({ el: s, part: 'start' });
+    const e = resolveTarget(af.end); if (e) rangeTargets.push({ el: e, part: 'end' });
+  } else if (af) {
+    const el = resolveTarget(af); if (el) rangeTargets.push({ el, part: 'combined' });
+  }
+  function syncMachine(): void {
+    if (!rangeTargets.length) return;
+    const r = controller.getValue();
+    let startStr = '';
+    let endStr = '';
+    if (r) {
+      startStr = stringifyMachineValue(formatMachineValue({ ad: r.start, bs: r.startBs }, rangeMachineFormat, rangeAdapter));
+      endStr = stringifyMachineValue(formatMachineValue({ ad: r.end, bs: r.endBs }, rangeMachineFormat, rangeAdapter));
+    }
+    const combined = r ? `${startStr},${endStr}` : '';
+    rangeTargets.forEach((t) => writeTargetValue(t.el, t.part === 'start' ? startStr : t.part === 'end' ? endStr : combined));
+  }
+
   function updateInput(value = controller.getValue()): void {
     if (segmented?.isEditing()) return;
     if (!(trigger instanceof HTMLInputElement)) {
@@ -161,6 +218,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     const state = controller.getState();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
+    syncMachine();
     inputGroup?.updateClear();
     inputGroup?.updateMode();
     portal.style.display = state.isOpen ? 'block' : 'none';
@@ -258,6 +316,24 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   const allowInput = trigger instanceof HTMLInputElement && merged.allowInput !== false;
   let segmented: SegmentedField | null = null;
 
+  // Machine ("server") value targets: an auto hidden input (submitName) and/or
+  // an explicit altField. The value follows valueFormat/altFormat, independent
+  // of the display calendar.
+  const dtAdapter = merged.adapter ?? defaultCalendarAdapter;
+  const machineFormat: ValueFormat = merged.altFormat ?? merged.valueFormat ?? 'iso';
+  const machineTargets: HTMLElement[] = [];
+  if (trigger instanceof HTMLInputElement) {
+    if (typeof merged.submitName === 'string' && inputGroup) machineTargets.push(createHiddenSubmit(merged.submitName, inputGroup.wrapper, trigger));
+    const alt = resolveTarget(merged.altField);
+    if (alt) machineTargets.push(alt);
+  }
+  function syncMachine(): void {
+    if (!machineTargets.length) return;
+    const r = controller.getValue();
+    const str = r ? stringifyMachineValue(formatMachineValue({ ad: r.ad, bs: r.bs, time: r.time }, machineFormat, dtAdapter, !!merged.withTime)) : '';
+    machineTargets.forEach((el) => writeTargetValue(el, str));
+  }
+
   function updateInput(value = controller.getValue()): void {
     // Never overwrite the field while the user is editing its segments.
     if (segmented?.isEditing()) return;
@@ -271,6 +347,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     const state = controller.getState();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
+    syncMachine();
     inputGroup?.updateClear();
     inputGroup?.updateMode();
     portal.style.display = state.isOpen ? 'block' : 'none';
@@ -379,6 +456,21 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     ? withInputGroup(trigger, () => merged.clearable !== false && controller.getValue() !== null, () => controller.setValue(null))
     : null;
 
+  const monthAdapter = merged.adapter ?? defaultCalendarAdapter;
+  const monthMachineFormat: ValueFormat = merged.altFormat ?? merged.valueFormat ?? 'iso';
+  const machineTargets: HTMLElement[] = [];
+  if (trigger instanceof HTMLInputElement) {
+    if (typeof merged.submitName === 'string' && inputGroup) machineTargets.push(createHiddenSubmit(merged.submitName, inputGroup.wrapper, trigger));
+    const alt = resolveTarget(merged.altField);
+    if (alt) machineTargets.push(alt);
+  }
+  function syncMachine(): void {
+    if (!machineTargets.length) return;
+    const r = controller.getValue();
+    const str = r ? stringifyMachineValue(formatMachineValue({ ad: r.start, bs: { year: r.year, month: r.month, day: 1 } }, monthMachineFormat, monthAdapter)) : '';
+    machineTargets.forEach((el) => writeTargetValue(el, str));
+  }
+
   function updateInput(value = controller.getValue()): void {
     if (segmented?.isEditing()) return;
     const label = value?.formatted ?? '';
@@ -391,6 +483,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     const state = controller.getState();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
+    syncMachine();
     inputGroup?.updateClear();
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
@@ -453,16 +546,30 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   return controller;
 }
 
+// Machine-value options expressible as plain data-* attributes.
+function machineDataOptions(ds: DOMStringMap): { valueFormat?: ValueFormat; submitName?: string; altField?: string } {
+  const valueFormat = ds.valueFormat as ValueFormat | undefined;
+  return {
+    valueFormat: valueFormat || undefined,
+    submitName: ds.submitName || undefined,
+    altField: ds.altField || undefined,
+  };
+}
+
 export function autoInit(root: ParentNode = document): void {
   root.querySelectorAll<HTMLInputElement>('[data-nepali-datepicker]').forEach((input) => mountDateTimePicker(input, {
     withTime: input.dataset.withTime === 'true',
     timeFormat: input.dataset.timeFormat === '12h' ? '12h' : input.dataset.timeFormat === '24h' ? '24h' : undefined,
     minuteStep: input.dataset.minuteStep ? Number(input.dataset.minuteStep) : undefined,
+    ...machineDataOptions(input.dataset),
   }));
   root.querySelectorAll<HTMLInputElement>('[data-nepali-daterange]').forEach((input) => mountDateRangePicker(input, {
     fiscalStartMonth: input.dataset.fiscalStartMonth ? Number(input.dataset.fiscalStartMonth) : undefined,
+    ...machineDataOptions(input.dataset),
   }));
-  root.querySelectorAll<HTMLInputElement>('[data-nepali-monthpicker]').forEach((input) => mountMonthPicker(input, {}));
+  root.querySelectorAll<HTMLInputElement>('[data-nepali-monthpicker]').forEach((input) => mountMonthPicker(input, {
+    ...machineDataOptions(input.dataset),
+  }));
 }
 
 export function formatBoundRange(value: DateRangeResult): string {
