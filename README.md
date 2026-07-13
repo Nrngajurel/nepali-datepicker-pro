@@ -17,20 +17,28 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 ```
 ## Date Picker
 
-![Date Picker](./images/date-picker.png)
-
-## Date Range Picker
-
-![Date Range Picker](./images/date-range-picker.png)
-
-## Date Time Picker
-
-![Date Time Picker](./images/date-time-picker.png)
-
-## Month Picker
-
-![Month Picker](./images/month-picker.png)
-
+<table>
+  <tr>
+    <td align="center">
+      <img src="./images/date-picker.png" alt="Date Picker" width="400" />
+      <br><strong>Date Picker</strong>
+    </td>
+    <td align="center">
+      <img src="./images/date-range-picker.png" alt="Date Range Picker" width="400" />
+      <br><strong>Date Range Picker</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="./images/date-time-picker.png" alt="Date Time Picker" width="400" />
+      <br><strong>Date Time Picker</strong>
+    </td>
+    <td align="center">
+      <img src="./images/month-picker.png" alt="Month Picker" width="400" />
+      <br><strong>Month Picker</strong>
+    </td>
+  </tr>
+</table>
 ---
 
 ## Table of contents
