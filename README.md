@@ -12,9 +12,24 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 
 ```
 📅 Date & Time   —  BS/AD toggle, 12h/24h wheel time picker, keyboard-editable input
-📆 Date Range     —  presets rail, fiscal-year helpers, min/max span
-🗓️ Month           —  pick a BS month, get the AD start/end range for reporting
+📆 Date Range    —  presets rail, fiscal-year helpers, min/max span
+🗓️  Month         —  pick a BS month, get the AD start/end range for reporting
 ```
+## Date Picker
+
+![Date Picker](./images/date-picker.png)
+
+## Date Range Picker
+
+![Date Range Picker](./images/date-range-picker.png)
+
+## Date Time Picker
+
+![Date Time Picker](./images/date-time-picker.png)
+
+## Month Picker
+
+![Month Picker](./images/month-picker.png)
 
 ---
 
@@ -53,6 +68,8 @@ Most "Nepali date picker" packages on npm are jQuery plugins from 2016, ship no 
 - **Accessible by default.** Segmented, keyboard-editable inputs (arrow keys to step, digits to type, Nepali or ASCII numerals) instead of a read-only trap that forces a mouse.
 - **No dependencies.** No dayjs, no moment, no jQuery required unless you're using the jQuery binding.
 
+---
+
 ## Features
 
 - 🔁 **BS ⇄ AD mode toggle** — per-instance, with a swap button on the input (`allowModeToggle`)
@@ -66,6 +83,8 @@ Most "Nepali date picker" packages on npm are jQuery plugins from 2016, ship no 
 - 🖼️ **Portal-based popup** — `appendTo`, `opens`, `drops` for layout-safe positioning inside modals/tables
 - 🧩 **Five entry points** — `vanilla`, `/react`, `/vue`, `/jquery`, and a UMD build for a plain `<script>` tag
 - 📦 **Tree-shakeable ESM** + CJS/UMD fallback, full `.d.ts` types, single CSS file
+
+---
 
 ## Install
 
@@ -85,6 +104,8 @@ Don't forget the stylesheet, once, anywhere in your app:
 import 'nepali-datepicker-pro/style.css';
 ```
 
+---
+
 ## Quick start
 
 ### Vanilla JS
@@ -96,7 +117,7 @@ import 'nepali-datepicker-pro/style.css';
 mountDateTimePicker(document.querySelector('#picker'), {
   mode: 'BS',
   withTime: true,
-  valueFormat: 'iso',      // what you actually get back
+  valueFormat: 'iso',
   onChange: (result) => console.log(result.formatted, result.value),
 });
 ```
@@ -117,10 +138,13 @@ No build step required — good for a legacy Blade/PHP page or a CMS.
 
 ### React
 
+All three React components accept every picker option as a **prop** — no options wrapper object needed. Callbacks like `onChange` are stable across renders and never go stale, so you can pass an inline arrow function without triggering unnecessary updates.
+
 ```tsx
-import { NepaliDateTimePicker } from 'nepali-datepicker-pro/react';
+import { NepaliDateTimePicker, NepaliDateRangePicker, NepaliMonthPicker } from 'nepali-datepicker-pro/react';
 import 'nepali-datepicker-pro/style.css';
 
+// Single date + time
 function AppointmentForm() {
   return (
     <NepaliDateTimePicker
@@ -131,39 +155,127 @@ function AppointmentForm() {
     />
   );
 }
+
+// Date range
+function ReportFilter() {
+  return (
+    <NepaliDateRangePicker
+      mode="BS"
+      numberOfMonths={2}
+      onApply={(result) => console.log(result.startValue, result.endValue)}
+    />
+  );
+}
+
+// Month picker
+function PayrollFilter() {
+  return (
+    <NepaliMonthPicker
+      locale="ne"
+      submitName={{ start: 'from_date', end: 'to_date' }}
+      onChange={(result) => console.log(result.start, result.end)}
+    />
+  );
+}
 ```
 
 ### Vue 3
 
+All three Vue components support **`v-model`** for two-way binding and emit typed events you can listen to with `@event` in the template. Options are passed via the `:options` prop.
+
 ```vue
 <script setup lang="ts">
-import { NepaliDateTimePicker } from 'nepali-datepicker-pro/vue';
+import { ref } from 'vue';
+import {
+  NepaliDateTimePicker,
+  NepaliDateRangePicker,
+  NepaliMonthPicker,
+} from 'nepali-datepicker-pro/vue';
+import type { DateTimeResult, DateRangeResult, MonthResult } from 'nepali-datepicker-pro';
 import 'nepali-datepicker-pro/style.css';
 
-function onChange(result: { formatted: string; value: string }) {
-  console.log(result);
-}
+const appointmentDate = ref<Date | null>(null);
+const reportRange = ref<{ start: Date; end: Date } | null>(null);
+const payrollMonth = ref<MonthResult | null>(null);
 </script>
 
 <template>
+  <!-- Single date + time — v-model syncs the AD Date -->
   <NepaliDateTimePicker
-    :options="{ withTime: true, valueFormat: 'iso' }"
-    @change="onChange"
+    v-model="appointmentDate"
+    :options="{ mode: 'BS', withTime: true, valueFormat: 'iso' }"
+    @change="(r: DateTimeResult) => console.log(r)"
+    @open="() => console.log('opened')"
+    @close="() => console.log('closed')"
+    @changeMonthYear="(y, m) => console.log(y, m)"
+  />
+
+  <!-- Date range — v-model syncs { start, end } -->
+  <NepaliDateRangePicker
+    v-model="reportRange"
+    :options="{ mode: 'BS', numberOfMonths: 2 }"
+    @change="(r: DateRangeResult) => console.log(r)"
+  />
+
+  <!-- Month picker — v-model syncs the full MonthResult -->
+  <NepaliMonthPicker
+    v-model="payrollMonth"
+    :options="{ locale: 'ne' }"
+    @change="(r: MonthResult) => console.log(r.start, r.end)"
   />
 </template>
 ```
 
+**Vue events reference**
+
+| Component | Events |
+|---|---|
+| `NepaliDateTimePicker` | `@change`, `@open`, `@close`, `@changeMonthYear` |
+| `NepaliDateRangePicker` | `@change`, `@open`, `@close` |
+| `NepaliMonthPicker` | `@change`, `@open`, `@close` |
+
 ### jQuery
+
+The jQuery plugin is installed automatically when this package is imported and `window.jQuery` is available. If jQuery loads after the module (e.g. via a `<script>` tag after the bundle), the plugin waits for `DOMContentLoaded` before registering itself.
 
 ```html
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script src="https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs"></script>
 
 <script>
+  // Init
   $('#picker').nepaliDateTimePicker({ withTime: true, valueFormat: 'iso' });
+
+  // Update a single option
+  $('#picker').nepaliDateTimePicker('option', 'minDate', new Date());
+
+  // Read the current value (first element, jQuery convention)
+  const result = $('#picker').nepaliDateTimePicker('getValue');
+
+  // Set a value programmatically
+  $('#picker').nepaliDateTimePicker('setValue', undefined, new Date());
+
+  // Show / hide / destroy
+  $('#picker').nepaliDateTimePicker('show');
+  $('#picker').nepaliDateTimePicker('hide');
+  $('#picker').nepaliDateTimePicker('destroy');
+
+  // DOM event — works without a framework
   $('#picker').on('select.nepaliDatePicker', (e, result) => console.log(result));
 </script>
 ```
+
+**jQuery methods reference**
+
+| Method | Returns | Description |
+|---|---|---|
+| `'getValue'` | result or `undefined` | Value of the **first** matched element |
+| `'getState'` | state or `undefined` | Internal state of the **first** matched element |
+| `'setValue'` | `$` (chainable) | `('setValue', undefined, newValue)` |
+| `'option'` | `$` (chainable) | `('option', 'minDate', new Date())` |
+| `'show'` | `$` (chainable) | Open the popup |
+| `'hide'` | `$` (chainable) | Close the popup |
+| `'destroy'` | `$` (chainable) | Tear down the instance and clean up |
 
 ---
 
@@ -239,10 +351,10 @@ Pick one BS month — for a monthly report or a payslip filter — and get back 
 | `displayFormat` | `string` | `MMMM YYYY` | dayjs-style tokens for the input text |
 | `allowInput` | `boolean` | `true` | Segmented `YYYY-MM` typing |
 | `valueFormat` | see below | `'iso'` | A month is emitted as a date **range** (first → last day) |
-| `submitName` | `string \| { start, end }` | — | e.g. `{ start: 'from_date', end: 'to_date' }` for `WHERE date BETWEEN`-style filters |
+| `submitName` | `string \| { start, end }` | — | e.g. `{ start: 'from_date', end: 'to_date' }` for `WHERE date BETWEEN` filters |
 | `altField` | `string \| HTMLElement \| { start, end }` | — | Same, targeting existing field(s) |
 
-**onChange payload:** `{ year, month, start, end (AD Dates), startValue, endValue, value ('from,to'), formatted }`
+**`onChange` payload:** `{ year, month, start, end (AD Dates), startValue, endValue, value ('from,to'), formatted }`
 
 **HTML attrs:** `data-value-format`, `data-submit-name`.
 
@@ -254,20 +366,22 @@ The picker you show the user (BS, Nepali digits, `YYYY-MM-DD`) does **not** have
 
 ```ts
 {
-  valueFormat: 'iso',       // 'iso' (AD ISO, default) | 'iso-bs' | 'timestamp'
-  submitName: 'joined_date' // injects <input type="hidden" name="joined_date">
-                             // and drops `name` from the visible field
+  valueFormat: 'iso',        // 'iso' (AD ISO, default) | 'iso-bs' | 'timestamp'
+  submitName: 'joined_date'  // injects <input type="hidden" name="joined_date">
+                              // and drops `name` from the visible field
 }
 ```
 
-- **`valueFormat`** controls the value carried on `onChange`/DOM events and written to `altField`/`submitName`. It's independent of `mode` and `displayFormat` — a user can pick a date in BS mode with Nepali digits on screen while your form silently submits AD ISO underneath.
+- **`valueFormat`** controls the value carried on `onChange`/DOM events and written to `altField`/`submitName`. It is independent of `mode` and `displayFormat` — a user can pick a date in BS mode with Nepali digits on screen while your form silently submits AD ISO underneath.
 - **`submitName`** is select2-style: it creates a hidden input so a plain `<form method="post">` submits the machine value with zero JS on your end.
 - **`altField`** is jQuery-UI-style: point it at an existing element/selector instead of creating a new hidden input.
 - **`altFormat`** overrides the format used for `altField`/`submitName` only, if you need the visible input and the submitted value in two different formats.
 
+---
+
 ## Shared options
 
-Available on every picker, on top of what's listed above:
+Available on every picker, on top of what is listed above:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
@@ -276,6 +390,8 @@ Available on every picker, on top of what's listed above:
 | `opens` | `'left' \| 'right' \| 'center' \| 'auto'` | `'auto'` | Horizontal alignment relative to the input |
 | `drops` | `'down' \| 'up' \| 'auto'` | `'auto'` | Whether the popup opens below or above the input |
 | `adapter` | `CalendarAdapter` | built-in | Swap the BS↔AD conversion engine (advanced) |
+
+---
 
 ## Events
 
@@ -288,11 +404,30 @@ document.querySelector('#picker')
   });
 ```
 
-| Picker | DOM event |
-|---|---|
-| `NepaliDateTimePicker` | `select.nepaliDatePicker` |
-| `NepaliDateRangePicker` | `apply.nepaliDateRangePicker` |
-| `NepaliMonthPicker` | `select.nepaliMonthPicker` |
+| Picker | JS callback | DOM event |
+|---|---|---|
+| `NepaliDateTimePicker` | `onChange(result)`, `onChangeMonthYear(y, m)` | `select.nepaliDatePicker` |
+| `NepaliDateRangePicker` | `onApply(result)`, `onChange({ start?, end? })` | `apply.nepaliDateRangePicker` |
+| `NepaliMonthPicker` | `onChange(result)` | `select.nepaliMonthPicker` |
+
+### Vue template events
+
+In Vue 3 you can use `@event` syntax directly instead of passing callbacks through `:options`:
+
+```vue
+<NepaliDateTimePicker
+  v-model="date"
+  :options="{ mode: 'BS' }"
+  @change="onDateChange"
+  @changeMonthYear="onMonthYear"
+  @open="onOpen"
+  @close="onClose"
+/>
+```
+
+Passing the same callback both via `:options` and `@event` is safe — both will fire.
+
+---
 
 ## Styling
 
@@ -308,17 +443,35 @@ Import the single stylesheet once; every picker shares the same design tokens (C
 
 No CSS-in-JS, no Tailwind requirement, no shadow DOM — plain classes you can override normally.
 
+---
+
 ## TypeScript
 
 Ships with hand-written `.d.ts` for every entry point (`.`, `/react`, `/vue`, `/jquery`). No `@types/*` package needed.
 
 ```ts
-import type { DateTimeResult, DateRangeResult, MonthResult, ValueFormat } from 'nepali-datepicker-pro';
+import type {
+  DateTimeResult,
+  DateRangeResult,
+  MonthResult,
+  ValueFormat,
+  PickerInstance,
+} from 'nepali-datepicker-pro';
 ```
+
+All framework wrappers are fully typed:
+
+- **React** — every prop is inferred from the picker's options interface; callbacks receive their narrowly-typed result objects (`DateTimeResult`, `DateRangeResult`, `MonthResult`).
+- **Vue** — `v-model` type, `:options` type, and all `@event` payload types are inferred automatically; no casting needed.
+- **jQuery** — the plugin is declared on `$.fn` with overloaded signatures for method calls vs. init calls.
+
+---
 
 ## Browser support
 
 Evergreen browsers (Chrome, Firefox, Safari, Edge — last 2 versions). No IE11 support; the package targets ES2020+.
+
+---
 
 ## Contributing
 
@@ -335,6 +488,8 @@ npm run build    # ESM + UMD + .d.ts into dist/
 ```
 
 Please open an issue before large changes so we can agree on the approach first — the BS↔AD conversion table in particular needs to stay verified against the official calendar, and changes there get extra scrutiny.
+
+---
 
 ## License
 

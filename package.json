@@ -1,6 +1,6 @@
 {
   "name": "nepali-datepicker-pro",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Framework-agnostic Nepali BS/AD date, datetime, and range picker with a same-screen time picker. Works from vanilla JS, a <script> tag, jQuery, Vue, and React.",
   "type": "module",
   "license": "MIT",
@@ -60,6 +60,8 @@
   },
   "files": [
     "dist",
+    "examples",
+    "images",
     "README.md",
     "LICENSE"
   ],
