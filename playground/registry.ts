@@ -203,11 +203,12 @@ export const DEFS: PickerDef[] = [
       { key: 'disablePast', label: 'Disable past dates', hint: 'disabledDates demo', type: 'bool', def: false },
       { key: 'autoUpdateInput', label: 'Auto-update input', hint: 'write range into field', type: 'bool', def: true },
       { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
+      { key: 'allowInput', label: 'Allow typing', hint: 'segmented start – end', type: 'bool', def: true },
       { key: 'displayFormat', label: 'Display format', type: 'text', def: '', placeholder: 'YYYY-MM-DD' },
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['mode', 'allowModeToggle', 'fiscalStartMonth', 'autoApply', 'presets', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'autoUpdateInput', 'clearable', 'displayFormat', 'opens', 'drops'],
+    optionKeys: ['mode', 'allowModeToggle', 'fiscalStartMonth', 'autoApply', 'presets', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'autoUpdateInput', 'clearable', 'allowInput', 'displayFormat', 'opens', 'drops'],
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the range opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
@@ -220,6 +221,7 @@ export const DEFS: PickerDef[] = [
       { name: 'disabledWeekdays', type: 'number[]', def: '[]', desc: 'Grey-out weekdays (0 = Sunday … 6 = Saturday).' },
       { name: 'maxRangeSpanDays', type: 'number | null', def: '—', desc: 'Reject ranges longer than N days.' },
       { name: 'autoUpdateInput', type: 'boolean', def: 'true', desc: 'Write the applied range back into the input text.' },
+      { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the range in a segmented `YYYY-MM-DD – YYYY-MM-DD` field (focus selects a section, ↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
       { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD', desc: 'dayjs-style tokens for each bound.' },
       ...COMMON_OPTS,
     ],
@@ -242,6 +244,7 @@ export const DEFS: PickerDef[] = [
       if (v.disablePast) o.disabledDates = disablePastFn;
       if (v.autoUpdateInput === false) o.autoUpdateInput = false;
       if (v.clearable === false) o.clearable = false;
+      if (v.allowInput === false) o.allowInput = false;
       if (v.displayFormat) o.displayFormat = v.displayFormat;
       if (v.opens && v.opens !== 'auto') o.opens = v.opens;
       if (v.drops && v.drops !== 'auto') o.drops = v.drops;
@@ -267,15 +270,17 @@ export const DEFS: PickerDef[] = [
       { key: 'minYear', label: 'Min year (BS)', type: 'text', def: '', placeholder: '1970' },
       { key: 'maxYear', label: 'Max year (BS)', type: 'text', def: '', placeholder: '2100' },
       { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
+      { key: 'allowInput', label: 'Allow typing', hint: 'segmented YYYY-MM', type: 'bool', def: true },
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['locale', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'opens', 'drops'],
+    optionKeys: ['locale', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'allowInput', 'opens', 'drops'],
     optionDocs: [
       { name: 'value / defaultValue', type: '{ year, month } | null', def: 'this month', desc: 'Controlled / initial selected BS month.' },
       { name: 'locale', type: "'ne' | 'en'", def: "'ne'", desc: 'Digit and month-name language.' },
       { name: 'minYear / maxYear', type: 'number (BS)', def: '1970 / 2100', desc: 'Range of BS years the grid can navigate.' },
       { name: 'displayFormat', type: 'string', def: 'MMMM YYYY', desc: 'dayjs-style tokens for the input text.' },
+      { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the month in a segmented `YYYY-MM` field (↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
       ...COMMON_OPTS,
     ],
     events: [
@@ -290,6 +295,7 @@ export const DEFS: PickerDef[] = [
       if (v.minYear) o.minYear = Number(v.minYear);
       if (v.maxYear) o.maxYear = Number(v.maxYear);
       if (v.clearable === false) o.clearable = false;
+      if (v.allowInput === false) o.allowInput = false;
       if (v.opens && v.opens !== 'auto') o.opens = v.opens;
       if (v.drops && v.drops !== 'auto') o.drops = v.drops;
       return o;

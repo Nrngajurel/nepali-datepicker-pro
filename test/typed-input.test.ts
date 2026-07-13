@@ -251,6 +251,39 @@ test('toggling withTime via update() adds the time sections live', () => {
   assert.equal(input.value, 'YYYY-MM-DD HH:mm', 'time sections appear after enabling withTime');
 });
 
+test('a 32-day BS month accepts day 32 (typed and via ArrowUp)', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  const inst = mountDateTimePicker(input, { value: null });
+  input.dispatchEvent(new FocusEvent('focus'));
+  type(input, '2082'); type(input, '03'); type(input, '32'); // Ashadh 2082 has 32 days
+  assert.equal(input.value, '2082-03-32', 'day 32 is typeable, not clamped to 31');
+  assert.ok(!input.classList.contains('ndp-input-invalid'), '32 is valid in a 32-day month');
+  input.dispatchEvent(new FocusEvent('blur'));
+  assert.equal((inst.getState() as { selected: { bs: { day: number } } }).selected.bs.day, 32);
+
+  // ArrowUp from 31 reaches 32
+  const input2 = document.createElement('input');
+  document.body.appendChild(input2);
+  mountDateTimePicker(input2, { value: null });
+  input2.dispatchEvent(new FocusEvent('focus'));
+  type(input2, '2082'); type(input2, '03'); type(input2, '31');
+  key(input2, 'ArrowLeft'); // back onto the day section (auto-advance stopped at day)
+  // day is the last section here, so it's already active; step it up
+  key(input2, 'ArrowRight');
+  key(input2, 'ArrowUp');
+  assert.equal(input2.value.slice(-2), '32', 'ArrowUp steps day 31 → 32');
+});
+
+test('day 32 is flagged invalid in a 31-day month', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  mountDateTimePicker(input, { value: null });
+  input.dispatchEvent(new FocusEvent('focus'));
+  type(input, '2082'); type(input, '01'); type(input, '32'); // Baishakh — 31 days
+  assert.ok(input.classList.contains('ndp-input-invalid'), 'day 32 invalid when the month has 31 days');
+});
+
 test('allowInput:false makes the input read-only', () => {
   const input = document.createElement('input');
   document.body.appendChild(input);
@@ -291,12 +324,42 @@ test('read-only field (allowInput:false) opens with ArrowDown and closes with Es
   assert.equal(isOpen(), false, 'Escape closes it');
 });
 
-test('range and month triggers stay read-only (no typing yet)', () => {
+test('range and month triggers are typeable segmented fields by default', () => {
   const r = document.createElement('input');
   const m = document.createElement('input');
   document.body.append(r, m);
   mountDateRangePicker(r, {});
   mountMonthPicker(m, {});
-  assert.equal(r.readOnly, true, 'range input stays read-only');
-  assert.equal(m.readOnly, true, 'month input stays read-only');
+  assert.equal(r.readOnly, false, 'range input is editable');
+  assert.equal(m.readOnly, false, 'month input is editable');
+  assert.ok(r.classList.contains('ndp-trigger--segmented'));
+  assert.ok(m.classList.contains('ndp-trigger--segmented'));
+});
+
+test('month picker: typing YYYY-MM commits the month', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  const inst = mountMonthPicker(input, { value: null });
+  input.dispatchEvent(new FocusEvent('focus'));
+  assert.equal(input.value, 'YYYY-MM', 'segmented month shape');
+  type(input, '2081'); type(input, '07');
+  assert.equal(input.value, '2081-07');
+  input.dispatchEvent(new FocusEvent('blur'));
+  const s = (inst.getState() as { selected: { year: number; month: number } }).selected;
+  assert.deepEqual([s.year, s.month], [2081, 7], 'month committed');
+});
+
+test('range picker: typing start – end commits an ordered range', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  const inst = mountDateRangePicker(input, {});
+  input.dispatchEvent(new FocusEvent('focus'));
+  assert.match(input.value, /^\d{4}-\d{2}-\d{2} – \d{4}-\d{2}-\d{2}$/, 'two segmented dates with a – separator');
+  type(input, '20810105'); // start 2081-01-05
+  type(input, '20810120'); // end   2081-01-20
+  assert.equal(input.value, '2081-01-05 – 2081-01-20');
+  input.dispatchEvent(new FocusEvent('blur'));
+  const range = (inst.getState() as { range: { start: { bs: { day: number } }; end: { bs: { day: number } } } }).range;
+  assert.equal(range.start.bs.day, 5, 'start committed');
+  assert.equal(range.end.bs.day, 20, 'end committed');
 });

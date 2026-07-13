@@ -1,35 +1,39 @@
 // Turns a single <input> into a native-`<input type="date">`-style segmented
-// editor: fixed separators, focus selects a whole section (year/month/day and,
-// with time, hour/minute plus AM/PM in 12-hour mode), Arrow Up/Down step the
-// focused section, digits fill it with auto-advance, Left/Right move between
-// sections and Backspace clears. It never behaves like a free-text field.
+// editor: fixed separators, focus selects a whole section, Arrow Up/Down step
+// the focused section, digits fill it with auto-advance, Left/Right move
+// between sections and Backspace clears. It never behaves like a free-text
+// field. The set of sections is described by a schema, so the same widget
+// backs the date, datetime (incl. AM/PM), month and range pickers.
 import { normalizeDigits } from '../format/parse.js';
 
-type SegmentType = 'year' | 'month' | 'day' | 'hour' | 'minute' | 'meridiem';
-
-interface Segment {
-  type: SegmentType;
-  kind: 'num' | 'meridiem';
+export interface SegmentSpec {
+  key: string;
   len: number;
-  placeholder: string;
   min: number;
   max: number;
-  value: number | null;
-  buffer: string; // digits typed so far for the in-progress section
+  placeholder: string;
+  kind?: 'num' | 'meridiem';
 }
 
+export type SegmentValues = Record<string, number | null>;
+
 export interface SegmentedFieldConfig {
-  withTime: () => boolean;
-  hour12: () => boolean;
-  yearBounds: () => { min: number; max: number };
-  /** ASCII `YYYY-MM-DD[ HH:mm]` (24-hour) of the committed selection, or ''. */
-  committed: () => string;
-  /** ASCII of the selection or today — seeds a section on first arrow step. */
-  reference: () => string;
+  /** Ordered sections + separator strings; re-read on every focus so mode /
+   *  withTime changes rebuild the field. */
+  schema: () => Array<SegmentSpec | string>;
+  /** Parse the controller's ASCII value into per-key section values. */
+  seed: (ascii: string) => SegmentValues;
+  /** Build the controller's ASCII value from a complete set of section values. */
+  toAscii: (values: SegmentValues) => string;
+  /** Placeholder shown when the field is empty and unfocused. */
+  placeholder: () => string;
   /** Locale display string shown when the field is not being edited. */
   formatted: () => string;
+  /** ASCII of the committed value, or '' if none — seeds sections on focus. */
+  committed: () => string;
+  /** ASCII of the value or today — seeds a section on first arrow step. */
+  reference: () => string;
   validate: (ascii: string) => 'valid' | 'invalid' | 'empty';
-  /** Final commit (emits / clears) on Enter or blur. */
   commit: (ascii: string) => 'valid' | 'invalid' | 'empty';
   open: () => void;
   close: () => void;
@@ -40,8 +44,10 @@ export interface SegmentedField {
   destroy: () => void;
 }
 
-const REF_RE = /^(\d+)-(\d+)-(\d+)(?:[ ](\d+):(\d+))?$/;
-const to12 = (h: number): number => h % 12 || 12;
+interface Segment extends SegmentSpec {
+  value: number | null;
+  buffer: string;
+}
 
 export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFieldConfig): SegmentedField {
   let segments: Segment[] = [];
@@ -49,28 +55,15 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   let active = 0;
   let editing = false;
   let dirty = false; // whether the user changed anything this editing session
-  let hour12 = false; // whether the current build uses a 12-hour clock
 
   function build(): void {
-    const yb = cfg.yearBounds();
-    const withTime = cfg.withTime();
-    hour12 = withTime && cfg.hour12();
-    const year: Segment = { type: 'year', kind: 'num', len: 4, placeholder: 'YYYY', min: yb.min, max: yb.max, value: null, buffer: '' };
-    const month: Segment = { type: 'month', kind: 'num', len: 2, placeholder: 'MM', min: 1, max: 12, value: null, buffer: '' };
-    const day: Segment = { type: 'day', kind: 'num', len: 2, placeholder: 'DD', min: 1, max: 31, value: null, buffer: '' };
-    segments = [year, month, day];
-    layout = [year, '-', month, '-', day];
-    if (withTime) {
-      const hour: Segment = { type: 'hour', kind: 'num', len: 2, placeholder: hour12 ? 'hh' : 'HH', min: hour12 ? 1 : 0, max: hour12 ? 12 : 23, value: null, buffer: '' };
-      const minute: Segment = { type: 'minute', kind: 'num', len: 2, placeholder: 'mm', min: 0, max: 59, value: null, buffer: '' };
-      segments.push(hour, minute);
-      layout.push(' ', hour, ':', minute);
-      if (hour12) {
-        const meridiem: Segment = { type: 'meridiem', kind: 'meridiem', len: 2, placeholder: '--', min: 0, max: 1, value: null, buffer: '' };
-        segments.push(meridiem);
-        layout.push(' ', meridiem);
-      }
-    }
+    segments = [];
+    layout = cfg.schema().map((part) => {
+      if (typeof part === 'string') return part;
+      const seg: Segment = { ...part, kind: part.kind ?? 'num', value: null, buffer: '' };
+      segments.push(seg);
+      return seg;
+    });
   }
 
   function display(seg: Segment): string {
@@ -111,17 +104,12 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     input.setAttribute('aria-valuetext', input.value);
   }
 
-  const byType = (t: SegmentType): Segment | undefined => segments.find((s) => s.type === t);
-
-  // Assemble the full 24-hour ASCII string, or null when a section is empty.
+  // Full ASCII string, or null when a section is still empty.
   function assemble(): string | null {
     if (segments.some((s) => s.value == null)) return null;
-    const v = (t: SegmentType) => byType(t)!.value!;
-    const date = `${String(v('year')).padStart(4, '0')}-${String(v('month')).padStart(2, '0')}-${String(v('day')).padStart(2, '0')}`;
-    if (!byType('hour')) return date;
-    let hour = v('hour');
-    if (byType('meridiem')) hour = (v('hour') % 12) + (v('meridiem') === 1 ? 12 : 0);
-    return `${date} ${String(hour).padStart(2, '0')}:${String(v('minute')).padStart(2, '0')}`;
+    const values: SegmentValues = {};
+    segments.forEach((s) => { values[s.key] = s.value; });
+    return cfg.toAscii(values);
   }
 
   // Flag the field valid/invalid after each edit (no calendar mutation — like a
@@ -143,28 +131,8 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     paint();
   }
 
-  // Map a parsed 24-hour section value onto a segment (converting for 12h).
-  function valueFor(seg: Segment, parts: { year: number; month: number; day: number; hour: number | null; minute: number | null }): number | null {
-    switch (seg.type) {
-      case 'year': return parts.year;
-      case 'month': return parts.month;
-      case 'day': return parts.day;
-      case 'hour': return parts.hour == null ? null : (hour12 ? to12(parts.hour) : parts.hour);
-      case 'minute': return parts.minute;
-      case 'meridiem': return parts.hour == null ? null : (parts.hour >= 12 ? 1 : 0);
-      default: return null;
-    }
-  }
-
-  function parseAscii(ascii: string): { year: number; month: number; day: number; hour: number | null; minute: number | null } | null {
-    const m = REF_RE.exec(ascii);
-    if (!m) return null;
-    return { year: +m[1], month: +m[2], day: +m[3], hour: m[4] != null ? +m[4] : null, minute: m[5] != null ? +m[5] : null };
-  }
-
   function seedFromReference(seg: Segment): void {
-    const parts = parseAscii(cfg.reference());
-    const v = parts ? valueFor(seg, parts) : null;
+    const v = cfg.seed(cfg.reference())[seg.key];
     seg.value = v == null ? seg.min : Math.max(seg.min, Math.min(seg.max, v));
   }
 
@@ -194,9 +162,9 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     dirty = true;
     seg.buffer += digit;
     const n = parseInt(seg.buffer, 10);
-    if (seg.type === 'year') {
+    if (seg.len >= 4) {
       seg.value = n;
-      if (seg.buffer.length >= 4) { finalize(seg); advance(); }
+      if (seg.buffer.length >= seg.len) { finalize(seg); advance(); }
     } else if (seg.buffer.length >= 2 || n * 10 > seg.max) {
       finalize(seg);
       advance();
@@ -208,9 +176,8 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   }
 
   function setMeridiem(pm: boolean): void {
-    const seg = segments[active];
     dirty = true;
-    seg.value = pm ? 1 : 0;
+    segments[active].value = pm ? 1 : 0;
     paint();
     sync();
   }
@@ -236,8 +203,8 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
 
   function beginEditing(atPos?: number): void {
     build();
-    const parts = parseAscii(cfg.committed());
-    if (parts) segments.forEach((s) => { s.value = valueFor(s, parts); s.buffer = ''; });
+    const map = cfg.seed(cfg.committed());
+    segments.forEach((s) => { s.value = map[s.key] ?? null; s.buffer = ''; });
     editing = true;
     dirty = false;
     active = atPos == null ? 0 : segmentAtPos(atPos);
@@ -323,15 +290,10 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     e.preventDefault(); // route all input through keydown
   }
 
-  function placeholderText(): string {
-    if (!cfg.withTime()) return 'YYYY-MM-DD';
-    return cfg.hour12() ? 'YYYY-MM-DD hh:mm --' : 'YYYY-MM-DD HH:mm';
-  }
-
   input.classList.add('ndp-trigger--segmented');
   input.setAttribute('inputmode', 'numeric');
   input.setAttribute('autocomplete', 'off');
-  if (!input.getAttribute('placeholder')) input.setAttribute('placeholder', placeholderText());
+  if (!input.getAttribute('placeholder')) input.setAttribute('placeholder', cfg.placeholder());
   input.addEventListener('keydown', onKeydown);
   input.addEventListener('focus', onFocus);
   input.addEventListener('mouseup', onMouseup);

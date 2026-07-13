@@ -46,6 +46,11 @@ export interface DateRangeController extends PickerInstance<DateRangeResult, Dat
   startCustomRange(): void;
   apply(): void;
   isDisabled(value: DateValue): boolean;
+  validateTyped(text: string): 'valid' | 'invalid' | 'empty';
+  commitTyped(text: string): 'valid' | 'invalid' | 'empty';
+  typedString(): string;
+  typedReference(): string;
+  yearBounds(): { min: number; max: number };
   cellForBs(year: number, month: number, day: number): DateValue;
   buildMonthCells(year: number, month: number): Array<DateValue | null>;
 }
@@ -78,6 +83,44 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
 
   const firstOfMonth = (year: number, month: number): DateValue => dateValueFromBs(adapter, { year, month, day: 1 });
   const lastOfMonth = (year: number, month: number): DateValue => dateValueFromBs(adapter, { year, month, day: adapter.daysInBsMonth(year, month) });
+
+  const pad2 = (n: number): string => String(n).padStart(2, '0');
+
+  // Mode-aware ASCII `YYYY-MM-DD` for one endpoint.
+  function dvToAscii(value: DateValue): string {
+    return state.mode === 'BS'
+      ? `${value.bs.year}-${pad2(value.bs.month)}-${pad2(value.bs.day)}`
+      : `${value.ad.getFullYear()}-${pad2(value.ad.getMonth() + 1)}-${pad2(value.ad.getDate())}`;
+  }
+
+  // Build one endpoint from typed parts (mode-aware), or null if impossible.
+  function parseTypedDay(year: number, month: number, day: number): DateValue | null {
+    try {
+      if (state.mode === 'BS') {
+        if (year < adapter.minSupportedYear || year > adapter.maxSupportedYear) return null;
+        if (month < 1 || month > 12) return null;
+        if (day < 1 || day > adapter.daysInBsMonth(year, month)) return null;
+        return dateValueFromBs(adapter, { year, month, day });
+      }
+      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+      const ad = new Date(year, month - 1, day);
+      if (ad.getFullYear() !== year || ad.getMonth() !== month - 1 || ad.getDate() !== day) return null;
+      return createDateValue(adapter, ad);
+    } catch {
+      return null;
+    }
+  }
+
+  // Parse a full `YYYY-MM-DD – YYYY-MM-DD` string into an ordered, allowed range.
+  function parseTypedRange(text: string): DateRange | null {
+    const m = /^\s*(\d{1,4})-(\d{1,2})-(\d{1,2})\s+–\s+(\d{1,4})-(\d{1,2})-(\d{1,2})\s*$/.exec(text);
+    if (!m) return null;
+    const start = parseTypedDay(Number(m[1]), Number(m[2]), Number(m[3]));
+    const end = parseTypedDay(Number(m[4]), Number(m[5]), Number(m[6]));
+    if (!start || !end) return null;
+    if (controller.isDisabled(start) || controller.isDisabled(end)) return null;
+    return createDateRange(start, end);
+  }
 
   function clampYear(year: number): number {
     return Math.max(adapter.minSupportedYear, Math.min(adapter.maxSupportedYear, year));
@@ -261,6 +304,36 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     },
     isDisabled(value) {
       return isDayDisabled(value.ad, options, dateMath);
+    },
+    yearBounds() {
+      if (state.mode === 'BS') return { min: adapter.minSupportedYear, max: adapter.maxSupportedYear };
+      return {
+        min: adapter.bsToAd(adapter.minSupportedYear, 1, 1).getFullYear() + 1,
+        max: adapter.bsToAd(adapter.maxSupportedYear, 1, 1).getFullYear(),
+      };
+    },
+    typedString: () => (state.range ? `${dvToAscii(state.range.start)} – ${dvToAscii(state.range.end)}` : ''),
+    typedReference() {
+      const r = state.range ?? { start: today, end: today };
+      return `${dvToAscii(r.start)} – ${dvToAscii(r.end)}`;
+    },
+    // Parse `YYYY-MM-DD – YYYY-MM-DD` (mode-aware); both ends must be valid and
+    // allowed. Start after end is tolerated (createDateRange orders them).
+    validateTyped(text) {
+      if (text.trim() === '') return 'empty';
+      return parseTypedRange(text) ? 'valid' : 'invalid';
+    },
+    commitTyped(text) {
+      if (text.trim() === '') {
+        if (state.range) setState({ range: null, pendingStart: null, hoverDate: null });
+        return 'empty';
+      }
+      const range = parseTypedRange(text);
+      if (!range) return 'invalid';
+      setState({ range, pendingStart: null, hoverDate: null, activePresetId: null, selectionUnit: 'day', viewYear: range.end.bs.year, viewMonth: range.end.bs.month });
+      options.onChange?.({ start: range.start.ad, end: range.end.ad });
+      emit(range);
+      return 'valid';
     },
     cellForBs(year, month, day) {
       return dateValueFromBs(adapter, { year, month, day });

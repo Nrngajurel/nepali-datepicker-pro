@@ -159,6 +159,7 @@ export interface DateRangePickerOptions {
   autoApply?: boolean;
   alwaysShowCalendars?: boolean;
   autoUpdateInput?: boolean;
+  allowInput?: boolean;
   appendTo?: string | HTMLElement;
   container?: string | HTMLElement;
   opens?: 'left' | 'right' | 'center' | 'auto';
@@ -186,6 +187,7 @@ export interface MonthPickerOptions {
   value?: MonthValue | null;
   defaultValue?: MonthValue | null;
   clearable?: boolean;
+  allowInput?: boolean;
   displayFormat?: string;
   minYear?: number;
   maxYear?: number;

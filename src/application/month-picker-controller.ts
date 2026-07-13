@@ -19,6 +19,11 @@ export interface MonthPickerController extends PickerInstance<MonthResult, Month
   setView(view: 'day' | 'month' | 'year'): void;
   selectMonthView(month: number): void;
   selectYearView(year: number): void;
+  validateTyped(text: string): 'valid' | 'invalid' | 'empty';
+  commitTyped(text: string): 'valid' | 'invalid' | 'empty';
+  typedString(): string;
+  typedReference(): string;
+  yearBounds(): { min: number; max: number };
 }
 
 export function createMonthPickerController(initialOptions: MonthPickerOptions = {}): MonthPickerController {
@@ -125,6 +130,33 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     },
     selectYearView(year) {
       setState({ viewYear: clampYear(year), view: 'month' });
+    },
+    yearBounds: () => ({ min: options.minYear ?? adapter.minSupportedYear, max: options.maxYear ?? adapter.maxSupportedYear }),
+    typedString: () => (state.selected ? `${state.selected.year}-${String(state.selected.month).padStart(2, '0')}` : ''),
+    typedReference() {
+      const v = state.selected ?? adapter.todayBs();
+      return `${v.year}-${String(v.month).padStart(2, '0')}`;
+    },
+    // Parse `YYYY-MM`; a month is valid when the year is in range and month 1–12.
+    validateTyped(text) {
+      const m = /^\s*(\d{1,4})-(\d{1,2})\s*$/.exec(text);
+      if (text.trim() === '') return 'empty';
+      if (!m) return 'invalid';
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      const { min, max } = controller.yearBounds();
+      return year >= min && year <= max && month >= 1 && month <= 12 ? 'valid' : 'invalid';
+    },
+    commitTyped(text) {
+      const status = controller.validateTyped(text);
+      if (status === 'empty') { if (state.selected) setState({ selected: null }); return 'empty'; }
+      if (status === 'invalid') return 'invalid';
+      const m = /^\s*(\d{1,4})-(\d{1,2})\s*$/.exec(text)!;
+      const year = Number(m[1]);
+      const month = Number(m[2]);
+      setState({ selected: { year, month }, viewYear: year, viewMonth: month });
+      emit(buildResult(year, month));
+      return 'valid';
     },
   };
 
