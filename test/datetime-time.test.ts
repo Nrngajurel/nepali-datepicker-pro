@@ -142,3 +142,104 @@ test('minTime/maxTime mark out-of-range hours disabled on the wheel', () => {
   assert.equal(disabled('19'), true, 'hour after maxTime is disabled');
   assert.equal(disabled('12'), false, 'in-range hour is enabled');
 });
+
+// --- validated setHour / setMinute (typed entry) --------------------------
+
+test('setHour / setMinute accept valid values and reject invalid/disabled ones', () => {
+  const c = createDateTimeController({ withTime: true, value: base() });
+  assert.equal(c.setHour(14), true);
+  assert.equal(c.getState().time!.hour, 14);
+  assert.equal(c.setMinute(45), true);
+  assert.equal(c.getState().time!.minute, 45);
+  // out of range → rejected, value unchanged
+  assert.equal(c.setHour(24), false);
+  assert.equal(c.setMinute(60), false);
+  assert.equal(c.getState().time!.hour, 14);
+  assert.equal(c.getState().time!.minute, 45);
+});
+
+test('setHour / setMinute reject values outside minTime/maxTime instead of clamping', () => {
+  const c = createDateTimeController({ withTime: true, minTime: { hour: 9, minute: 0 }, maxTime: { hour: 17, minute: 0 }, value: new Date(2024, 3, 13, 12, 0, 0) });
+  assert.equal(c.setHour(20), false, 'past maxTime rejected');
+  assert.equal(c.setHour(6), false, 'before minTime rejected');
+  assert.equal(c.getState().time!.hour, 12, 'value untouched');
+  assert.equal(c.setHour(15), true, 'in-range accepted');
+});
+
+// --- editable, accessible time entry in the panel -------------------------
+
+test('renders accessible spinbutton time inputs alongside the wheels', () => {
+  const c = createDateTimeController({ withTime: true, value: base() });
+  c.show();
+  const root = document.createElement('div');
+  renderDateTimePanel(root, c);
+
+  const entry = root.querySelector('.ndp-time-entry')!;
+  assert.ok(entry, 'editable time entry present');
+  const hour = entry.querySelector<HTMLInputElement>('[data-ndp-field="hour"]')!;
+  const minute = entry.querySelector<HTMLInputElement>('[data-ndp-field="minute"]')!;
+  assert.equal(hour.getAttribute('role'), 'spinbutton');
+  assert.equal(hour.getAttribute('aria-valuemin'), '0');
+  assert.equal(hour.getAttribute('aria-valuemax'), '23');
+  assert.equal(hour.value, '10');
+  assert.equal(minute.value, '30');
+  assert.equal(minute.getAttribute('aria-valuenow'), '30');
+});
+
+test('typing a valid hour and blurring commits it', () => {
+  const c = createDateTimeController({ withTime: true, value: base() });
+  c.show();
+  const root = document.createElement('div');
+  (c as WithStateChange).onStateChange(() => renderDateTimePanel(root, c));
+  renderDateTimePanel(root, c);
+
+  const hour = () => root.querySelector<HTMLInputElement>('[data-ndp-field="hour"]')!;
+  hour().value = '08';
+  hour().dispatchEvent(new Event('input', { bubbles: true }));
+  hour().dispatchEvent(new Event('blur', { bubbles: true }));
+  assert.equal(c.getState().time!.hour, 8, 'typed hour committed on blur');
+  assert.equal(hour().value, '08', 're-rendered field reflects the committed hour');
+});
+
+test('an invalid typed hour is flagged and reverts on blur', () => {
+  const c = createDateTimeController({ withTime: true, value: base() });
+  c.show();
+  const root = document.createElement('div');
+  (c as WithStateChange).onStateChange(() => renderDateTimePanel(root, c));
+  renderDateTimePanel(root, c);
+
+  const hour = root.querySelector<HTMLInputElement>('[data-ndp-field="hour"]')!;
+  hour.value = '99';
+  hour.dispatchEvent(new Event('input', { bubbles: true }));
+  assert.ok(hour.classList.contains('ndp-input-invalid'), 'out-of-range value flagged while typing');
+  hour.dispatchEvent(new Event('blur', { bubbles: true }));
+  assert.equal(c.getState().time!.hour, 10, 'value unchanged after invalid entry');
+  assert.equal(root.querySelector<HTMLInputElement>('[data-ndp-field="hour"]')!.value, '10', 'field reverted');
+});
+
+test('ArrowUp on the hour field steps the controller', () => {
+  const c = createDateTimeController({ withTime: true, value: base() });
+  c.show();
+  const root = document.createElement('div');
+  (c as WithStateChange).onStateChange(() => renderDateTimePanel(root, c));
+  renderDateTimePanel(root, c);
+
+  const hour = root.querySelector<HTMLInputElement>('[data-ndp-field="hour"]')!;
+  hour.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+  assert.equal(c.getState().time!.hour, 11, 'ArrowUp advanced the hour');
+});
+
+test('12h mode exposes an AM/PM toggle button in the entry', () => {
+  const c = createDateTimeController({ withTime: true, timeFormat: '12h', value: new Date(2024, 3, 13, 14, 5, 0) });
+  c.show();
+  const root = document.createElement('div');
+  (c as WithStateChange).onStateChange(() => renderDateTimePanel(root, c));
+  renderDateTimePanel(root, c);
+
+  const hour = root.querySelector<HTMLInputElement>('[data-ndp-field="hour"]')!;
+  assert.equal(hour.value, '02', '14:05 shows as 02 in 12h mode');
+  const ampm = root.querySelector<HTMLButtonElement>('[data-ndp-field="ampm"]')!;
+  assert.equal(ampm.textContent, 'PM');
+  ampm.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  assert.equal(c.getState().time!.hour, 2, 'toggled to AM (14 → 2)');
+});

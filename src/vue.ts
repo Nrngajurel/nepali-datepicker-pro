@@ -13,7 +13,8 @@ export const NepaliDateRangePicker = defineComponent({
     });
     watch(() => props.options, (next) => instance?.update(next ?? {}), { deep: true });
     onBeforeUnmount(() => instance?.destroy());
-    return () => h('input', { ref: input, readonly: true });
+    // Read-only state is owned by the mount (typeable pickers unlock it).
+    return () => h('input', { ref: input });
   },
 });
 
@@ -28,7 +29,8 @@ export const NepaliDateTimePicker = defineComponent({
     });
     watch(() => props.options, (next) => instance?.update(next ?? {}), { deep: true });
     onBeforeUnmount(() => instance?.destroy());
-    return () => h('input', { ref: input, readonly: true });
+    // Editable by default (masked + validated typing); mount sets readOnly.
+    return () => h('input', { ref: input });
   },
 });
 
@@ -43,6 +45,7 @@ export const NepaliMonthPicker = defineComponent({
     });
     watch(() => props.options, (next) => instance?.update(next ?? {}), { deep: true });
     onBeforeUnmount(() => instance?.destroy());
-    return () => h('input', { ref: input, readonly: true });
+    // Read-only state is owned by the mount.
+    return () => h('input', { ref: input });
   },
 });

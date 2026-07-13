@@ -93,6 +93,7 @@ export interface DateTimePickerOptions {
   showButtonPanel?: { today?: boolean; clear?: boolean; close?: boolean };
   closeOnSelect?: boolean;
   clearable?: boolean;
+  allowInput?: boolean;
   onChange?: (value: DateTimeResult) => void;
   onOpen?: () => void;
   onClose?: () => void;

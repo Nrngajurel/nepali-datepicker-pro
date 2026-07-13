@@ -3,6 +3,7 @@ import { nativeDateMath } from '../date-math/native-date-math.js';
 import { isDayDisabled } from './constraints.js';
 import { createDateValue, dateValueFromBs } from '../domain/date-value.js';
 import { formatDateValue } from '../format/index.js';
+import { tokenizeTyped } from '../format/parse.js';
 import type { CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, PickerInstance, TimeValue } from '../types.js';
 
 export interface DateTimeControllerState {
@@ -23,6 +24,8 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   getState(): DateTimeControllerState;
   selectDay(value: DateValue): void;
   setTime(hour: number, minute: number, second?: number): void;
+  setHour(hour24: number): boolean;
+  setMinute(minute: number): boolean;
   stepHour(delta: number): void;
   stepMinute(delta: number): void;
   toggleMeridiem(): void;
@@ -37,6 +40,11 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   selectYearView(year: number): void;
   toggleMode(): void;
   isDisabled(value: DateValue): boolean;
+  validateTyped(text: string): 'valid' | 'invalid' | 'empty';
+  commitTyped(text: string): 'valid' | 'invalid' | 'empty';
+  typedString(): string;
+  typedReference(): string;
+  yearBounds(): { min: number; max: number };
   isHourDisabled(hour: number): boolean;
   isMinuteDisabled(hour: number, minute: number): boolean;
   cellForBs(year: number, month: number, day: number): DateValue;
@@ -102,6 +110,66 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     return { lo, hi };
   }
 
+  // Parse typed text into a concrete DateValue (+ optional time), honouring the
+  // active BS/AD mode and all date/time constraints. Returns a status sentinel
+  // for blank ('empty') or unparseable/out-of-range/disabled ('invalid') input.
+  function parseTyped(text: string): { value: DateValue; time: { hour: number; minute: number } | null } | 'empty' | 'invalid' {
+    const tokens = tokenizeTyped(text);
+    if (tokens === 'empty') return 'empty';
+    if (!tokens) return 'invalid';
+    let value: DateValue;
+    try {
+      if (state.mode === 'BS') {
+        if (tokens.year < adapter.minSupportedYear || tokens.year > adapter.maxSupportedYear) return 'invalid';
+        if (tokens.month < 1 || tokens.month > 12) return 'invalid';
+        if (tokens.day < 1 || tokens.day > adapter.daysInBsMonth(tokens.year, tokens.month)) return 'invalid';
+        value = dateValueFromBs(adapter, { year: tokens.year, month: tokens.month, day: tokens.day });
+      } else {
+        if (tokens.month < 1 || tokens.month > 12 || tokens.day < 1 || tokens.day > 31) return 'invalid';
+        const ad = new Date(tokens.year, tokens.month - 1, tokens.day);
+        // Reject calendar overflow (e.g. Feb 30 rolling into March).
+        if (ad.getFullYear() !== tokens.year || ad.getMonth() !== tokens.month - 1 || ad.getDate() !== tokens.day) return 'invalid';
+        value = createDateValue(adapter, ad);
+      }
+    } catch {
+      return 'invalid';
+    }
+    if (controller.isDisabled(value)) return 'invalid';
+    if (options.withTime && tokens.hour != null) {
+      if (tokens.hour > 23 || (tokens.minute ?? 0) > 59) return 'invalid';
+      return { value, time: { hour: tokens.hour, minute: tokens.minute ?? 0 } };
+    }
+    return { value, time: null };
+  }
+
+  function pad2(n: number): string {
+    return String(n).padStart(2, '0');
+  }
+
+  // Mode-aware canonical ASCII string for a value (+ current time when withTime).
+  function toAscii(value: DateValue): string {
+    const date = state.mode === 'BS'
+      ? `${value.bs.year}-${pad2(value.bs.month)}-${pad2(value.bs.day)}`
+      : `${value.ad.getFullYear()}-${pad2(value.ad.getMonth() + 1)}-${pad2(value.ad.getDate())}`;
+    if (!options.withTime) return date;
+    const now = new Date();
+    const t = state.time ?? { hour: now.getHours(), minute: now.getMinutes() };
+    return `${date} ${pad2(t.hour)}:${pad2(t.minute)}`;
+  }
+
+  // Shared state mutation for preview/commit of a parsed typed value.
+  function applyParsed(parsed: { value: DateValue; time: { hour: number; minute: number } | null }): void {
+    const patch: Partial<DateTimeControllerState> = {
+      selected: parsed.value,
+      viewYear: parsed.value.bs.year,
+      viewMonth: parsed.value.bs.month,
+    };
+    if (parsed.time && state.time) {
+      patch.time = clampTime({ hour: parsed.time.hour, minute: parsed.time.minute, second: 0 });
+    }
+    setState(patch);
+  }
+
   function buildResult(value: DateValue): DateTimeResult {
     const ad = new Date(value.ad);
     if (state.time) ad.setHours(state.time.hour, state.time.minute, state.time.second, 0);
@@ -111,7 +179,9 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       time: state.time ?? undefined,
       formatted: formatDateValue(ad, adapter, {
         mode: state.mode,
-        format: options.displayFormat ?? (options.withTime ? 'YYYY-MM-DD HH:mm' : 'YYYY-MM-DD'),
+        format: options.displayFormat ?? (options.withTime
+          ? (state.timeFormat === '12h' ? 'YYYY-MM-DD hh:mm A' : 'YYYY-MM-DD HH:mm')
+          : 'YYYY-MM-DD'),
         locale: options.locale ?? (state.mode === 'BS' ? 'ne' : 'en'),
       }),
     };
@@ -181,6 +251,21 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     setTime(hour, minute, second = 0) {
       commitTime({ hour: wrap(hour, 24), minute: wrap(minute, 60), second: wrap(second, 60) });
     },
+    // Validated absolute setters for typed entry: reject out-of-range or
+    // disabled values (so the field can flag them) instead of wrapping, and
+    // skip a redundant re-render when the value is unchanged.
+    setHour(hour24) {
+      if (!state.time || !Number.isInteger(hour24) || hour24 < 0 || hour24 > 23) return false;
+      if (controller.isHourDisabled(hour24)) return false;
+      if (state.time.hour !== hour24) commitTime({ ...state.time, hour: hour24 });
+      return true;
+    },
+    setMinute(minute) {
+      if (!state.time || !Number.isInteger(minute) || minute < 0 || minute > 59) return false;
+      if (controller.isMinuteDisabled(state.time.hour, minute)) return false;
+      if (state.time.minute !== minute) commitTime({ ...state.time, minute });
+      return true;
+    },
     stepHour(delta) {
       if (!state.time) return;
       commitTime({ ...state.time, hour: wrap(state.time.hour + delta, 24) });
@@ -240,6 +325,41 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     isDisabled(value) {
       return isDayDisabled(value.ad, options, nativeDateMath);
+    },
+    // Non-mutating check used to flag the input as valid/invalid while typing.
+    validateTyped(text) {
+      const parsed = parseTyped(text);
+      return parsed === 'empty' ? 'empty' : parsed === 'invalid' ? 'invalid' : 'valid';
+    },
+    // Parse + apply typed text: select the date, sync the calendar view and
+    // emit; on blank, clear the selection. Invalid input is a no-op.
+    commitTyped(text) {
+      const parsed = parseTyped(text);
+      if (parsed === 'empty') {
+        if (state.selected) setState({ selected: null });
+        return 'empty';
+      }
+      if (parsed === 'invalid') return 'invalid';
+      applyParsed(parsed);
+      emit(parsed.value);
+      return 'valid';
+    },
+    // Canonical ASCII `YYYY-MM-DD[ HH:mm]` of the current selection (active
+    // calendar mode), or '' when nothing is selected — seeds the typed editor.
+    typedString() {
+      return state.selected ? toAscii(state.selected) : '';
+    },
+    // Same, but falls back to today when nothing is selected — used to seed a
+    // section the first time it is stepped with the arrow keys.
+    typedReference() {
+      return toAscii(state.selected ?? createDateValue(adapter, new Date()));
+    },
+    yearBounds() {
+      if (state.mode === 'BS') return { min: adapter.minSupportedYear, max: adapter.maxSupportedYear };
+      return {
+        min: adapter.bsToAd(adapter.minSupportedYear, 1, 1).getFullYear() + 1,
+        max: adapter.bsToAd(adapter.maxSupportedYear, 1, 1).getFullYear(),
+      };
     },
     // An hour is disabled when it lies entirely outside min/max, or when every
     // step-minute in it is rejected by disabledTimes.

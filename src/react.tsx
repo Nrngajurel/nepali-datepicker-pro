@@ -13,7 +13,8 @@ export function NepaliDateRangePicker(props: DateRangePickerOptions & { classNam
   useEffect(() => {
     instance.current?.update(props);
   }, [props]);
-  return <input ref={ref} className={props.className} readOnly />;
+  // Read-only state is owned by the mount (typeable pickers unlock it).
+  return <input ref={ref} className={props.className} />;
 }
 
 export function NepaliDateTimePicker(props: DateTimePickerOptions & { className?: string }) {
@@ -27,7 +28,8 @@ export function NepaliDateTimePicker(props: DateTimePickerOptions & { className?
   useEffect(() => {
     instance.current?.update(props);
   }, [props]);
-  return <input ref={ref} className={props.className} readOnly />;
+  // Editable by default (masked + validated typing); mount sets readOnly.
+  return <input ref={ref} className={props.className} />;
 }
 
 export function NepaliMonthPicker(props: MonthPickerOptions & { className?: string }) {
@@ -41,5 +43,6 @@ export function NepaliMonthPicker(props: MonthPickerOptions & { className?: stri
   useEffect(() => {
     instance.current?.update(props);
   }, [props]);
-  return <input ref={ref} className={props.className} readOnly />;
+  // Read-only state is owned by the mount.
+  return <input ref={ref} className={props.className} />;
 }

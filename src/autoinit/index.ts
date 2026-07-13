@@ -2,6 +2,8 @@ import { createDateRangeController } from '../application/date-range-controller.
 import { createDateTimeController } from '../application/date-time-controller.js';
 import { createMonthPickerController } from '../application/month-picker-controller.js';
 import { formatDateValue, formatRange } from '../format/index.js';
+import { attachSegmentedField } from './segmented-field.js';
+import type { SegmentedField } from './segmented-field.js';
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { positionPopup, renderDateTimePanel, renderMonthPickerPanel, renderRangePanel } from '../render/dom.js';
 import type { DateRangePickerOptions, DateRangeResult, DateTimePickerOptions, DateTimeResult, MonthPickerOptions, MonthResult, PickerInstance } from '../types.js';
@@ -122,6 +124,8 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   trigger.classList.add('ndp-trigger');
   trigger.setAttribute('role', 'combobox');
   trigger.setAttribute('aria-haspopup', 'dialog');
+  // Range typing isn't supported yet — the mount owns the read-only state.
+  if (trigger instanceof HTMLInputElement) trigger.readOnly = true;
   const portal = document.createElement('div');
   portal.className = 'ndp-panel-root';
   portal.style.display = 'none';
@@ -226,7 +230,12 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     )
     : null;
 
+  const allowInput = trigger instanceof HTMLInputElement && merged.allowInput !== false;
+  let segmented: SegmentedField | null = null;
+
   function updateInput(value = controller.getValue()): void {
+    // Never overwrite the field while the user is editing its segments.
+    if (segmented?.isEditing()) return;
     const label = value?.formatted ?? 'Select date';
     if (trigger instanceof HTMLInputElement) trigger.value = label === 'Select date' ? '' : label;
     else trigger.textContent = label;
@@ -249,7 +258,44 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     wasOpen = state.isOpen;
   }
 
-  trigger.addEventListener('focus', () => controller.show());
+  // The mount owns the input's read-only state (framework wrappers may render it
+  // read-only by default): a typeable field becomes a native-date-style
+  // segmented editor; otherwise it stays locked.
+  if (trigger instanceof HTMLInputElement) {
+    trigger.readOnly = !allowInput;
+    if (allowInput) {
+      segmented = attachSegmentedField(trigger, {
+        withTime: () => !!merged.withTime,
+        hour12: () => merged.timeFormat === '12h',
+        yearBounds: () => controller.yearBounds(),
+        committed: () => controller.typedString(),
+        reference: () => controller.typedReference(),
+        formatted: () => controller.getValue()?.formatted ?? '',
+        validate: (ascii) => controller.validateTyped(ascii),
+        commit: (ascii) => controller.commitTyped(ascii),
+        open: () => controller.show(),
+        close: () => controller.hide(),
+      });
+    }
+  }
+
+  // Keyboard for the non-typeable (read-only) field: Escape closes,
+  // Down/Alt+Down opens — the ARIA combobox pattern. The segmented editor
+  // handles its own keys when typing is allowed.
+  if (!allowInput) {
+    trigger.addEventListener('keydown', (event: Event) => {
+      const e = event as KeyboardEvent;
+      if (e.key === 'Escape' && controller.getState().isOpen) {
+        e.preventDefault();
+        controller.hide();
+      } else if ((e.key === 'ArrowDown' || e.key === 'Down') && !controller.getState().isOpen) {
+        e.preventDefault();
+        controller.show();
+      }
+    });
+  }
+
+  if (!allowInput) trigger.addEventListener('focus', () => controller.show());
   trigger.addEventListener('click', () => controller.show());
   document.addEventListener('mousedown', outside, true);
   controller.onChange((value) => {
@@ -270,6 +316,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   controller.destroy = () => {
     unsubscribe();
     stopTracking();
+    segmented?.destroy();
     if (igWrapper) igWrapper.remove();
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
@@ -289,6 +336,8 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   trigger.classList.add('ndp-trigger');
   trigger.setAttribute('role', 'combobox');
   trigger.setAttribute('aria-haspopup', 'dialog');
+  // Month typing isn't supported yet — the mount owns the read-only state.
+  if (trigger instanceof HTMLInputElement) trigger.readOnly = true;
   const portal = document.createElement('div');
   portal.className = 'ndp-panel-root';
   portal.style.display = 'none';

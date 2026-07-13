@@ -124,16 +124,17 @@ export const DEFS: PickerDef[] = [
       { key: 'disableWeekends', label: 'Disable weekends', type: 'bool', def: false },
       { key: 'disablePast', label: 'Disable past dates', hint: 'disabledDates demo', type: 'bool', def: false },
       { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
+      { key: 'allowInput', label: 'Allow typing', hint: 'masked + validated input', type: 'bool', def: true },
       { key: 'displayFormat', label: 'Display format', hint: 'dayjs-style tokens', type: 'text', def: '', placeholder: 'YYYY-MM-DD HH:mm' },
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['mode', 'allowModeToggle', 'withTime', 'timeFormat', 'minuteStep', 'minTime', 'maxTime', 'locale', 'closeOnSelect', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'clearable', 'displayFormat', 'opens', 'drops'],
+    optionKeys: ['mode', 'allowModeToggle', 'withTime', 'timeFormat', 'minuteStep', 'minTime', 'maxTime', 'locale', 'closeOnSelect', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'clearable', 'allowInput', 'displayFormat', 'opens', 'drops'],
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the picker opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
       { name: 'value / defaultValue', type: 'Date | null', def: 'today', desc: 'Controlled / initial selected date.' },
-      { name: 'withTime', type: 'boolean', def: 'false', desc: 'Show a same-screen time picker under the calendar.' },
+      { name: 'withTime', type: 'boolean', def: 'false', desc: 'Show a same-screen time picker: type into the accessible HH:mm spinbutton fields (Arrow keys step, Nepali digits accepted) or scroll the wheel.' },
       { name: 'timeFormat', type: "'12h' | '24h'", def: "'24h'", desc: 'Clock style when withTime is on.' },
       { name: 'minuteStep', type: 'number', def: '1', desc: 'Increment of the minute spinner.' },
       { name: 'minTime / maxTime', type: '{ hour, minute }', def: '—', desc: 'Clamp the selectable time of day; out-of-range hours show disabled on the wheel.' },
@@ -145,6 +146,7 @@ export const DEFS: PickerDef[] = [
       { name: 'disabledDates', type: '(date) => boolean', def: '—', desc: 'Return true to disable a specific day.' },
       { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD[ HH:mm]', desc: 'dayjs-style tokens for the input text.' },
       { name: 'closeOnSelect', type: 'boolean', def: 'true unless withTime', desc: 'Close the popup right after a day is picked.' },
+      { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Make the field a native-<input type=date>-style segmented editor: focus selects a section, ↑/↓ step it, digits fill with auto-advance, ←/→ move sections, Backspace clears, separators are always shown. Validated live; Enter/blur commits. Accepts Nepali or ASCII digits. Set false to keep the field read-only.' },
       ...COMMON_OPTS,
     ],
     events: [
@@ -169,6 +171,7 @@ export const DEFS: PickerDef[] = [
       if (v.disableWeekends) o.disabledWeekdays = [0, 6];
       if (v.disablePast) o.disabledDates = disablePastFn;
       if (v.clearable === false) o.clearable = false;
+      if (v.allowInput === false) o.allowInput = false;
       if (v.displayFormat) o.displayFormat = v.displayFormat;
       if (v.opens && v.opens !== 'auto') o.opens = v.opens;
       if (v.drops && v.drops !== 'auto') o.drops = v.drops;

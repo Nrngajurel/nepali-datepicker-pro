@@ -4,6 +4,7 @@ import { previewRange } from '../application/date-range-controller.js';
 import type { DateTimeController } from '../application/date-time-controller.js';
 import type { MonthPickerController } from '../application/month-picker-controller.js';
 import { formatDateValue } from '../format/index.js';
+import { normalizeDigits } from '../format/parse.js';
 import { computePopupPosition } from '../position/index.js';
 import type { CalendarMode, DateRange, DateValue } from '../types.js';
 
@@ -388,6 +389,53 @@ function timeWheel(label: string, items: WheelItem[], selectedValue: number, onS
   return wheel;
 }
 
+// An accessible, keyboard-first numeric field for one time segment. It's an
+// ARIA spinbutton: type digits (masked to two, Nepali digits accepted), Arrow
+// Up/Down steps, Enter/blur commits. `onCommit` returns false for an invalid or
+// disabled value, and the field reverts to the last good display. `field` tags
+// the element so focus can be restored after the panel re-renders.
+function timeInput(opts: {
+  field: string;
+  label: string;
+  display: string;
+  min: number;
+  max: number;
+  now: number;
+  onCommit: (raw: string) => boolean;
+  onStep: (delta: number) => void;
+}): HTMLInputElement {
+  const input = el('input', 'ndp-time-input', {
+    type: 'text',
+    inputmode: 'numeric',
+    autocomplete: 'off',
+    maxlength: '2',
+    role: 'spinbutton',
+    'aria-label': opts.label,
+    'aria-valuemin': String(opts.min),
+    'aria-valuemax': String(opts.max),
+    'aria-valuenow': String(opts.now),
+    'aria-valuetext': opts.display,
+    'data-ndp-field': opts.field,
+  }) as HTMLInputElement;
+  input.value = opts.display;
+  const revert = () => { input.value = opts.display; input.classList.remove('ndp-input-invalid'); };
+  input.addEventListener('focus', () => input.select());
+  input.addEventListener('input', () => {
+    input.value = normalizeDigits(input.value).replace(/\D/g, '').slice(0, 2);
+    // Live invalid hint without committing (empty is neutral, not invalid).
+    const n = Number(input.value);
+    const bad = input.value !== '' && (Number.isNaN(n) || n < opts.min || n > opts.max);
+    input.classList.toggle('ndp-input-invalid', bad);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowUp') { e.preventDefault(); opts.onStep(1); }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); opts.onStep(-1); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (!opts.onCommit(input.value)) revert(); }
+  });
+  input.addEventListener('blur', () => { if (!opts.onCommit(input.value)) revert(); });
+  return input;
+}
+
 function renderTimeControls(controller: DateTimeController): HTMLElement | null {
   const state = controller.getState();
   if (!state.time) return null;
@@ -399,10 +447,62 @@ function renderTimeControls(controller: DateTimeController): HTMLElement | null 
   const panel = el('div', 'ndp-time-panel');
   panel.appendChild(setText(el('div', 'ndp-time-title'), 'समय / Time'));
 
+  const to24 = (display: number): number => (is12h ? (display % 12) + (pm ? 12 : 0) : display);
+  const hourDisplay = is12h ? to12h(hour) : hour;
+
+  // ---- editable entry (keyboard-first): type HH : mm [AM/PM] ----
+  const entry = el('div', 'ndp-time-entry', { role: 'group', 'aria-label': 'Enter time' });
+  entry.appendChild(timeInput({
+    field: 'hour',
+    label: is12h ? 'Hour (1–12)' : 'Hour (0–23)',
+    display: pad2(hourDisplay),
+    min: is12h ? 1 : 0,
+    max: is12h ? 12 : 23,
+    now: hourDisplay,
+    onCommit: (raw) => {
+      if (raw === '') return false;
+      const n = Number(normalizeDigits(raw));
+      if (!Number.isInteger(n)) return false;
+      if (is12h) return n >= 1 && n <= 12 ? controller.setHour((n % 12) + (pm ? 12 : 0)) : false;
+      return controller.setHour(n);
+    },
+    onStep: (d) => controller.stepHour(d),
+  }));
+  entry.appendChild(setText(el('span', 'ndp-time-entry-colon', { 'aria-hidden': 'true' }), ':'));
+  entry.appendChild(timeInput({
+    field: 'minute',
+    label: 'Minute (0–59)',
+    display: pad2(minute),
+    min: 0,
+    max: 59,
+    now: minute,
+    onCommit: (raw) => {
+      if (raw === '') return false;
+      const n = Number(normalizeDigits(raw));
+      return Number.isInteger(n) ? controller.setMinute(n) : false;
+    },
+    onStep: (d) => controller.stepMinute(d),
+  }));
+  if (is12h) {
+    const ampm = setText(el('button', 'ndp-time-ampm', {
+      type: 'button',
+      'data-ndp-field': 'ampm',
+      'aria-label': `Meridiem, currently ${pm ? 'PM' : 'AM'}`,
+    }), pm ? 'PM' : 'AM');
+    ampm.addEventListener('click', () => controller.toggleMeridiem());
+    ampm.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { e.preventDefault(); controller.toggleMeridiem(); }
+    });
+    entry.appendChild(ampm);
+  }
+  panel.appendChild(entry);
+
+  const wheelsLabel = setText(el('div', 'ndp-time-scroll-hint', { 'aria-hidden': 'true' }), 'or scroll');
+  panel.appendChild(wheelsLabel);
+
   const wheels = el('div', 'ndp-time-wheels');
 
   // ---- hours ----
-  const to24 = (display: number): number => (is12h ? (display % 12) + (pm ? 12 : 0) : display);
   const hourItems: WheelItem[] = [];
   if (is12h) {
     for (let d = 1; d <= 12; d += 1) hourItems.push({ value: d, text: pad2(d), disabled: controller.isHourDisabled(to24(d)) });
@@ -438,6 +538,10 @@ function renderTimeControls(controller: DateTimeController): HTMLElement | null 
 export function renderDateTimePanel(root: HTMLElement, controller: DateTimeController): void {
   const state = controller.getState();
   const adapter = defaultCalendarAdapter;
+  // Preserve keyboard focus (and caret) across the full re-render so typing/
+  // arrowing in a time field isn't interrupted. Fields are tagged data-ndp-field.
+  const active = document.activeElement as HTMLElement | null;
+  const restoreField = active && root.contains(active) ? active.getAttribute('data-ndp-field') : null;
   root.innerHTML = '';
   const dateOnly = !state.time;
   const panelClass = `ndp-panel ndp-panel--datetime${dateOnly ? ' ndp-panel--date-only' : ''}`;
@@ -497,6 +601,14 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   }
 
   root.appendChild(panel);
+
+  if (restoreField) {
+    const next = panel.querySelector<HTMLElement>(`[data-ndp-field="${restoreField}"]`);
+    if (next) {
+      next.focus();
+      if (next instanceof HTMLInputElement) next.select();
+    }
+  }
 }
 
 export function renderMonthPickerPanel(root: HTMLElement, controller: MonthPickerController): void {

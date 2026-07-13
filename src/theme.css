@@ -29,9 +29,51 @@
   cursor: pointer;
 }
 
+/* Editable (typeable) trigger gets a text caret instead of the pointer. */
+.ndp-trigger:not([readonly]) {
+  cursor: text;
+}
+
+/* Native-<input type=date>-style segmented editor: no free-text caret, and a
+   whole section highlights when selected. */
+.ndp-trigger--segmented {
+  caret-color: transparent;
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.ndp-trigger--segmented::selection {
+  background: var(--ndp-color-primary-bg);
+  color: var(--ndp-color-primary);
+}
+
+.ndp-trigger--segmented::-moz-selection {
+  background: var(--ndp-color-primary-bg);
+  color: var(--ndp-color-primary);
+}
+
+.ndp-trigger--segmented::placeholder {
+  color: var(--ndp-color-text-faint);
+}
+
 .ndp-trigger:focus-visible {
-  outline: 2px solid var(--ndp-color-accent);
+  outline: 2px solid white;
   outline-offset: 2px;
+}
+
+/* Typed value that doesn't parse to a valid, allowed date. */
+.ndp-trigger.ndp-input-invalid {
+  color: #d64545;
+  border-color: #d64545;
+}
+
+.ndp-trigger.ndp-input-invalid:focus-visible {
+  outline-color: #d64545;
+}
+
+.ndp-trigger-wrap:has(.ndp-input-invalid) {
+  border-color: #d64545;
 }
 
 .ndp-trigger-wrap {
@@ -640,6 +682,78 @@
   font-size: 13px;
   font-weight: 700;
   text-align: center;
+}
+
+/* editable, keyboard-first time entry ---------------------------------------- */
+.ndp-time-entry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ndp-time-input {
+  box-sizing: border-box;
+  width: 46px;
+  padding: 8px 0;
+  border: 1px solid var(--ndp-color-border);
+  border-radius: 8px;
+  background: var(--ndp-color-surface);
+  color: var(--ndp-color-text);
+  font: 700 20px/1 var(--ndp-font);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.ndp-time-input:focus-visible {
+  outline: 2px solid var(--ndp-color-accent);
+  outline-offset: 1px;
+  border-color: var(--ndp-color-accent);
+}
+
+.ndp-time-input.ndp-input-invalid {
+  color: #d64545;
+  border-color: #d64545;
+}
+
+.ndp-time-input.ndp-input-invalid:focus-visible {
+  outline-color: #d64545;
+}
+
+.ndp-time-entry-colon {
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--ndp-color-text-muted);
+}
+
+.ndp-time-ampm {
+  margin-left: 4px;
+  min-width: 44px;
+  padding: 8px 6px;
+  border: 1px solid var(--ndp-color-border);
+  border-radius: 8px;
+  background: var(--ndp-color-surface);
+  color: var(--ndp-color-text);
+  font: 700 14px/1 var(--ndp-font);
+  cursor: pointer;
+}
+
+.ndp-time-ampm:hover {
+  border-color: var(--ndp-color-accent);
+}
+
+.ndp-time-ampm:focus-visible {
+  outline: 2px solid var(--ndp-color-accent);
+  outline-offset: 1px;
+}
+
+.ndp-time-scroll-hint {
+  margin-top: -6px;
+  color: var(--ndp-color-text-muted);
+  font-size: 11px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* iOS-style scrollable wheels ------------------------------------------------ */
