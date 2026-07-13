@@ -160,7 +160,49 @@ function renderYearGrid(controller: ViewControls): HTMLElement {
   return grid;
 }
 
-const MODE_TOGGLE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
+// Year navigation header used while picking a month. The grid is months, so the
+// inner ‹ › step whole years; the outer slots stay hidden so the header keeps
+// the same 5-column layout (and full-width centered label) as the day header.
+function renderMonthRangeHeader(controller: DateRangeController): HTMLElement {
+  const adapter = defaultCalendarAdapter;
+  const { viewYear } = controller.getState();
+  const header = el('div', 'ndp-cal-header');
+  const outerPrev = navButton('«', '', () => {}, true);
+  const innerPrev = navButton('‹', 'Previous year', () => controller.navigateYear(-1));
+  const innerNext = navButton('›', 'Next year', () => controller.navigateYear(1));
+  const outerNext = navButton('»', '', () => {}, true);
+  const label = el('div', 'ndp-cal-label ndp-cal-label--static');
+  label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${adapter.toLocaleDigits(viewYear, 'ne')} BS`));
+  label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`));
+  header.append(outerPrev, innerPrev, label, innerNext, outerNext);
+  return header;
+}
+
+// The 12-month grid for month mode: one click selects the whole BS month, and
+// the range spans that month's first → last day.
+function renderMonthRangeGrid(controller: DateRangeController): HTMLElement {
+  const adapter = defaultCalendarAdapter;
+  const state = controller.getState();
+  const viewYear = state.viewYear;
+  const sel = state.range;
+  const grid = el('div', 'ndp-monthgrid ndp-monthgrid--range', { role: 'grid' });
+  adapter.bsMonthNames('ne').forEach((name, index) => {
+    const month = index + 1;
+    const disabled = controller.isMonthDisabled(viewYear, month);
+    const selected = !!sel && sel.start.bs.year === viewYear && sel.start.bs.month === month;
+    const classes = ['ndp-monthcell'];
+    if (selected) classes.push('is-selected');
+    if (disabled) classes.push('is-disabled');
+    const btn = setText(el('button', classes.join(' '), { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' }), name);
+    btn.appendChild(setText(el('span', 'ndp-monthcell-en'), adapter.bsMonthNames('en')[index]));
+    if (disabled) btn.setAttribute('aria-disabled', 'true');
+    else btn.addEventListener('click', () => controller.selectMonth(viewYear, month));
+    grid.appendChild(btn);
+  });
+  return grid;
+}
+
+const MODE_TOGGLE_SVG ='<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
 
 // A single-button BS/AD toggle with a swap glyph.
 function renderModeSwitch(mode: CalendarMode, toggle: () => void): HTMLElement {
@@ -189,6 +231,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
     const btn = setText(el('button', `ndp-preset ndp-preset--submenu${state.activePresetId === preset.id ? ' is-active' : ''}${state.openSubmenuId === preset.id ? ' is-open' : ''}`, { type: 'button' }), preset.label);
     btn.addEventListener('click', () => {
       if (preset.id === 'custom') controller.startCustomRange();
+      else if (preset.id === 'month') controller.startMonthSelect();
       else controller.toggleSubmenu(preset.id);
     });
     presetRail.appendChild(btn);
@@ -222,41 +265,49 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
   }
   calCol.appendChild(group);
 
-  // Guidance shown while picking a custom range, so clicking "Custom Range" has
-  // an obvious effect instead of feeling like nothing happened.
-  if (state.activePresetId === 'custom' || state.pendingStart) {
+  const monthUnit = state.selectionUnit === 'month';
+
+  if (monthUnit) {
+    calCol.appendChild(setText(el('div', 'ndp-range-hint'), 'महिना छान्नुहोस् · pick a month for its full date span'));
+  } else if (state.activePresetId === 'custom' || state.pendingStart) {
+    // Guidance shown while picking a custom day range, so clicking "Custom
+    // Range" has an obvious effect instead of feeling like nothing happened.
     const message = state.pendingStart ? 'अन्त्य मिति छान्नुहोस् · now pick the end date' : 'सुरु मिति छान्नुहोस् · pick the start date';
     calCol.appendChild(setText(el('div', 'ndp-range-hint'), message));
   }
 
-  calCol.appendChild(renderHeader(controller));
-
-  if (state.view === 'day') {
-    calCol.appendChild(renderWeekdays());
-    const grid = el('div', 'ndp-grid', { role: 'grid' });
-    const preview = previewRange(state);
-    controller.buildMonthCells(state.viewYear, state.viewMonth).forEach((cell) => {
-      if (!cell) {
-        grid.appendChild(el('div', 'ndp-cell ndp-cell--empty', { role: 'gridcell' }));
-        return;
-      }
-      const disabled = controller.isDisabled(cell);
-      const cls = classForRange(cell, preview, controller.getToday()) + (disabled ? ' is-disabled' : '');
-      const btn = el('button', cls, { type: 'button', role: 'gridcell', 'aria-selected': inRange(preview, cell) ? 'true' : 'false' });
-      if (disabled) btn.setAttribute('aria-disabled', 'true');
-      btn.appendChild(setText(el('span', 'ndp-cell-primary'), adapter.toLocaleDigits(cell.bs.day, 'ne')));
-      btn.appendChild(setText(el('span', 'ndp-cell-secondary'), String(cell.ad.getDate())));
-      if (!disabled) {
-        btn.addEventListener('click', () => controller.selectDay(cell));
-        btn.addEventListener('mouseenter', () => controller.hoverDay(cell));
-      }
-      grid.appendChild(btn);
-    });
-    calCol.appendChild(grid);
-  } else if (state.view === 'month') {
-    calCol.appendChild(renderMonthGrid(controller));
+  if (monthUnit) {
+    calCol.appendChild(renderMonthRangeHeader(controller));
+    calCol.appendChild(renderMonthRangeGrid(controller));
   } else {
-    calCol.appendChild(renderYearGrid(controller));
+    calCol.appendChild(renderHeader(controller));
+    if (state.view === 'day') {
+      calCol.appendChild(renderWeekdays());
+      const grid = el('div', 'ndp-grid', { role: 'grid' });
+      const preview = previewRange(state);
+      controller.buildMonthCells(state.viewYear, state.viewMonth).forEach((cell) => {
+        if (!cell) {
+          grid.appendChild(el('div', 'ndp-cell ndp-cell--empty', { role: 'gridcell' }));
+          return;
+        }
+        const disabled = controller.isDisabled(cell);
+        const cls = classForRange(cell, preview, controller.getToday()) + (disabled ? ' is-disabled' : '');
+        const btn = el('button', cls, { type: 'button', role: 'gridcell', 'aria-selected': inRange(preview, cell) ? 'true' : 'false' });
+        if (disabled) btn.setAttribute('aria-disabled', 'true');
+        btn.appendChild(setText(el('span', 'ndp-cell-primary'), adapter.toLocaleDigits(cell.bs.day, 'ne')));
+        btn.appendChild(setText(el('span', 'ndp-cell-secondary'), String(cell.ad.getDate())));
+        if (!disabled) {
+          btn.addEventListener('click', () => controller.selectDay(cell));
+          btn.addEventListener('mouseenter', () => controller.hoverDay(cell));
+        }
+        grid.appendChild(btn);
+      });
+      calCol.appendChild(grid);
+    } else if (state.view === 'month') {
+      calCol.appendChild(renderMonthGrid(controller));
+    } else {
+      calCol.appendChild(renderYearGrid(controller));
+    }
   }
 
   const apply = setText(el('button', 'ndp-apply', { type: 'button' }), 'Apply');
@@ -276,37 +327,65 @@ function to12h(hour: number): number {
   return h === 0 ? 12 : h;
 }
 
-interface SpinnerConfig {
-  label: string;
-  value: string;
-  onUp: () => void;
-  onDown: () => void;
-  onCommit: (raw: string) => void;
+interface WheelItem {
+  value: number;
+  text: string;
+  disabled: boolean;
 }
 
-// A single vertical spinner: ▲ / editable value / ▼ / caption. Button-driven so
-// the full-panel re-render on each change never steals focus mid-interaction;
-// the value stays typeable and also responds to mouse-wheel for quick scrubbing.
-function timeSpinner(config: SpinnerConfig): HTMLElement {
-  const spin = el('div', 'ndp-spinner');
-  const up = setText(el('button', 'ndp-spin-btn', { type: 'button', 'aria-label': `Increase ${config.label.toLowerCase()}`, tabindex: '-1' }), '▲');
-  const down = setText(el('button', 'ndp-spin-btn', { type: 'button', 'aria-label': `Decrease ${config.label.toLowerCase()}`, tabindex: '-1' }), '▼');
-  const input = el('input', 'ndp-spin-value', { type: 'text', inputmode: 'numeric', 'aria-label': config.label });
-  input.value = config.value;
-  up.addEventListener('click', config.onUp);
-  down.addEventListener('click', config.onDown);
-  input.addEventListener('change', () => config.onCommit(input.value));
-  input.addEventListener('focus', () => input.select());
-  input.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowUp') { event.preventDefault(); config.onUp(); }
-    else if (event.key === 'ArrowDown') { event.preventDefault(); config.onDown(); }
+// A scrollable "drum" column, iOS-style. The row nearest the center band is the
+// selection; disabled rows are shown struck-through and skipped when the scroll
+// settles. Clicking a row selects it directly — the deterministic path used by
+// keyboard/touch/tests — while a flick-scroll commits the centered value once it
+// comes to rest (a full re-render then re-centers on the committed row).
+function timeWheel(label: string, items: WheelItem[], selectedValue: number, onSelect: (value: number) => void): HTMLElement {
+  const wheel = el('div', 'ndp-wheel', { role: 'listbox', 'aria-label': label });
+  const list = el('div', 'ndp-wheel-list');
+  const rows: HTMLElement[] = [];
+  let selectedIndex = Math.max(0, items.findIndex((it) => it.value === selectedValue));
+
+  items.forEach((it) => {
+    const classes = ['ndp-wheel-item'];
+    if (it.disabled) classes.push('is-disabled');
+    if (it.value === selectedValue) classes.push('is-selected');
+    const row = setText(el('button', classes.join(' '), {
+      type: 'button',
+      role: 'option',
+      tabindex: '-1',
+      'aria-selected': it.value === selectedValue ? 'true' : 'false',
+      'aria-disabled': it.disabled ? 'true' : 'false',
+    }), it.text);
+    if (!it.disabled) row.addEventListener('click', () => onSelect(it.value));
+    rows.push(row);
+    list.appendChild(row);
   });
-  input.addEventListener('wheel', (event) => {
-    event.preventDefault();
-    (event.deltaY < 0 ? config.onUp : config.onDown)();
-  }, { passive: false });
-  spin.append(up, input, down, setText(el('div', 'ndp-spin-cap'), config.label));
-  return spin;
+  wheel.appendChild(list);
+
+  const center = (): void => {
+    const row = rows[selectedIndex];
+    if (row) list.scrollTop = row.offsetTop - (list.clientHeight - row.clientHeight) / 2;
+  };
+
+  let settle = 0;
+  list.addEventListener('scroll', () => {
+    window.clearTimeout(settle);
+    settle = window.setTimeout(() => {
+      const mid = list.scrollTop + list.clientHeight / 2;
+      let bestIndex = selectedIndex;
+      let bestDist = Infinity;
+      rows.forEach((row, i) => {
+        if (items[i].disabled) return;
+        const dist = Math.abs(row.offsetTop + row.clientHeight / 2 - mid);
+        if (dist < bestDist) { bestDist = dist; bestIndex = i; }
+      });
+      if (items[bestIndex] && items[bestIndex].value !== selectedValue) onSelect(items[bestIndex].value);
+      else { selectedIndex = bestIndex; center(); }
+    }, 130);
+  }, { passive: true });
+
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(center);
+  else center();
+  return wheel;
 }
 
 function renderTimeControls(controller: DateTimeController): HTMLElement | null {
@@ -314,45 +393,41 @@ function renderTimeControls(controller: DateTimeController): HTMLElement | null 
   if (!state.time) return null;
   const { hour, minute, second } = state.time;
   const is12h = state.timeFormat === '12h';
+  const step = state.minuteStep > 0 ? state.minuteStep : 1;
+  const pm = meridiemOf(hour) === 'PM';
 
   const panel = el('div', 'ndp-time-panel');
   panel.appendChild(setText(el('div', 'ndp-time-title'), 'समय / Time'));
 
-  const spinners = el('div', 'ndp-time-spinners');
-  spinners.appendChild(timeSpinner({
-    label: 'Hour',
-    value: pad2(is12h ? to12h(hour) : hour),
-    onUp: () => controller.stepHour(1),
-    onDown: () => controller.stepHour(-1),
-    onCommit: (raw) => {
-      const parsed = Number.parseInt(raw, 10);
-      if (Number.isNaN(parsed)) return;
-      const h24 = is12h ? (parsed % 12) + (meridiemOf(hour) === 'PM' ? 12 : 0) : parsed;
-      controller.setTime(h24, minute, second);
-    },
-  }));
-  spinners.appendChild(setText(el('span', 'ndp-spin-colon'), ':'));
-  spinners.appendChild(timeSpinner({
-    label: 'Min',
-    value: pad2(minute),
-    onUp: () => controller.stepMinute(1),
-    onDown: () => controller.stepMinute(-1),
-    onCommit: (raw) => {
-      const parsed = Number.parseInt(raw, 10);
-      if (!Number.isNaN(parsed)) controller.setTime(hour, parsed, second);
-    },
-  }));
+  const wheels = el('div', 'ndp-time-wheels');
+
+  // ---- hours ----
+  const to24 = (display: number): number => (is12h ? (display % 12) + (pm ? 12 : 0) : display);
+  const hourItems: WheelItem[] = [];
   if (is12h) {
-    const meridiem = meridiemOf(hour);
-    const seg = el('div', 'ndp-meridiem', { role: 'group', 'aria-label': 'AM or PM' });
-    const am = setText(el('button', `ndp-meridiem-btn${meridiem === 'AM' ? ' is-active' : ''}`, { type: 'button', 'aria-pressed': meridiem === 'AM' ? 'true' : 'false' }), 'AM');
-    const pm = setText(el('button', `ndp-meridiem-btn${meridiem === 'PM' ? ' is-active' : ''}`, { type: 'button', 'aria-pressed': meridiem === 'PM' ? 'true' : 'false' }), 'PM');
-    am.addEventListener('click', () => { if (meridiemOf(hour) === 'PM') controller.toggleMeridiem(); });
-    pm.addEventListener('click', () => { if (meridiemOf(hour) === 'AM') controller.toggleMeridiem(); });
-    seg.append(am, pm);
-    spinners.appendChild(seg);
+    for (let d = 1; d <= 12; d += 1) hourItems.push({ value: d, text: pad2(d), disabled: controller.isHourDisabled(to24(d)) });
+  } else {
+    for (let h = 0; h < 24; h += 1) hourItems.push({ value: h, text: pad2(h), disabled: controller.isHourDisabled(h) });
   }
-  panel.appendChild(spinners);
+  wheels.appendChild(timeWheel('Hour', hourItems, is12h ? to12h(hour) : hour, (display) => controller.setTime(to24(display), minute, second)));
+
+  wheels.appendChild(setText(el('span', 'ndp-wheel-colon'), ':'));
+
+  // ---- minutes ----
+  const minuteItems: WheelItem[] = [];
+  for (let m = 0; m < 60; m += step) minuteItems.push({ value: m, text: pad2(m), disabled: controller.isMinuteDisabled(hour, m) });
+  wheels.appendChild(timeWheel('Min', minuteItems, minute, (m) => controller.setTime(hour, m, second)));
+
+  // ---- meridiem (12h only) ----
+  if (is12h) {
+    const merItems: WheelItem[] = [
+      { value: 0, text: 'AM', disabled: false },
+      { value: 1, text: 'PM', disabled: false },
+    ];
+    wheels.appendChild(timeWheel('AM/PM', merItems, pm ? 1 : 0, (v) => { if ((v === 1) !== pm) controller.toggleMeridiem(); }));
+  }
+
+  panel.appendChild(wheels);
 
   const now = setText(el('button', 'ndp-time-now', { type: 'button' }), 'अहिले / Now');
   now.addEventListener('click', () => controller.setTimeToNow());

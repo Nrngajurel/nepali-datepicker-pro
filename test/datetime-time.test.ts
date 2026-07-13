@@ -93,40 +93,52 @@ test('renders calendar and time panel together on one screen', () => {
   assert.ok(body!.querySelector('.ndp-grid'), 'calendar grid present in the body');
   const timePanel = body!.querySelector('.ndp-time-panel');
   assert.ok(timePanel, 'time panel present in the SAME body as the calendar');
-  assert.equal(timePanel!.querySelectorAll('.ndp-spinner').length, 2);
+  assert.equal(timePanel!.querySelectorAll('.ndp-wheel').length, 2);
   assert.ok(timePanel!.querySelector('.ndp-time-now'), 'has a Now button');
 });
 
-test('clicking the hour ▲ button steps the controller and re-renders', () => {
+test('clicking an hour on the wheel steps the controller and re-renders', () => {
   const c = createDateTimeController({ withTime: true, value: new Date(2024, 3, 13, 10, 30, 0) });
   c.show();
   const root = document.createElement('div');
   (c as WithStateChange).onStateChange(() => renderDateTimePanel(root, c));
   renderDateTimePanel(root, c);
 
-  const hourUp = root.querySelector('.ndp-spinner .ndp-spin-btn')!;
-  hourUp.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  const hourWheel = root.querySelector('.ndp-wheel')!; // first wheel = hours
+  const eleven = [...hourWheel.querySelectorAll('.ndp-wheel-item')].find((n) => n.textContent === '11')!;
+  eleven.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   assert.equal(c.getState().time!.hour, 11, 'hour advanced 10 -> 11');
-  const hourValue = root.querySelector('.ndp-spinner .ndp-spin-value') as HTMLInputElement;
-  assert.equal(hourValue.value, '11');
+  assert.equal(root.querySelector('.ndp-wheel .ndp-wheel-item.is-selected')!.textContent, '11', 'wheel centers on 11');
 });
 
-test('time picker has no seconds — hour and minute only', () => {
+test('time picker has no seconds — hour and minute wheels only', () => {
   const c = createDateTimeController({ withTime: true, value: base() });
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
-  const caps = [...root.querySelectorAll('.ndp-spin-cap')].map((n) => n.textContent);
-  assert.deepEqual(caps, ['Hour', 'Min'], 'only Hour and Min spinners render');
+  const labels = [...root.querySelectorAll('.ndp-wheel')].map((n) => n.getAttribute('aria-label'));
+  assert.deepEqual(labels, ['Hour', 'Min'], 'only Hour and Min wheels render (no seconds)');
 });
 
-test('12h format shows AM/PM control and 12-hour value', () => {
+test('12h format shows an AM/PM wheel and 12-hour value', () => {
   const c = createDateTimeController({ withTime: true, timeFormat: '12h', value: new Date(2024, 3, 13, 14, 5, 0) });
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
-  const meridiem = root.querySelector('.ndp-meridiem');
-  assert.ok(meridiem, 'AM/PM segmented control present');
-  assert.equal(root.querySelector('.ndp-meridiem-btn.is-active')!.textContent, 'PM');
-  assert.equal((root.querySelector('.ndp-spinner .ndp-spin-value') as HTMLInputElement).value, '02');
+  const wheels = [...root.querySelectorAll('.ndp-wheel')];
+  assert.deepEqual(wheels.map((n) => n.getAttribute('aria-label')), ['Hour', 'Min', 'AM/PM']);
+  assert.equal(wheels[2].querySelector('.ndp-wheel-item.is-selected')!.textContent, 'PM');
+  assert.equal(wheels[0].querySelector('.ndp-wheel-item.is-selected')!.textContent, '02');
+});
+
+test('minTime/maxTime mark out-of-range hours disabled on the wheel', () => {
+  const c = createDateTimeController({ withTime: true, minTime: { hour: 10, minute: 0 }, maxTime: { hour: 18, minute: 0 }, value: new Date(2024, 3, 13, 12, 0, 0) });
+  c.show();
+  const root = document.createElement('div');
+  renderDateTimePanel(root, c);
+  const hourItems = [...root.querySelector('.ndp-wheel')!.querySelectorAll('.ndp-wheel-item')];
+  const disabled = (h: string) => hourItems.find((n) => n.textContent === h)!.classList.contains('is-disabled');
+  assert.equal(disabled('09'), true, 'hour before minTime is disabled');
+  assert.equal(disabled('19'), true, 'hour after maxTime is disabled');
+  assert.equal(disabled('12'), false, 'in-range hour is enabled');
 });

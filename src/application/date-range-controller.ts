@@ -1,6 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
-import { isDayDisabled } from './constraints.js';
+import { isDayDisabled, resolveBound } from './constraints.js';
 import { createDateRange, createDateValue, dateValueFromBs, isSameDateValue } from '../domain/date-value.js';
 import { formatRange } from '../format/index.js';
 import type { CalendarMode, DateRange, DateRangePickerOptions, DateRangeResult, DateValue, PickerInstance, PresetDefinition } from '../types.js';
@@ -19,6 +19,9 @@ export interface DateRangeControllerState {
   openSubmenuId: string | null;
   view: 'day' | 'month' | 'year';
   yearGroupStart: number;
+  // Internal: 'month' while the "Pick a Month" preset is active (whole-month
+  // selection). Driven by the preset rail, not a public option.
+  selectionUnit: 'day' | 'month';
 }
 
 export interface DateRangeController extends PickerInstance<DateRangeResult, DateRangePickerOptions> {
@@ -27,6 +30,9 @@ export interface DateRangeController extends PickerInstance<DateRangeResult, Dat
   getToday(): DateValue;
   selectDay(value: DateValue): void;
   hoverDay(value: DateValue | null): void;
+  selectMonth(year: number, month: number): void;
+  isMonthDisabled(year: number, month: number): boolean;
+  startMonthSelect(): void;
   navigateMonth(delta: number): void;
   navigateYear(delta: number): void;
   navigateYearGroup(delta: number): void;
@@ -67,7 +73,11 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     openSubmenuId: null,
     view: 'day',
     yearGroupStart: adapter.adToBs(defaultRange.end).year - 6,
+    selectionUnit: 'day',
   };
+
+  const firstOfMonth = (year: number, month: number): DateValue => dateValueFromBs(adapter, { year, month, day: 1 });
+  const lastOfMonth = (year: number, month: number): DateValue => dateValueFromBs(adapter, { year, month, day: adapter.daysInBsMonth(year, month) });
 
   function clampYear(year: number): number {
     return Math.max(adapter.minSupportedYear, Math.min(adapter.maxSupportedYear, year));
@@ -168,6 +178,27 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if (next && state.hoverDate && isSameDateValue(next, state.hoverDate)) return;
       setState({ hoverDate: next });
     },
+    // A single click selects the whole BS month: the range spans its first day
+    // to its last day. This is the "quickly pick a month" shortcut.
+    selectMonth(year, month) {
+      if (controller.isMonthDisabled(year, month)) return;
+      const range = createDateRange(firstOfMonth(year, month), lastOfMonth(year, month));
+      setState({ range, pendingStart: null, hoverDate: null, viewYear: year, viewMonth: month });
+      options.onChange?.({ start: range.start.ad, end: range.end.ad });
+      if (options.autoApply) controller.apply();
+    },
+    isMonthDisabled(year, month) {
+      const min = resolveBound(options.minDate, dateMath);
+      const max = resolveBound(options.maxDate, dateMath);
+      if (min && lastOfMonth(year, month).ad.getTime() < min.getTime()) return true;
+      if (max && firstOfMonth(year, month).ad.getTime() > max.getTime()) return true;
+      return false;
+    },
+    // Activated by the "Pick a Month" entry in the presets rail: switch the grid
+    // to whole-month selection.
+    startMonthSelect() {
+      setState({ activePresetId: 'month', selectionUnit: 'month', pendingStart: null, hoverDate: null, range: null, openSubmenuId: null, view: 'day' });
+    },
     navigateMonth(delta) {
       let year = state.viewYear;
       let month = state.viewMonth + delta;
@@ -199,7 +230,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if (!preset?.resolve) return;
       const resolved = preset.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
       const range = createDateRange(createDateValue(adapter, resolved.start), createDateValue(adapter, resolved.end));
-      setState({ range, activePresetId: id, pendingStart: null, hoverDate: null, viewYear: range.end.bs.year, viewMonth: range.end.bs.month, openSubmenuId: null });
+      setState({ range, activePresetId: id, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: range.end.bs.year, viewMonth: range.end.bs.month, openSubmenuId: null });
       options.onChange?.({ start: range.start.ad, end: range.end.ad });
     },
     selectSubmenuItem(submenuId, itemId) {
@@ -207,7 +238,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if (!item?.resolve) return;
       const resolved = item.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
       const range = createDateRange(createDateValue(adapter, resolved.start), createDateValue(adapter, resolved.end));
-      setState({ range, activePresetId: itemId, pendingStart: null, hoverDate: null, viewYear: range.end.bs.year, viewMonth: range.end.bs.month, openSubmenuId: null });
+      setState({ range, activePresetId: itemId, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: range.end.bs.year, viewMonth: range.end.bs.month, openSubmenuId: null });
     },
     toggleSubmenu(id) {
       setState({ openSubmenuId: state.openSubmenuId === id ? null : id });
@@ -215,6 +246,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     startCustomRange() {
       setState({
         activePresetId: 'custom',
+        selectionUnit: 'day',
         pendingStart: null,
         hoverDate: null,
         range: null,

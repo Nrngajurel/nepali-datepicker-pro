@@ -42,6 +42,7 @@ export function buildDefaultPresets(options: DateRangePickerOptions, adapter: Ca
     range('last60', 'Last 60 days', ({ today, dateMath }) => ({ start: dateMath.add(today, -60, 'day'), end: today })),
     range('fytd', 'This Fiscal Year to Date', () => ({ start: adapter.bsToAd(fyStart, fiscalStartMonth, 1), end: today })),
     { id: 'fiscalYear', label: 'Fiscal Year', kind: 'submenu', items: fyItems },
+    { id: 'month', label: 'Pick a Month', kind: 'submenu', items: [] },
     { id: 'custom', label: 'Custom Range', kind: 'submenu', items: [] },
   ];
 

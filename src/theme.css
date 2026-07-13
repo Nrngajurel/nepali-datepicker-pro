@@ -593,6 +593,22 @@
   color: rgba(255, 255, 255, 0.82);
 }
 
+/* Month selection (selectionUnit: 'month') — one month = its full date span. */
+.ndp-monthgrid--range {
+  margin-top: 8px;
+}
+
+.ndp-monthcell.is-disabled {
+  opacity: 0.4;
+  text-decoration: line-through;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.ndp-cal-label--static {
+  cursor: default;
+}
+
 .ndp-yearcell--empty {
   cursor: default;
 }
@@ -610,7 +626,7 @@
 
 .ndp-time-panel {
   display: flex;
-  width: 172px;
+  width: 190px;
   flex: 0 0 auto;
   flex-direction: column;
   gap: 14px;
@@ -626,94 +642,93 @@
   text-align: center;
 }
 
-.ndp-time-spinners {
+/* iOS-style scrollable wheels ------------------------------------------------ */
+.ndp-time-wheels {
+  position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
 }
 
-.ndp-spinner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.ndp-spin-btn {
-  width: 46px;
-  height: 24px;
-  border-radius: 6px;
-  background: var(--ndp-color-primary-bg);
-  color: var(--ndp-color-primary);
-  font-size: 11px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.ndp-spin-btn:hover {
-  background: var(--ndp-color-primary);
-  color: #fff;
-}
-
-.ndp-spin-value {
-  width: 46px;
-  height: 46px;
-  border: 1px solid var(--ndp-color-border);
+/* the fixed center band marking the current selection across all wheels */
+.ndp-time-wheels::before {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 50%;
+  height: 34px;
+  transform: translateY(-50%);
   border-radius: 8px;
-  background: var(--ndp-color-surface);
-  color: var(--ndp-color-text);
-  font: 700 20px/1 var(--ndp-font);
+  background: var(--ndp-color-primary-bg);
+  pointer-events: none;
+}
+
+.ndp-wheel {
+  position: relative;
+  width: 44px;
+  height: 170px;
+}
+
+/* fade the rows away from the center band */
+.ndp-wheel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(#fbfcfd, transparent 34%, transparent 66%, #fbfcfd);
+}
+
+.ndp-wheel-list {
+  height: 100%;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  padding: 68px 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ndp-wheel-list::-webkit-scrollbar {
+  display: none;
+}
+
+.ndp-wheel-item {
+  display: block;
+  width: 100%;
+  height: 34px;
+  scroll-snap-align: center;
+  border: 0;
+  background: transparent;
+  color: var(--ndp-color-text-muted);
+  font: 600 16px/34px var(--ndp-font);
   font-variant-numeric: tabular-nums;
   text-align: center;
-}
-
-.ndp-spin-value:focus-visible {
-  outline: 2px solid var(--ndp-color-accent);
-  outline-offset: 1px;
-}
-
-.ndp-spin-cap {
-  color: var(--ndp-color-text-faint);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.ndp-spin-colon {
-  align-self: center;
-  margin-bottom: 18px;
-  color: var(--ndp-color-text-muted);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.ndp-meridiem {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  align-self: center;
-  margin-bottom: 18px;
-  margin-left: 4px;
-}
-
-.ndp-meridiem-btn {
-  appearance: none;
-  width: 44px;
-  border: 1px solid var(--ndp-color-border);
-  border-radius: 6px;
-  padding: 6px 0;
-  background: var(--ndp-color-surface);
-  color: var(--ndp-color-text);
-  font: 700 12px var(--ndp-font);
   cursor: pointer;
+  transition: color 0.12s ease, font-size 0.12s ease;
 }
 
-.ndp-meridiem-btn.is-active {
-  background: var(--ndp-color-primary);
-  border-color: var(--ndp-color-primary);
-  color: #fff;
+.ndp-wheel-item:hover:not(.is-disabled) {
+  color: var(--ndp-color-text);
+}
+
+.ndp-wheel-item.is-selected {
+  color: var(--ndp-color-primary);
+  font-weight: 800;
+  font-size: 19px;
+}
+
+.ndp-wheel-item.is-disabled {
+  color: var(--ndp-color-text-faint);
+  text-decoration: line-through;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.ndp-wheel-colon {
+  align-self: center;
+  color: var(--ndp-color-text-muted);
+  font: 700 18px var(--ndp-font);
 }
 
 .ndp-time-now {
@@ -776,7 +791,7 @@
     border-top: 1px solid var(--ndp-color-border);
   }
 
-  .ndp-time-spinners {
-    gap: 10px;
+  .ndp-time-wheels {
+    gap: 6px;
   }
 }

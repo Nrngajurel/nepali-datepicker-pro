@@ -16,7 +16,7 @@ function open(input: HTMLElement): HTMLElement | null {
   return document.querySelector('.ndp-panel--datetime');
 }
 
-test('withTime: opening the picker shows the time panel with spinners', () => {
+test('withTime: opening the picker shows the time panel with wheels', () => {
   const input = document.createElement('input');
   input.type = 'text';
   document.body.appendChild(input);
@@ -26,7 +26,7 @@ test('withTime: opening the picker shows the time panel with spinners', () => {
   assert.ok(panel, 'datetime panel is rendered on open');
   const timePanel = panel!.querySelector('.ndp-time-panel');
   assert.ok(timePanel, 'time panel is present in the opened popup');
-  assert.equal(timePanel!.querySelectorAll('.ndp-spinner').length, 2, 'hour + minute spinners present');
+  assert.equal(timePanel!.querySelectorAll('.ndp-wheel').length, 2, 'hour + minute wheels present');
 });
 
 test('clicking a day does NOT close the picker when withTime is on', () => {
@@ -40,16 +40,17 @@ test('clicking a day does NOT close the picker when withTime is on', () => {
   assert.ok(document.querySelector('.ndp-time-panel'), 'time panel still visible after selecting a day');
 });
 
-test('the mounted hour spinner actually changes the value', () => {
+test('the mounted hour wheel actually changes the value', () => {
   const input = document.createElement('input');
   document.body.appendChild(input);
   const inst = mountDateTimePicker(input, { withTime: true, value: new Date(2024, 3, 13, 10, 30, 0) });
   open(input);
 
-  const hourUp = document.querySelector('.ndp-spinner .ndp-spin-btn')!;
-  hourUp.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  assert.equal((inst.getState() as { time: { hour: number } }).time.hour, 11, 'hour advanced via the mounted button');
-  assert.equal((document.querySelector('.ndp-spinner .ndp-spin-value') as HTMLInputElement).value, '11');
+  const hourWheel = document.querySelector('.ndp-wheel')!;
+  const eleven = [...hourWheel.querySelectorAll('.ndp-wheel-item')].find((n) => n.textContent === '11')!;
+  eleven.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  assert.equal((inst.getState() as { time: { hour: number } }).time.hour, 11, 'hour advanced via the mounted wheel');
+  assert.equal(document.querySelector('.ndp-wheel .ndp-wheel-item.is-selected')!.textContent, '11');
 });
 
 test('WITHOUT withTime there is deliberately no time panel', () => {

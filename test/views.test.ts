@@ -7,6 +7,7 @@ import { test } from 'vitest';
 import { createDateTimeController } from '../src/application/date-time-controller';
 import { createDateRangeController } from '../src/application/date-range-controller';
 import { renderDateTimePanel, renderRangePanel } from '../src/render/dom';
+import { defaultCalendarAdapter } from '../src/adapters/bs-ad-calendar-adapter';
 
 const base = () => new Date(2024, 3, 13); // 2081-01-01 BS
 
@@ -116,4 +117,40 @@ test('range: update({ mode }) switches the calendar system live', () => {
   const c = createDateRangeController({});
   c.update({ mode: 'AD' });
   assert.equal(c.getState().mode, 'AD');
+});
+
+test('range: "Pick a Month" preset switches to whole-month selection', () => {
+  const c = createDateRangeController({ value: { start: base(), end: base() } });
+  c.show();
+  const root = render(c, 'range');
+  assert.ok(root.querySelector('.ndp-grid'), 'starts in the day grid');
+
+  // "Pick a Month" appears in the presets rail, next to Custom Range.
+  const monthPreset = [...root.querySelectorAll<HTMLButtonElement>('.ndp-preset')].find((b) => b.textContent === 'Pick a Month')!;
+  assert.ok(monthPreset, 'Pick a Month preset is in the rail');
+  monthPreset.click();
+
+  assert.ok(root.querySelector('.ndp-monthgrid--range'), 'month grid is shown');
+  assert.equal(root.querySelector('.ndp-weekdays'), null, 'no day weekday row in month mode');
+
+  const cells = () => [...root.querySelectorAll<HTMLButtonElement>('.ndp-monthcell')];
+  cells()[6].click(); // 7th BS month — single click commits the whole month
+
+  const range = c.getState().range!;
+  assert.equal(range.start.bs.month, 7, 'range starts at the picked month');
+  assert.equal(range.start.bs.day, 1, 'starts on the first day of the month');
+  assert.equal(range.end.bs.month, 7, 'range ends in the same month');
+  const y = range.end.bs.year;
+  assert.equal(range.end.bs.day, defaultCalendarAdapter.daysInBsMonth(y, 7), 'ends on the last day of the month');
+  assert.ok(root.querySelector('.ndp-monthcell.is-selected'), 'picked month is highlighted');
+});
+
+test('range: choosing another preset leaves month mode', () => {
+  const c = createDateRangeController({ value: { start: base(), end: base() } });
+  c.show();
+  const root = render(c, 'range');
+  c.startMonthSelect();
+  assert.equal(c.getState().selectionUnit, 'month');
+  c.selectPreset('today');
+  assert.equal(c.getState().selectionUnit, 'day', 'back to day selection after a normal preset');
 });

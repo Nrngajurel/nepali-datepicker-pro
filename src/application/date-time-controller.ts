@@ -37,6 +37,8 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   selectYearView(year: number): void;
   toggleMode(): void;
   isDisabled(value: DateValue): boolean;
+  isHourDisabled(hour: number): boolean;
+  isMinuteDisabled(hour: number, minute: number): boolean;
   cellForBs(year: number, month: number, day: number): DateValue;
   buildMonthCells(year: number, month: number): Array<DateValue | null>;
 }
@@ -91,6 +93,13 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
 
   function commitTime(next: Required<TimeValue>): void {
     setState({ time: clampTime(next) });
+  }
+
+  // Absolute minute-of-day bounds from minTime/maxTime (per clampTime).
+  function timeBounds(): { lo: number; hi: number } {
+    const lo = options.minTime ? options.minTime.hour * 60 + (options.minTime.minute ?? 0) : 0;
+    const hi = options.maxTime ? options.maxTime.hour * 60 + (options.maxTime.minute ?? 0) : 24 * 60 - 1;
+    return { lo, hi };
   }
 
   function buildResult(value: DateValue): DateTimeResult {
@@ -231,6 +240,24 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     isDisabled(value) {
       return isDayDisabled(value.ad, options, nativeDateMath);
+    },
+    // An hour is disabled when it lies entirely outside min/max, or when every
+    // step-minute in it is rejected by disabledTimes.
+    isHourDisabled(hour) {
+      const { lo, hi } = timeBounds();
+      if (hour * 60 + 59 < lo || hour * 60 > hi) return true;
+      if (options.disabledTimes) {
+        const step = state.minuteStep > 0 ? state.minuteStep : 1;
+        for (let m = 0; m < 60; m += step) if (!options.disabledTimes(hour, m)) return false;
+        return true;
+      }
+      return false;
+    },
+    isMinuteDisabled(hour, minute) {
+      const { lo, hi } = timeBounds();
+      const t = hour * 60 + minute;
+      if (t < lo || t > hi) return true;
+      return options.disabledTimes?.(hour, minute) ?? false;
     },
     cellForBs(year, month, day) {
       return dateValueFromBs(adapter, { year, month, day });
