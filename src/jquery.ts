@@ -147,8 +147,8 @@ export function install($: JQueryLike): void {
     'nepaliDateRangePicker',
     mountDateRangePicker,
   );
-  (rangePlugin as Record<string, unknown>).setDefaults = setDefaults;
-  (rangePlugin as Record<string, unknown>).regional = regional;
+(rangePlugin as unknown as Record<string, unknown>).setDefaults = setDefaults;
+(rangePlugin as unknown as Record<string, unknown>).regional = regional;
   $.fn.nepaliDateRangePicker = rangePlugin;
 
   // DateTimePicker
