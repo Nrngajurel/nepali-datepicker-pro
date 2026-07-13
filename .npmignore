@@ -1,0 +1,12 @@
+src/
+playground/
+tests/
+.vscode/
+.github/
+.claude/
+.commandcode/
+dist/jquery.js.map
+dist/react.js.map
+dist/vue.js.map
+dist/nepali-datepicker-pro.umd.cjs.map
+dist/src-CaN-TMXz.js.map

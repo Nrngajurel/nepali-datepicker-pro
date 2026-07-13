@@ -124,10 +124,8 @@ onBeforeUnmount(() => observer?.disconnect());
           </button>
           <div class="hero-badges">
             <span>BS 1970–2100</span>
-            <span>O(1) engine</span>
-            <span>~13 KB gzip</span>
+            <span>~17 KB gzip</span>
             <span>Zero dependencies</span>
-            <span>Verified vs. reference oracle</span>
           </div>
         </div>
 

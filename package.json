@@ -4,6 +4,33 @@
   "description": "Framework-agnostic Nepali BS/AD date, datetime, and range picker with a same-screen time picker. Works from vanilla JS, a <script> tag, jQuery, Vue, and React.",
   "type": "module",
   "license": "MIT",
+  "author": {
+    "name": "Narayan Gajurel",
+    "email": "nrngajurel@gmail.com"
+  },
+  "homepage": "https://github.com/narayangajurel/nepali-datepicker-pro#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/narayangajurel/nepali-datepicker-pro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/narayangajurel/nepali-datepicker-pro/issues"
+  },
+  "keywords": [
+    "nepali",
+    "date-picker",
+    "datepicker",
+    "bikram-sambat",
+    "bs-calendar",
+    "nepali-calendar",
+    "nepali-date",
+    "date-range-picker",
+    "time-picker",
+    "vue",
+    "react",
+    "jquery",
+    "typescript"
+  ],
   "sideEffects": [
     "*.css"
   ],
@@ -32,8 +59,13 @@
     "./style.css": "./dist/style.css"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build && vite build --config vite.umd.config.ts",
@@ -41,8 +73,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
-    "prepare:data": "node scripts/extract-bs-data.mjs",
-    "gen:fixtures": "node scripts/gen-fixtures.mjs"
+    "prepublishOnly": "npm run lint && npm run test && npm run build"
   },
   "peerDependencies": {
     "jquery": ">=3",
