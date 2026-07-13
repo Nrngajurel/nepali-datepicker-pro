@@ -202,9 +202,12 @@ export interface MonthPickerOptions {
   allowInput?: boolean;
   displayFormat?: string;
   valueFormat?: ValueFormat;
-  altField?: string | HTMLElement;
+  // A month is a date range (first→last day) under the hood, so altField /
+  // submitName accept a { start, end } pair for reporting, just like the range
+  // picker — e.g. submitName: { start: 'from_date', end: 'to_date' }.
+  altField?: string | HTMLElement | { start: string | HTMLElement; end: string | HTMLElement };
   altFormat?: ValueFormat;
-  submitName?: string;
+  submitName?: string | { start: string; end: string };
   minYear?: number;
   maxYear?: number;
   appendTo?: string | HTMLElement;
@@ -227,8 +230,12 @@ export interface MonthResult {
   /** Last day of the selected BS month as an AD Date (report range end). */
   end: Date;
   formatted: string;
-  /** Machine value per `valueFormat` (default AD ISO, the month's first day). */
-  value: string | number | Date;
+  /** Machine values per `valueFormat` (default AD ISO): the month as a date
+   *  range. `startValue` = first day, `endValue` = last day, `value` = the pair
+   *  joined by a comma — ideal for `WHERE date BETWEEN … AND …` reporting. */
+  startValue: string | number | Date;
+  endValue: string | number | Date;
+  value: string;
 }
 
 export interface PickerInstance<TValue, TOptions> {

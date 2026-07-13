@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nepali Datepicker Pro — Plain JavaScript (mount API)</title>
+
+  <!--
+    PLAIN JS USAGE — call the mount* functions yourself for full control.
+    1. npm run build   2. npx serve   3. open examples/vanilla-js.html
+    The UMD build exposes everything on the global `NepaliPicker`.
+  -->
+  <link rel="stylesheet" href="../dist/style.css" />
+  <script src="../dist/nepali-datepicker-pro.umd.cjs"></script>
+
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #262b30; }
+    h1 { font-size: 20px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    .field { margin-bottom: 22px; }
+    .out { margin-top: 6px; font: 13px/1.4 ui-monospace, monospace; color: #245c7a; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Nepali Datepicker Pro — Plain JavaScript</h1>
+  <p>Each field is mounted with an explicit <code>mount*</code> call and an
+     <code>onChange</code> callback.</p>
+
+  <div class="field">
+    <label for="dt">Date &amp; time</label>
+    <input id="dt" type="text" />
+    <div class="out" id="dt-out">— pick a date —</div>
+  </div>
+
+  <div class="field">
+    <label for="range">Date range (last-30-days preset, no past dates)</label>
+    <input id="range" type="text" />
+    <div class="out" id="range-out">— pick a range —</div>
+  </div>
+
+  <div class="field">
+    <label for="month">Month</label>
+    <input id="month" type="text" />
+    <div class="out" id="month-out">— pick a month —</div>
+  </div>
+
+  <script>
+    const { mountDateTimePicker, mountDateRangePicker, mountMonthPicker } = NepaliPicker;
+
+    // --- Date & time ---
+    mountDateTimePicker(document.getElementById('dt'), {
+      withTime: true,
+      timeFormat: '12h',
+      minuteStep: 5,
+      minDate: 'today',            // relative tokens are allowed
+      valueFormat: 'iso',          // machine value shape (AD ISO)
+      onChange: (r) => {
+        // r = { ad: Date, bs: {year,month,day}, time, formatted, value }
+        document.getElementById('dt-out').textContent =
+          'display : ' + r.formatted + '\nAD Date : ' + r.ad.toString() + '\nserver  : ' + r.value;
+      },
+    });
+
+    // --- Date range ---
+    mountDateRangePicker(document.getElementById('range'), {
+      disabledDates: (d) => d < new Date(new Date().setHours(0, 0, 0, 0)),
+      onApply: (r) => {
+        document.getElementById('range-out').textContent =
+          'display : ' + r.formatted + '\nserver  : ' + r.startValue + '  →  ' + r.endValue;
+      },
+    });
+
+    // --- Month = a from→to date range (great for monthly reports) ---
+    const monthPicker = mountMonthPicker(document.getElementById('month'), {
+      // A month submits as a date range; { start, end } → two hidden fields.
+      submitName: { start: 'from_date', end: 'to_date' },
+      onChange: (r) => {
+        // r.startValue / r.endValue = first & last day of the BS month (AD ISO)
+        document.getElementById('month-out').textContent =
+          r.formatted + '\nreport range → ' + r.startValue + '  to  ' + r.endValue;
+      },
+    });
+
+    // You can read/drive the instance imperatively too:
+    //   monthPicker.getValue();  monthPicker.setValue({ year: 2081, month: 4 });
+    //   monthPicker.show();  monthPicker.hide();  monthPicker.destroy();
+    console.log('current month value:', monthPicker.getValue());
+  </script>
+</body>
+</html>

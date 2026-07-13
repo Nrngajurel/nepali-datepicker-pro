@@ -25,7 +25,7 @@ test('buildOptions omits defaults and keeps changed values', () => {
 
 test('snippets are correct for every framework', () => {
   const opts = { withTime: true, timeFormat: '12h', minuteStep: 5 };
-  expect(snippet(datetime, opts, 'vanilla')).toContain("import { mountDateTimePicker } from 'advance-nepali-datepicker'");
+  expect(snippet(datetime, opts, 'vanilla')).toContain("import { mountDateTimePicker } from 'nepali-datepicker-pro'");
   expect(snippet(datetime, opts, 'vanilla')).toContain('minuteStep: 5');
   expect(snippet(datetime, opts, 'react')).toContain('<NepaliDateTimePicker withTime timeFormat="12h" minuteStep={5} />');
   expect(snippet(datetime, opts, 'vue')).toContain(":options=\"{ withTime: true, timeFormat: '12h', minuteStep: 5 }\"");
@@ -48,7 +48,7 @@ test('the Vue docs app mounts hero, component cards, helpers and events', () => 
   document.body.appendChild(el);
   createApp(App).mount(el);
 
-  expect(el.querySelector('.hero-title')?.textContent).toMatch(/Advance Nepali/);
+  expect(el.querySelector('.hero-title')?.textContent).toMatch(/Nepali Datepicker/);
   for (const id of ['datetime', 'range', 'month', 'helpers', 'events']) {
     expect(el.querySelector(`#${id}`)).toBeTruthy();
   }

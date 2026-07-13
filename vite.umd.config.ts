@@ -13,7 +13,7 @@ export default defineConfig({
       entry: resolve(import.meta.dirname, 'src/index.ts'),
       name: 'NepaliPicker',
       formats: ['umd'],
-      fileName: () => 'advance-nepali-datepicker.umd.cjs',
+      fileName: () => 'nepali-datepicker-pro.umd.cjs',
     },
   },
 });

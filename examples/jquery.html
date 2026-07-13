@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nepali Datepicker Pro — jQuery plugin</title>
+
+  <!--
+    jQUERY USAGE — $.fn.nepaliDateTimePicker / nepaliDateRangePicker / nepaliMonthPicker.
+    1. npm run build   2. npx serve   3. open examples/jquery.html
+    jQuery must load BEFORE the plugin; the plugin auto-registers itself onto
+    window.jQuery when imported.
+  -->
+  <link rel="stylesheet" href="../dist/style.css" />
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js" crossorigin="anonymous"></script>
+
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #262b30; }
+    h1 { font-size: 20px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    .field { margin-bottom: 22px; }
+    .out { margin-top: 6px; font: 13px/1.4 ui-monospace, monospace; color: #245c7a; white-space: pre-wrap; }
+    button { padding: 6px 12px; border: 1px solid #245c7a; background: #fff; color: #245c7a; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Nepali Datepicker Pro — jQuery</h1>
+  <p>Pickers are attached as jQuery plugins. Options (incl. <code>onChange</code>/<code>onApply</code>)
+     are passed straight through.</p>
+
+  <div class="field">
+    <label for="dt">Date &amp; time</label>
+    <input id="dt" type="text" />
+    <div class="out" id="dt-out">— pick a date —</div>
+  </div>
+
+  <div class="field">
+    <label for="range">Date range</label>
+    <input id="range" type="text" />
+    <div class="out" id="range-out">— pick a range —</div>
+  </div>
+
+  <div class="field">
+    <label for="month">Month</label>
+    <input id="month" type="text" />
+    <button type="button" id="read">Read month value</button>
+    <div class="out" id="month-out">— pick a month —</div>
+  </div>
+
+  <!-- The plugin is shipped as an ES module; importing it installs $.fn.nepali* -->
+  <script type="module">
+    import '../dist/jquery.js';
+
+    // jQuery is available as the global $ inside this module.
+    $(function () {
+      $('#dt').nepaliDateTimePicker({
+        withTime: true,
+        timeFormat: '12h',
+        minuteStep: 5,
+        valueFormat: 'iso',
+        onChange: (r) => {
+          $('#dt-out').text('display : ' + r.formatted + '\nserver  : ' + r.value);
+        },
+      });
+
+      $('#range').nepaliDateRangePicker({
+        onApply: (r) => {
+          $('#range-out').text('display : ' + r.formatted + '\nserver  : ' + r.startValue + '  →  ' + r.endValue);
+        },
+      });
+
+      $('#month').nepaliMonthPicker({
+        onChange: (r) => $('#month-out').text(r.formatted),
+      });
+
+      // Imperative plugin methods: getValue / show / hide / destroy / option.
+      $('#read').on('click', () => {
+        const v = $('#month').nepaliMonthPicker('getValue');
+        $('#month-out').text(v ? JSON.stringify(v, null, 2) : '(nothing selected yet)');
+      });
+      // e.g. change an option later:  $('#dt').nepaliDateTimePicker('option', 'minuteStep', 15);
+    });
+  </script>
+</body>
+</html>

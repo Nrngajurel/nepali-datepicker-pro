@@ -7,6 +7,7 @@ import { test, beforeEach } from 'vitest';
 import { maskTypedDate, tokenizeTyped, normalizeDigits, countDigits } from '../src/format/parse';
 import { createDateTimeController } from '../src/application/date-time-controller';
 import { mountDateTimePicker, mountDateRangePicker, mountMonthPicker } from '../src/index';
+import { defaultCalendarAdapter } from '../src/adapters/bs-ad-calendar-adapter';
 
 beforeEach(() => {
   document.body.innerHTML = '';
@@ -354,7 +355,7 @@ test('range picker: typing start – end commits an ordered range', () => {
   document.body.appendChild(input);
   const inst = mountDateRangePicker(input, {});
   input.dispatchEvent(new FocusEvent('focus'));
-  assert.match(input.value, /^\d{4}-\d{2}-\d{2} – \d{4}-\d{2}-\d{2}$/, 'two segmented dates with a – separator');
+  assert.equal(input.value, 'YYYY-MM-DD – YYYY-MM-DD', 'starts empty (placeholder) until a range is set');
   type(input, '20810105'); // start 2081-01-05
   type(input, '20810120'); // end   2081-01-20
   assert.equal(input.value, '2081-01-05 – 2081-01-20');
@@ -362,4 +363,49 @@ test('range picker: typing start – end commits an ordered range', () => {
   const range = (inst.getState() as { range: { start: { bs: { day: number } }; end: { bs: { day: number } } } }).range;
   assert.equal(range.start.bs.day, 5, 'start committed');
   assert.equal(range.end.bs.day, 20, 'end committed');
+});
+
+// --- empty by default (no value auto-shown until set) ---------------------
+
+test('pickers start empty unless a value/defaultValue is provided', () => {
+  const dt = document.createElement('input');
+  const rg = document.createElement('input');
+  const mo = document.createElement('input');
+  document.body.append(dt, rg, mo);
+
+  const dtInst = mountDateTimePicker(dt, {});
+  const rgInst = mountDateRangePicker(rg, {});
+  const moInst = mountMonthPicker(mo, {});
+
+  assert.equal(dtInst.getValue(), null, 'datetime empty by default');
+  assert.equal(rgInst.getValue(), null, 'range empty by default');
+  assert.equal(moInst.getValue(), null, 'month empty by default');
+  assert.equal(dt.value, '', 'datetime input is blank');
+  assert.equal(rg.value, '', 'range input is blank');
+  assert.equal(mo.value, '', 'month input is blank');
+});
+
+test('an explicit value / defaultValue is shown', () => {
+  const a = document.createElement('input');
+  const b = document.createElement('input');
+  document.body.append(a, b);
+  assert.ok(mountDateTimePicker(a, { value: new Date(2024, 3, 13) }).getValue(), 'value populates');
+  assert.ok(mountDateTimePicker(b, { defaultValue: new Date(2024, 3, 13) }).getValue(), 'defaultValue populates');
+});
+
+test('the calendar still opens on the current month when empty', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  const inst = mountDateTimePicker(input, {});
+  const today = defaultCalendarAdapter.todayBs();
+  assert.equal((inst.getState() as { viewYear: number }).viewYear, today.year);
+  assert.equal((inst.getState() as { viewMonth: number }).viewMonth, today.month);
+});
+
+test('range: a defaultPresetId still preselects that preset', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  const inst = mountDateRangePicker(input, { defaultPresetId: 'last7' });
+  // 'last7' resolves to a concrete range, so the picker is not empty.
+  assert.ok(inst.getValue(), 'defaultPresetId preselects a range');
 });

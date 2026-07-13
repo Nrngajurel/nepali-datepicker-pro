@@ -39,7 +39,7 @@ const reference = [
 ];
 
 const copied = ref(false);
-const importSnippet = `import { nepaliFunctions as NF } from 'advance-nepali-datepicker';
+const importSnippet = `import { nepaliFunctions as NF } from 'nepali-datepicker-pro';
 
 NF.AD2BS(new Date());              // → { year, month, day }
 NF.BS2AD(2081, 4, 1);              // → Date (AD)
@@ -76,10 +76,12 @@ async function copy() {
           <div class="bs-inputs">
             <input type="number" v-model.number="bs.year" min="1970" max="2100" aria-label="BS year" />
             <input type="number" v-model.number="bs.month" min="1" max="12" aria-label="BS month" />
-            <input type="number" v-model.number="bs.day" :min="1" :max="daysInBsMonth === '—' ? 32 : daysInBsMonth" aria-label="BS day" />
+            <input type="number" v-model.number="bs.day" :min="1" :max="daysInBsMonth === '—' ? 32 : daysInBsMonth"
+              aria-label="BS day" />
           </div>
           <div class="conv-out">
-            <template v-if="bsToAd">{{ bsToAd }} AD <span class="uni">· {{ daysInBsMonth }} days in month</span></template>
+            <template v-if="bsToAd">{{ bsToAd }} AD <span class="uni">· {{ daysInBsMonth }} days in
+                month</span></template>
             <template v-else>invalid BS date</template>
           </div>
         </div>
@@ -104,15 +106,68 @@ async function copy() {
 </template>
 
 <style scoped>
-.conv { display: grid; gap: 8px; margin-bottom: 18px; }
-.conv > label { font-weight: 700; font-size: 13px; }
-.conv input { font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); }
-.bs-inputs { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 6px; }
-.conv-out { font: 600 14px var(--mono); color: var(--brand-ink); }
-.conv-out .uni { color: var(--ink-faint); font-weight: 400; }
-.ref-list { display: grid; gap: 2px; }
-.ref-row { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
-.ref-row:first-child { border-top: 0; }
-.ref-row code { color: var(--brand-ink); white-space: nowrap; }
-.ref-row span { color: var(--ink-soft); text-align: right; }
+.conv {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.conv>label {
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.conv input {
+  font: inherit;
+  font-size: 14px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+}
+
+.bs-inputs {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 6px;
+}
+
+.conv-out {
+  font: 600 14px var(--mono);
+  color: var(--brand-ink);
+}
+
+.conv-out .uni {
+  color: var(--ink-faint);
+  font-weight: 400;
+}
+
+.ref-list {
+  display: grid;
+  gap: 2px;
+}
+
+.ref-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+}
+
+.ref-row:first-child {
+  border-top: 0;
+}
+
+.ref-row code {
+  color: var(--brand-ink);
+  white-space: nowrap;
+}
+
+.ref-row span {
+  color: var(--ink-soft);
+  text-align: right;
+}
 </style>

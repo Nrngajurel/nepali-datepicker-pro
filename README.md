@@ -1,4 +1,4 @@
-# Advance Nepali DatePicker
+# Nepali Datepicker Pro
 
 A framework-agnostic Nepali **Bikram Sambat (BS) ↔ Gregorian (AD)** date, **date-time**, and **range** picker. Self-owned calendar engine (no CDN, no third-party Nepali-date dependency), a same-screen time picker, and thin wrappers for a plain `<script>` tag, jQuery, Vue, and React — all over one shared core.
 
@@ -9,8 +9,8 @@ The implementation follows the build spec in `references/`.
 ### Plain `<script>` tag (no build tools)
 
 ```html
-<link rel="stylesheet" href="advance-nepali-datepicker/dist/style.css" />
-<script src="advance-nepali-datepicker/dist/advance-nepali-datepicker.umd.cjs"></script>
+<link rel="stylesheet" href="nepali-datepicker-pro/dist/style.css" />
+<script src="nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs"></script>
 
 <input type="text" data-nepali-datepicker data-with-time="true"
        data-time-format="12h" data-minute-step="5" readonly />
@@ -21,8 +21,8 @@ The implementation follows the build spec in `references/`.
 ### Bundler (Vite / webpack / etc.)
 
 ```ts
-import { mountDateTimePicker } from 'advance-nepali-datepicker';
-import 'advance-nepali-datepicker/style.css';
+import { mountDateTimePicker } from 'nepali-datepicker-pro';
+import 'nepali-datepicker-pro/style.css';
 
 const picker = mountDateTimePicker(document.querySelector('#when'), {
   withTime: true,
@@ -31,24 +31,28 @@ const picker = mountDateTimePicker(document.querySelector('#when'), {
 });
 ```
 
-Framework entry points: `advance-nepali-datepicker/jquery`, `advance-nepali-datepicker/vue`, `advance-nepali-datepicker/react` (each declares the framework as an optional peer dependency).
+Framework entry points: `nepali-datepicker-pro/jquery`, `nepali-datepicker-pro/vue`, `nepali-datepicker-pro/react` (each declares the framework as an optional peer dependency).
 
 ### Month picker (for monthly reports / payslips)
 
-Selects a single BS month and hands back the AD date range it covers:
+Picks a single BS month but is **a date range under the hood** — it hands back
+(and can submit) the first→last day of the month, so `WHERE date BETWEEN … AND …`
+reporting is one step:
 
-```html
-<input type="text" data-nepali-monthpicker readonly />
-```
 ```ts
-import { mountMonthPicker } from 'advance-nepali-datepicker';
+import { mountMonthPicker } from 'nepali-datepicker-pro';
 
 mountMonthPicker(input, {
-  onChange: ({ year, month, start, end, formatted }) => {
-    // formatted → "श्रावण २०८१"; start/end → AD Date range for that BS month
+  // "श्रावण २०८१" on screen · submits from_date=2081-04-01AD & to_date=2081-04-31AD
+  submitName: { start: 'from_date', end: 'to_date' },
+  onChange: (r) => {
+    // r.formatted → "श्रावण २०८१"
+    // r.start / r.end → AD Date range · r.startValue / r.endValue → AD ISO strings
+    // r.value → "from,to"  (e.g. "2024-07-16,2024-08-16")
   },
 });
 ```
+A plain string `submitName: 'report_month'` instead writes one `"start,end"` field.
 Also available as `NepaliMonthPicker` (Vue/React) and `$.fn.nepaliMonthPicker` (jQuery).
 
 ## Server value / form submission

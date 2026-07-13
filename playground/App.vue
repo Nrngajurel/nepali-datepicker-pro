@@ -40,14 +40,14 @@ const installCode = computed(() => {
   if (framework.value === 'html' || framework.value === 'jquery') {
     return [
       '<!-- No build step — drop in the CDN bundle -->',
-      '<link rel="stylesheet" href="https://unpkg.com/advance-nepali-datepicker/dist/style.css">',
-      '<script src="https://unpkg.com/advance-nepali-datepicker/dist/advance-nepali-datepicker.umd.cjs"><\/script>',
+      '<link rel="stylesheet" href="https://unpkg.com/nepali-datepicker-pro/dist/style.css">',
+      '<script src="https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs"><\/script>',
     ].join('\n');
   }
-  return 'npm install advance-nepali-datepicker';
+  return 'npm install nepali-datepicker-pro';
 });
 
-const cssImport = "import 'advance-nepali-datepicker/style.css';";
+const cssImport = "import 'nepali-datepicker-pro/style.css';";
 
 // ---- copy helpers -----------------------------------------------------------
 const copiedKey = ref('');
@@ -83,7 +83,7 @@ onBeforeUnmount(() => observer?.disconnect());
     <button class="menu-btn" type="button" aria-label="Toggle navigation" @click="menuOpen = !menuOpen">☰</button>
     <a class="brand" href="#introduction" @click.prevent="go('introduction')">
       <span class="mark">न</span>
-      <span>Advance Nepali <span class="accent">DatePicker</span></span>
+      <span>Nepali Datepicker<span class="accent">Pro</span></span>
     </a>
     <span class="ver">v1.0</span>
     <span class="spacer"></span>
@@ -111,15 +111,15 @@ onBeforeUnmount(() => observer?.disconnect());
       <!-- Introduction -->
       <section class="doc-section" id="introduction">
         <div class="hero">
-          <h1 class="hero-title">Advance Nepali <span>DatePicker</span></h1>
+          <h1 class="hero-title">Nepali Datepicker <span>Pro</span></h1>
           <p class="hero-sub">
             A self-owned Bikram Sambat ↔ Gregorian calendar engine with date, time, range and month
             pickers — framework-agnostic, and ready for vanilla JS, a plain
             <code>&lt;script&gt;</code> tag, jQuery, Vue and React.
           </p>
-          <button class="install" type="button" @click="copy('npm install advance-nepali-datepicker', 'hero')">
+          <button class="install" type="button" @click="copy('npm install nepali-datepicker-pro', 'hero')">
             <span class="dollar">$</span>
-            npm install advance-nepali-datepicker
+            npm install nepali-datepicker-pro
             <span class="copyhint">{{ copiedKey === 'hero' ? '✓ copied' : 'copy' }}</span>
           </button>
           <div class="hero-badges">
@@ -165,12 +165,13 @@ onBeforeUnmount(() => observer?.disconnect());
           </div>
           <p>Then import the stylesheet once, anywhere in your app:</p>
           <div class="code-block">
-            <button class="copy-btn" :class="{ copied: copiedKey === 'css' }"
-              @click="copy(cssImport, 'css')">{{ copiedKey === 'css' ? 'Copied!' : 'Copy' }}</button>
+            <button class="copy-btn" :class="{ copied: copiedKey === 'css' }" @click="copy(cssImport, 'css')">{{
+              copiedKey === 'css' ? 'Copied!' : 'Copy' }}</button>
             <pre>{{ cssImport }}</pre>
           </div>
           <p>The stylesheet is unstyled-framework-agnostic and theme-aware (light/dark). Everything is namespaced under
-            <code>.ndp-*</code> so it won't collide with your app's CSS.</p>
+            <code>.ndp-*</code> so it won't collide with your app's CSS.
+          </p>
         </div>
       </section>
 

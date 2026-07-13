@@ -1,5 +1,5 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
-import { formatDateValue, formatMachineValue } from '../format/index.js';
+import { formatDateValue, formatMachineValue, stringifyMachineValue } from '../format/index.js';
 import type { MonthPickerOptions, MonthResult, MonthValue, PickerInstance, PickerLocale } from '../types.js';
 
 export interface MonthPickerControllerState {
@@ -34,7 +34,10 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
   let listeners: Array<(value: MonthResult) => void> = [];
   let stateListeners: Array<() => void> = [];
 
-  const initial = options.value ?? options.defaultValue ?? adapter.todayBs();
+  // Selected only when a month is explicitly provided; otherwise empty. The
+  // grid still opens on the current BS month.
+  const providedMonth = options.value !== undefined ? options.value : options.defaultValue;
+  const initial = providedMonth ?? adapter.todayBs();
 
   let state: MonthPickerControllerState = {
     isOpen: false,
@@ -42,7 +45,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     viewYear: initial.year,
     viewMonth: initial.month,
     yearGroupStart: initial.year - 6,
-    selected: options.value === null || options.defaultValue === null ? null : { year: initial.year, month: initial.month },
+    selected: providedMonth ? { year: providedMonth.year, month: providedMonth.month } : null,
   };
 
   function setState(patch: Partial<MonthPickerControllerState>): void {
@@ -60,6 +63,10 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     const days = adapter.daysInBsMonth(year, month);
     const start = adapter.bsToAd(year, month, 1);
     const end = adapter.bsToAd(year, month, days);
+    // A month is a from→to date range: first day → last day.
+    const vf = options.valueFormat ?? 'iso';
+    const startValue = formatMachineValue({ ad: start, bs: { year, month, day: 1 } }, vf, adapter);
+    const endValue = formatMachineValue({ ad: end, bs: { year, month, day: days } }, vf, adapter);
     return {
       year,
       month,
@@ -68,7 +75,9 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
       start,
       end,
       formatted: formatDateValue(start, adapter, { mode: 'BS', format: options.displayFormat ?? 'MMMM YYYY', locale: currentLocale() }),
-      value: formatMachineValue({ ad: start, bs: { year, month, day: 1 } }, options.valueFormat ?? 'iso', adapter),
+      startValue,
+      endValue,
+      value: `${stringifyMachineValue(startValue)},${stringifyMachineValue(endValue)}`,
     };
   }
 

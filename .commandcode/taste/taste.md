@@ -3,7 +3,7 @@
 [cmd]: https://commandcode.ai/
 
 # Naming
-- Package name is "Advance Nepali DatePicker". Confidence: 0.85
+- Package name is "Nepali Datepicker Pro". Confidence: 0.85
 
 # Architecture
 - Separate views for date-only and date+datetime pickers (not combined into one). Confidence: 0.70

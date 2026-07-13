@@ -1,5 +1,5 @@
 {
-  "name": "advance-nepali-datepicker",
+  "name": "nepali-datepicker-pro",
   "version": "0.1.0",
   "description": "Framework-agnostic Nepali BS/AD date, datetime, and range picker with a same-screen time picker. Works from vanilla JS, a <script> tag, jQuery, Vue, and React.",
   "type": "module",
@@ -7,15 +7,15 @@
   "sideEffects": [
     "*.css"
   ],
-  "main": "./dist/advance-nepali-datepicker.umd.cjs",
+  "main": "./dist/nepali-datepicker-pro.umd.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "unpkg": "./dist/advance-nepali-datepicker.umd.cjs",
+  "unpkg": "./dist/nepali-datepicker-pro.umd.cjs",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/advance-nepali-datepicker.umd.cjs"
+      "require": "./dist/nepali-datepicker-pro.umd.cjs"
     },
     "./jquery": {
       "types": "./dist/jquery.d.ts",

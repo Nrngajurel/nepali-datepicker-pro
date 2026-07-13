@@ -147,7 +147,7 @@ export const DEFS: PickerDef[] = [
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the picker opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
-      { name: 'value / defaultValue', type: 'Date | null', def: 'today', desc: 'Controlled / initial selected date.' },
+      { name: 'value / defaultValue', type: 'Date | null', def: '— (empty)', desc: 'Controlled / initial selected date. Empty until set.' },
       { name: 'withTime', type: 'boolean', def: 'false', desc: 'Show a same-screen time picker: type into the accessible HH:mm spinbutton fields (Arrow keys step, Nepali digits accepted) or scroll the wheel.' },
       { name: 'timeFormat', type: "'12h' | '24h'", def: "'24h'", desc: 'Clock style when withTime is on.' },
       { name: 'minuteStep', type: 'number', def: '1', desc: 'Increment of the minute spinner.' },
@@ -233,7 +233,7 @@ export const DEFS: PickerDef[] = [
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the range opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
-      { name: 'value / defaultValue', type: '{ start, end } | null', def: 'first preset', desc: 'Controlled / initial range.' },
+      { name: 'value / defaultValue', type: '{ start, end } | null', def: '— (empty)', desc: 'Controlled / initial range. Empty until set (or use defaultPresetId).' },
       { name: 'presets', type: "PresetDefinition[] | 'default' | false", def: "'default'", desc: "Quick-range rail (includes 'Pick a Month'); false hides it." },
       { name: 'defaultPresetId', type: 'string | null', def: '—', desc: 'Preset highlighted when the popup opens.' },
       { name: 'fiscalStartMonth', type: 'number (1–12)', def: '4', desc: 'BS month the fiscal year starts (Shrawan = 4).' },
@@ -304,19 +304,19 @@ export const DEFS: PickerDef[] = [
     ],
     optionKeys: ['locale', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'allowInput', 'valueFormat', 'submitName', 'opens', 'drops'],
     optionDocs: [
-      { name: 'value / defaultValue', type: '{ year, month } | null', def: 'this month', desc: 'Controlled / initial selected BS month.' },
+      { name: 'value / defaultValue', type: '{ year, month } | null', def: '— (empty)', desc: 'Controlled / initial selected BS month. Empty until set.' },
       { name: 'locale', type: "'ne' | 'en'", def: "'ne'", desc: 'Digit and month-name language.' },
       { name: 'minYear / maxYear', type: 'number (BS)', def: '1970 / 2100', desc: 'Range of BS years the grid can navigate.' },
       { name: 'displayFormat', type: 'string', def: 'MMMM YYYY', desc: 'dayjs-style tokens for the input text.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the month in a segmented `YYYY-MM` field (↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
-      VALUE_FORMAT_DOC,
-      SUBMIT_NAME_DOC,
-      ALT_FIELD_DOC,
+      { name: 'valueFormat', type: "'iso' | 'iso-bs' | 'timestamp' | { calendar, format }", def: "'iso'", desc: 'Format of the machine value(s). A month is emitted as a date RANGE (first→last day), so onChange/events carry startValue, endValue and value ("start,end").' },
+      { name: 'submitName', type: 'string | { start, end }', def: '—', desc: 'Inject hidden field(s) for the month’s date range. A string writes one `start,end` field; `{ start: "from_date", end: "to_date" }` writes two — perfect for `WHERE date BETWEEN from AND to` reporting.' },
+      { name: 'altField', type: 'string | HTMLElement | { start, end }', def: '—', desc: 'Write the month’s range into existing field(s): one combined, or a start/end pair.' },
       ALT_FORMAT_DOC,
       ...COMMON_OPTS,
     ],
     events: [
-      { name: 'onChange', payload: 'MonthResult', desc: 'A month was selected; payload includes the AD start/end range it covers.' },
+      { name: 'onChange', payload: 'MonthResult', desc: 'A month was selected. Payload: { year, month, start, end (AD Dates), startValue, endValue, value ("from,to"), formatted }.' },
       ...COMMON_EVENTS,
       { name: 'select.nepaliMonthPicker', payload: 'CustomEvent<MonthResult>', desc: 'Bubbling DOM event dispatched on the input.' },
     ],
@@ -377,8 +377,8 @@ export function snippet(def: PickerDef, options: Record<string, unknown>, framew
   switch (framework) {
     case 'vanilla':
       return [
-        `import { ${def.mountName} } from 'advance-nepali-datepicker';`,
-        `import 'advance-nepali-datepicker/style.css';`,
+        `import { ${def.mountName} } from 'nepali-datepicker-pro';`,
+        `import 'nepali-datepicker-pro/style.css';`,
         ``,
         `${def.mountName}(document.querySelector('#picker'), ${jsObject(options)});`,
       ].join('\n');
@@ -395,8 +395,8 @@ export function snippet(def: PickerDef, options: Record<string, unknown>, framew
         ? `\n<!-- ${unsupported.join(', ')} need the JS API (auto-init only reads data-* attributes) -->`
         : '';
       return [
-        `<link rel="stylesheet" href="https://unpkg.com/advance-nepali-datepicker/dist/style.css">`,
-        `<script src="https://unpkg.com/advance-nepali-datepicker/dist/advance-nepali-datepicker.umd.cjs"></script>`,
+        `<link rel="stylesheet" href="https://unpkg.com/nepali-datepicker-pro/dist/style.css">`,
+        `<script src="https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs"></script>`,
         `${note}`,
         `<input ${parts.join(' ')} readonly>`,
         `<script>NepaliPicker.autoInit()</script>`,
@@ -405,8 +405,8 @@ export function snippet(def: PickerDef, options: Record<string, unknown>, framew
 
     case 'react':
       return [
-        `import { ${def.reactComponent} } from 'advance-nepali-datepicker/react';`,
-        `import 'advance-nepali-datepicker/style.css';`,
+        `import { ${def.reactComponent} } from 'nepali-datepicker-pro/react';`,
+        `import 'nepali-datepicker-pro/style.css';`,
         ``,
         `<${def.reactComponent}${reactProps(options)} />`,
       ].join('\n');
@@ -414,8 +414,8 @@ export function snippet(def: PickerDef, options: Record<string, unknown>, framew
     case 'vue':
       return [
         `<script setup lang="ts">`,
-        `import { ${def.vueComponent} } from 'advance-nepali-datepicker/vue';`,
-        `import 'advance-nepali-datepicker/style.css';`,
+        `import { ${def.vueComponent} } from 'nepali-datepicker-pro/vue';`,
+        `import 'nepali-datepicker-pro/style.css';`,
         `</script>`,
         ``,
         `<template>`,
@@ -426,7 +426,7 @@ export function snippet(def: PickerDef, options: Record<string, unknown>, framew
     case 'jquery':
       return [
         `<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>`,
-        `<script src="https://unpkg.com/advance-nepali-datepicker/dist/advance-nepali-datepicker.umd.cjs"></script>`,
+        `<script src="https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs"></script>`,
         ``,
         `$('#picker').${def.jqueryFn}(${jsObject(options)});`,
       ].join('\n');

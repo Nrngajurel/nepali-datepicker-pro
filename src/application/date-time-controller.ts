@@ -56,7 +56,10 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   const adapter = options.adapter ?? defaultCalendarAdapter;
   let listeners: Array<(value: DateTimeResult) => void> = [];
   let stateListeners: Array<() => void> = [];
-  const initialDate = options.value ?? options.defaultValue ?? new Date();
+  // A value is selected only when `value`/`defaultValue` is explicitly provided;
+  // otherwise the field starts empty. The calendar still opens on today's month.
+  const providedValue = options.value !== undefined ? options.value : options.defaultValue;
+  const initialDate = providedValue ?? new Date();
   const initialValue = createDateValue(adapter, initialDate);
   const defaultTime = options.defaultTime ?? { hour: initialDate.getHours(), minute: initialDate.getMinutes(), second: initialDate.getSeconds() };
 
@@ -66,7 +69,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     allowModeToggle: options.allowModeToggle !== false,
     viewYear: initialValue.bs.year,
     viewMonth: initialValue.bs.month,
-    selected: options.value === null || options.defaultValue === null ? null : initialValue,
+    selected: providedValue ? initialValue : null,
     time: options.withTime ? { hour: defaultTime.hour, minute: defaultTime.minute, second: 0 } : null,
     view: 'day',
     yearGroupStart: initialValue.bs.year - 6,

@@ -63,21 +63,26 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   let listeners: Array<(value: DateRangeResult) => void> = [];
   let stateListeners: Array<() => void> = [];
   const today = createDateValue(adapter, new Date());
-  const defaultRange = options.value ?? options.defaultValue ?? resolveInitialRange();
+  // A range is shown only when explicitly provided via value/defaultValue, or
+  // when a defaultPresetId names a preset. Otherwise the picker starts empty and
+  // the calendar just opens on the current month.
+  const providedRange = options.value !== undefined ? options.value : options.defaultValue;
+  const initialRange = providedRange ?? (options.defaultPresetId ? resolvePresetRange(options.defaultPresetId) : null);
+  const viewAnchor = initialRange ?? resolveInitialRange();
 
   let state: DateRangeControllerState = {
     isOpen: false,
     mode: options.mode ?? 'BS',
     allowModeToggle: options.allowModeToggle !== false,
-    viewYear: adapter.adToBs(defaultRange.end).year,
-    viewMonth: adapter.adToBs(defaultRange.end).month,
-    range: createDateRange(createDateValue(adapter, defaultRange.start), createDateValue(adapter, defaultRange.end)),
+    viewYear: adapter.adToBs(viewAnchor.end).year,
+    viewMonth: adapter.adToBs(viewAnchor.end).month,
+    range: initialRange ? createDateRange(createDateValue(adapter, initialRange.start), createDateValue(adapter, initialRange.end)) : null,
     pendingStart: null,
     hoverDate: null,
-    activePresetId: options.defaultPresetId ?? null,
+    activePresetId: providedRange ? null : (options.defaultPresetId ?? null),
     openSubmenuId: null,
     view: 'day',
-    yearGroupStart: adapter.adToBs(defaultRange.end).year - 6,
+    yearGroupStart: adapter.adToBs(viewAnchor.end).year - 6,
     selectionUnit: 'day',
   };
 
@@ -129,6 +134,22 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   function resolveInitialRange(): { start: Date; end: Date } {
     const firstRange = presets.find((preset) => preset.kind === 'range' && preset.resolve);
     return firstRange?.resolve?.({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath }) ?? { start: new Date(), end: new Date() };
+  }
+
+  // Resolve a named preset (top-level or submenu item) to its range, or null.
+  function resolvePresetRange(id: string): { start: Date; end: Date } | null {
+    const find = (list: PresetDefinition[]): PresetDefinition | null => {
+      for (const preset of list) {
+        if (preset.id === id && preset.resolve) return preset;
+        const nested = preset.items ? find(preset.items) : null;
+        if (nested) return nested;
+      }
+      return null;
+    };
+    const preset = find(presets);
+    if (!preset?.resolve) return null;
+    const r = preset.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
+    return { start: r.start, end: r.end };
   }
 
   function setState(patch: Partial<DateRangeControllerState>): void {

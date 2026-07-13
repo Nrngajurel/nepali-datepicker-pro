@@ -456,19 +456,38 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     ? withInputGroup(trigger, () => merged.clearable !== false && controller.getValue() !== null, () => controller.setValue(null))
     : null;
 
+  // A month is a from→to date range, so it delivers start/end machine values
+  // exactly like the range picker (single combined field, or a { start, end } pair).
   const monthAdapter = merged.adapter ?? defaultCalendarAdapter;
   const monthMachineFormat: ValueFormat = merged.altFormat ?? merged.valueFormat ?? 'iso';
-  const machineTargets: HTMLElement[] = [];
-  if (trigger instanceof HTMLInputElement) {
-    if (typeof merged.submitName === 'string' && inputGroup) machineTargets.push(createHiddenSubmit(merged.submitName, inputGroup.wrapper, trigger));
-    const alt = resolveTarget(merged.altField);
-    if (alt) machineTargets.push(alt);
+  const monthTargets: Array<{ el: HTMLElement; part: 'start' | 'end' | 'combined' }> = [];
+  if (trigger instanceof HTMLInputElement && inputGroup) {
+    const sn = merged.submitName;
+    if (typeof sn === 'string') monthTargets.push({ el: createHiddenSubmit(sn, inputGroup.wrapper, trigger), part: 'combined' });
+    else if (sn) {
+      monthTargets.push({ el: createHiddenSubmit(sn.start, inputGroup.wrapper, trigger), part: 'start' });
+      monthTargets.push({ el: createHiddenSubmit(sn.end, inputGroup.wrapper, trigger), part: 'end' });
+    }
+  }
+  const maf = merged.altField;
+  if (maf && typeof maf === 'object' && !(maf instanceof HTMLElement)) {
+    const s = resolveTarget(maf.start); if (s) monthTargets.push({ el: s, part: 'start' });
+    const e = resolveTarget(maf.end); if (e) monthTargets.push({ el: e, part: 'end' });
+  } else if (maf) {
+    const el = resolveTarget(maf); if (el) monthTargets.push({ el, part: 'combined' });
   }
   function syncMachine(): void {
-    if (!machineTargets.length) return;
+    if (!monthTargets.length) return;
     const r = controller.getValue();
-    const str = r ? stringifyMachineValue(formatMachineValue({ ad: r.start, bs: { year: r.year, month: r.month, day: 1 } }, monthMachineFormat, monthAdapter)) : '';
-    machineTargets.forEach((el) => writeTargetValue(el, str));
+    let startStr = '';
+    let endStr = '';
+    if (r) {
+      const days = monthAdapter.daysInBsMonth(r.year, r.month);
+      startStr = stringifyMachineValue(formatMachineValue({ ad: r.start, bs: { year: r.year, month: r.month, day: 1 } }, monthMachineFormat, monthAdapter));
+      endStr = stringifyMachineValue(formatMachineValue({ ad: r.end, bs: { year: r.year, month: r.month, day: days } }, monthMachineFormat, monthAdapter));
+    }
+    const combined = r ? `${startStr},${endStr}` : '';
+    monthTargets.forEach((t) => writeTargetValue(t.el, t.part === 'start' ? startStr : t.part === 'end' ? endStr : combined));
   }
 
   function updateInput(value = controller.getValue()): void {

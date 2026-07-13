@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nepali Datepicker Pro — Plain HTML (autoInit)</title>
+
+  <!--
+    SIMPLEST USAGE — just HTML attributes, no JavaScript to write.
+    1. Build the library:  npm run build
+    2. Serve this folder:  npx serve   (or: python3 -m http.server)
+    3. Open examples/html.html
+    (Once published you can swap the two local paths below for the unpkg CDN:
+       https://unpkg.com/nepali-datepicker-pro/dist/style.css
+       https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs )
+  -->
+  <link rel="stylesheet" href="../dist/style.css" />
+  <script src="../dist/nepali-datepicker-pro.umd.cjs"></script>
+
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #262b30; }
+    h1 { font-size: 20px; } h2 { font-size: 15px; margin-top: 28px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; }
+    .field { margin-bottom: 22px; }
+    input.ndp-input, input:not([type]) { min-width: 260px; }
+    .out { margin-top: 6px; font: 13px/1.4 ui-monospace, monospace; color: #245c7a; white-space: pre-wrap; }
+    button { padding: 8px 14px; border: 1px solid #2f8f4e; background: #2f8f4e; color: #fff; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Nepali Datepicker Pro — Plain HTML</h1>
+  <p>Every picker below is wired purely with <code>data-*</code> attributes and a single
+     <code>NepaliPicker.autoInit()</code> call. No per-picker JavaScript.</p>
+
+  <!-- The <form> shows the "server value": the visible input displays a Nepali BS
+       date, but data-submit-name injects a hidden field with the AD-ISO value. -->
+  <form id="demo">
+    <div class="field">
+      <label for="dob">Date &amp; time (BS display → AD ISO to server)</label>
+      <input id="dob" type="text"
+             data-nepali-datepicker
+             data-with-time="true"
+             data-time-format="12h"
+             data-minute-step="5"
+             data-submit-name="appointment"
+             data-value-format="iso" />
+      <div class="out" id="dob-out">— pick a date —</div>
+    </div>
+
+    <div class="field">
+      <label for="range">Date range</label>
+      <!-- A single data-submit-name submits one hidden field "start,end" (AD ISO).
+           For two separate fields, use the JS API: submitName: { start, end }. -->
+      <input id="range" type="text" data-nepali-daterange data-submit-name="stay_range" />
+      <div class="out" id="range-out">— pick a range —</div>
+    </div>
+
+    <div class="field">
+      <label for="month">Month (submits as a from→to date range)</label>
+      <!-- A month is a date range under the hood. A string submitName writes one
+           "start,end" field; the JS API also supports { start, end } for two fields. -->
+      <input id="month" type="text" data-nepali-monthpicker data-submit-name="report_month" />
+      <div class="out" id="month-out">— pick a month —</div>
+    </div>
+
+    <button type="submit">Submit form</button>
+    <div class="out" id="form-out"></div>
+  </form>
+
+  <script>
+    // Turn every [data-nepali-*] input into a picker.
+    NepaliPicker.autoInit();
+
+    // Pickers dispatch bubbling DOM CustomEvents with the result in event.detail.
+    document.getElementById('dob').addEventListener('select.nepaliDatePicker', (e) => {
+      document.getElementById('dob-out').textContent =
+        'display : ' + e.detail.formatted + '\nserver  : ' + e.detail.value;
+    });
+    document.getElementById('range').addEventListener('apply.nepaliDateRangePicker', (e) => {
+      document.getElementById('range-out').textContent =
+        'display : ' + e.detail.formatted + '\nserver  : ' + e.detail.value; // "start,end" AD ISO
+    });
+    document.getElementById('month').addEventListener('select.nepaliMonthPicker', (e) => {
+      document.getElementById('month-out').textContent =
+        e.detail.formatted + '\nreport range → ' + e.detail.value; // "from,to" AD ISO
+    });
+
+    // Prove what the backend would receive (the hidden submit fields).
+    document.getElementById('demo').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      document.getElementById('form-out').textContent = 'POST body → ' + JSON.stringify(data, null, 2);
+    });
+  </script>
+</body>
+</html>

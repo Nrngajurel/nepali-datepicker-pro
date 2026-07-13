@@ -98,6 +98,16 @@ test('range submitName pair writes AD ISO start/end into two hidden fields', () 
   assert.equal(document.querySelector<HTMLInputElement>('input[name=to]')!.value, '2024-04-20');
 });
 
+test('range submitName as a plain string writes one combined "start,end" field', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  mountDateRangePicker(input, {
+    value: { start: new Date(2024, 3, 13), end: new Date(2024, 3, 20) },
+    submitName: 'stay_range',
+  });
+  assert.equal(document.querySelector<HTMLInputElement>('input[name=stay_range]')!.value, '2024-04-13,2024-04-20');
+});
+
 test('DateRangeResult exposes startValue/endValue/value', () => {
   const input = document.createElement('input');
   document.body.appendChild(input);
@@ -108,14 +118,37 @@ test('DateRangeResult exposes startValue/endValue/value', () => {
   assert.equal(r.value, '2024-04-13,2024-04-20');
 });
 
-// --- month ----------------------------------------------------------------
+// --- month = a date range (first → last day) -------------------------------
 
-test('month picker submitName carries the AD ISO of the month first day', () => {
+// Last day of Baishakh 2081 (31 days) → AD ISO, computed via the adapter.
+const lastDayIso = (() => {
+  const days = defaultCalendarAdapter.daysInBsMonth(2081, 1);
+  const d = defaultCalendarAdapter.bsToAd(2081, 1, days);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+})();
+
+test('MonthResult exposes the month as a from→to date range', () => {
   const input = document.createElement('input');
   document.body.appendChild(input);
-  const inst = mountMonthPicker(input, { value: { year: 2081, month: 1 }, submitName: 'm' });
-  assert.equal(document.querySelector<HTMLInputElement>('input[name=m]')!.value, '2024-04-13');
-  assert.equal(inst.getValue()!.value, '2024-04-13');
+  const r = mountMonthPicker(input, { value: { year: 2081, month: 1 } }).getValue()!;
+  assert.equal(r.startValue, '2024-04-13', 'startValue = first day AD ISO');
+  assert.equal(r.endValue, lastDayIso, 'endValue = last day AD ISO');
+  assert.equal(r.value, '2024-04-13,' + lastDayIso, 'value = "start,end"');
+});
+
+test('month submitName pair writes from_date / to_date for reporting', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  mountMonthPicker(input, { value: { year: 2081, month: 1 }, submitName: { start: 'from_date', end: 'to_date' } });
+  assert.equal(document.querySelector<HTMLInputElement>('input[name=from_date]')!.value, '2024-04-13');
+  assert.equal(document.querySelector<HTMLInputElement>('input[name=to_date]')!.value, lastDayIso);
+});
+
+test('month submitName string writes one combined "start,end" field', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  mountMonthPicker(input, { value: { year: 2081, month: 1 }, submitName: 'm' });
+  assert.equal(document.querySelector<HTMLInputElement>('input[name=m]')!.value, '2024-04-13,' + lastDayIso);
 });
 
 // --- autoInit data-* ------------------------------------------------------
