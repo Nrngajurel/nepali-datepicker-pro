@@ -1,6 +1,6 @@
 {
   "name": "nepali-datepicker-pro",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "description": "Framework-agnostic Nepali BS/AD date, datetime, and range picker with a same-screen time picker. Works from vanilla JS, a <script> tag, jQuery, Vue, and React.",
   "type": "module",
   "license": "MIT",
@@ -98,11 +98,13 @@
     }
   },
   "devDependencies": {
+    "@types/jquery": "^4.0.1",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-vue": "^6.0.7",
     "@vue/language-core": "^3.3.7",
+    "jquery": "^4.0.0",
     "jsdom": "^24.1.3",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

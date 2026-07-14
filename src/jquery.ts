@@ -108,7 +108,10 @@ function makePlugin<TResult, TOptions extends object>(
           case 'hide':    inst.hide(); break;
           case 'destroy':
             inst.destroy();
-            $.data(el, dataKey, undefined);
+            // jQuery treats `$.data(el, key, undefined)` as a *getter*, so it
+            // never clears the stored instance. Write null instead — the init
+            // path below treats a falsy value as "not mounted".
+            $.data(el, dataKey, null);
             break;
           case 'setValue':
             // Passed as: $el.plugin('setValue', undefined, newValue)

@@ -22,6 +22,12 @@ export interface DateTimeControllerState {
 
 export interface DateTimeController extends PickerInstance<DateTimeResult, DateTimePickerOptions> {
   getState(): DateTimeControllerState;
+  /**
+   * Accepts a raw AD `Date` (mirrors the `value` option and what framework
+   * wrappers hold), a result-shaped `{ ad: Date }` (what `getValue()` returns,
+   * so the value round-trips), or `null` to clear.
+   */
+  setValue(value: Date | DateTimeResult | { ad: Date } | null): void;
   selectDay(value: DateValue): void;
   setTime(hour: number, minute: number, second?: number): void;
   setHour(hour24: number): boolean;
@@ -201,7 +207,8 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     getState: () => state,
     getValue: () => (state.selected ? buildResult(state.selected) : null),
     setValue(value) {
-      setState({ selected: value ? createDateValue(adapter, value.ad) : null });
+      const ad = value instanceof Date ? value : value?.ad ?? null;
+      setState({ selected: ad ? createDateValue(adapter, ad) : null });
     },
     show() {
       if (!state.isOpen) {
