@@ -1,10 +1,12 @@
 import { resolve } from 'node:path';
 import { defineConfig } from 'vitepress';
 
-// Deployed to GitHub Pages under the project path, so every absolute URL the
-// site emits (canonical, og:url, sitemap) has to carry the base.
-const HOSTNAME = 'https://nrngajurel.github.io';
-const BASE = '/nepali-datepicker-pro/';
+// Deployed to Vercel, which builds this private repo and serves only the static
+// output at the domain root. Every absolute URL the site emits (canonical,
+// og:url, sitemap) is built from SITE_URL — change HOSTNAME here and in
+// docs/public/robots.txt together when the domain changes.
+const HOSTNAME = 'https://nepali-datepicker-pro.vercel.app';
+const BASE = '/';
 const SITE_URL = HOSTNAME + BASE;
 
 const TITLE = 'Nepali Datepicker Pro';

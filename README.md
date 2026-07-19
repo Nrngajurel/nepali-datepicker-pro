@@ -64,7 +64,7 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 - [Browser support](#browser-support)
 - [Contributing](#contributing)
 - [License](#license)
-- Full documentation, with live configurable demos: **<https://nrngajurel.github.io/nepali-datepicker-pro/>**
+- Full documentation, with live configurable demos: **<https://nepali-datepicker-pro.vercel.app/>**
 - Further reading: [quick start](./docs/guide/quick-start.md) · [options](./docs/guide/options.md) · [migration](./docs/guide/migration.md)
 
 ---
