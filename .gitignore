@@ -8,3 +8,5 @@ docs/.vitepress/dist/
 
 # Local reference material (not part of the package)
 references/
+.vercel
+.env*
