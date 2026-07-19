@@ -11,7 +11,17 @@
     "skipLibCheck": true,
     "esModuleInterop": true,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": { "@lib/*": ["./src/*"] }
   },
-  "include": ["src", "test", "playground", "*.config.ts"]
+  "include": [
+    "src",
+    "test",
+    // Listed explicitly: TypeScript's include globs skip dot-directories, so
+    // the .vue module shim would otherwise never load.
+    "docs/.vitepress/**/*.ts",
+    "docs/.vitepress/shims-vue.d.ts",
+    "*.config.ts"
+  ]
 }

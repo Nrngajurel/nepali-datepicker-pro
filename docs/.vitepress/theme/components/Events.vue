@@ -41,10 +41,6 @@ async function copy() {
 
 <template>
   <section class="card">
-    <header>
-      <h2>Events &amp; instance API</h2>
-      <p>Every picker returns an instance and fires callbacks plus a bubbling DOM event — wire it up however your stack prefers.</p>
-    </header>
     <div class="card-body">
       <div class="preview">
         <div class="opt-section-title">Callbacks (options)</div>

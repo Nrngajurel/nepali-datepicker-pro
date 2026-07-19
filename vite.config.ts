@@ -1,21 +1,15 @@
 import { copyFileSync, mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
-import vue from '@vitejs/plugin-vue';
 import dts from 'vite-plugin-dts';
 
 const here = import.meta.dirname;
 
-// `npm run dev`  → serves index.html + the Vue docs playground with HMR.
-// `npm run build` → library build: tree-shakeable ES modules for the core and
-//                   each framework entry, plus type declarations, into /dist.
-//                   (The UMD <script> build is a second pass — vite.umd.config.ts.)
-export default defineConfig(({ command }) => ({
+// Library build only: tree-shakeable ES modules for the core and each framework
+// entry, plus type declarations, into /dist. (The UMD <script> build is a second
+// pass — vite.umd.config.ts.) The docs site is VitePress — `npm run dev`.
+export default defineConfig(() => ({
   plugins: [
-    // The Vue plugin is only for the docs app (dev server) — the library build
-    // has no .vue files, and pulling it in makes vite-plugin-dts require
-    // @vue/language-core. Gate it to `serve` so `vite build` stays lean.
-    ...(command === 'serve' ? [vue()] : []),
     dts({ include: ['src'] }),
     {
       // Ship the stylesheet as dist/style.css (imported by consumers via

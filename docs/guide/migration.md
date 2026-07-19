@@ -1,3 +1,8 @@
+---
+title: Migration
+description: Move to Nepali Datepicker Pro from the classic nepalidatepicker global NepaliFunctions object, or from daterangepicker.js — the compatible option shapes and API names.
+---
+
 # Migration Notes
 
 ## From `nepalidatepicker.sajanmaharjan.com.np`

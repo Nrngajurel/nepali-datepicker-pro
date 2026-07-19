@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactive, computed, ref, onMounted, onBeforeUnmount } from 'vue';
-import type { Control, Framework, PickerDef } from './registry';
-import { snippet } from './registry';
+import type { Control, Framework, PickerDef } from '../registry';
+import { snippet } from '../registry';
 
 const props = defineProps<{ def: PickerDef; framework: Framework }>();
 
@@ -52,15 +52,15 @@ async function copyUseCase() {
 
 <template>
   <section class="card">
-    <header>
-      <h2>{{ def.title }}</h2>
-      <p>{{ def.description }}</p>
-    </header>
     <div class="card-body">
       <div class="preview" ref="host">
         <div class="field">
           <label>Live preview</label>
-          <component :is="def.component" :options="liveOptions" />
+          <!-- The picker builds its popup from the DOM on mount, so it has
+               nothing to render during the static build. -->
+          <ClientOnly>
+            <component :is="def.component" :options="liveOptions" />
+          </ClientOnly>
         </div>
         <div class="result">{{ result || '— pick a value to see the result —' }}</div>
       </div>

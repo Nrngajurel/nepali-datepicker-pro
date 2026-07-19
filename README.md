@@ -64,7 +64,8 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 - [Browser support](#browser-support)
 - [Contributing](#contributing)
 - [License](#license)
-- Further reading: [docs/quick-start.md](./docs/quick-start.md) · [docs/options.md](./docs/options.md) · [docs/migration.md](./docs/migration.md)
+- Full documentation, with live configurable demos: **<https://nrngajurel.github.io/nepali-datepicker-pro/>**
+- Further reading: [quick start](./docs/guide/quick-start.md) · [options](./docs/guide/options.md) · [migration](./docs/guide/migration.md)
 
 ---
 
@@ -490,7 +491,7 @@ Issues and PRs are welcome.
 git clone https://github.com/nrngajurel/nepali-datepicker-pro.git
 cd nepali-datepicker-pro
 npm install
-npm run dev      # local playground
+npm run dev      # VitePress docs site, with live component demos
 npm run test     # vitest
 npm run lint     # tsc --noEmit
 npm run build    # ESM + UMD + .d.ts into dist/

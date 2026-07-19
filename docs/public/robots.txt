@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nrngajurel.github.io/nepali-datepicker-pro/sitemap.xml

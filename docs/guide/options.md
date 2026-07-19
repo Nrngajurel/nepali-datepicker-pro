@@ -1,16 +1,22 @@
+---
+title: Options
+description: The integration-level options for Nepali Datepicker Pro — popup placement and portaling, locale and display formats, and decoupling the displayed date from the value you submit.
+---
+
 # Options
 
 The full option contract for each picker is typed in `src/types.ts` (`DateTimePickerOptions`,
-`DateRangePickerOptions`, `MonthPickerOptions`). The [README](../README.md) has the complete
-per-picker option tables with defaults; this page covers the integration-level options that are
-easy to miss, plus how they interact.
+`DateRangePickerOptions`, `MonthPickerOptions`). The
+[component pages](/components/date-time-picker) have the complete per-picker option tables with
+defaults; this page covers the integration-level options that are easy to miss, plus how they
+interact.
 
 ## Popup placement & portaling
 
 - `appendTo` — portals the popup DOM into a stable container, usually `document.body` (default)
   or a modal element, so it isn't clipped by an `overflow: hidden` ancestor.
 - `container` — daterangepicker.js-compatible alias for `appendTo` on the range and month
-  pickers, kept for drop-in migration (see [migration.md](./migration.md)).
+  pickers, kept for drop-in migration (see [Migration](/guide/migration)).
 - `opens` — `'left' | 'right' | 'center' | 'auto'`, horizontal alignment relative to the input.
 - `drops` — `'down' | 'up' | 'auto'`, whether the popup opens below or above the input.
 
@@ -24,7 +30,8 @@ easy to miss, plus how they interact.
 
 These three exist so a BS-mode, Nepali-digit picker can still hand your backend a clean value
 with zero conversion glue — see the README's [Sending the right value to your
-backend](../README.md#sending-the-right-value-to-your-backend) section for the full writeup.
+backend](https://github.com/nrngajurel/nepali-datepicker-pro#sending-the-right-value-to-your-backend)
+section for the full writeup.
 
 - `valueFormat` — `'iso' | 'iso-bs' | 'timestamp' | 'date-object' | { calendar, format }`, the
   shape of the machine value on `onChange`/DOM events and written to `altField`/`submitName`.

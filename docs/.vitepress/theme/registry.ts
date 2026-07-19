@@ -1,5 +1,5 @@
 import type { Component } from 'vue';
-import { NepaliDateRangePicker, NepaliDateTimePicker, NepaliMonthPicker } from '../src/vue.js';
+import { NepaliDateRangePicker, NepaliDateTimePicker, NepaliMonthPicker } from '@lib/vue.js';
 
 export type Framework = 'vanilla' | 'html' | 'react' | 'vue' | 'jquery';
 

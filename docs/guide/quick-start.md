@@ -1,10 +1,16 @@
+---
+title: Quick start snippets
+description: Copy-paste snippets for every Nepali Datepicker Pro picker in every stack — vanilla JS, a plain script tag, jQuery, Vue and React.
+---
+
 # Quick Start
 
 Every picker attaches to an `<input>` and returns an instance you can drive
 programmatically. The value is emitted as `{ ad, bs, time?, formatted }` (see
 each picker's result type) — you get both calendars and a preformatted
-string. These snippets mirror the live playground (`npm run dev`) — switch
-the framework tab there to copy the exact code for your stack.
+string. This page lists every stack side by side; the
+[component pages](/components/date-time-picker) let you configure a live picker
+and copy the exact snippet instead.
 
 Install once:
 
@@ -172,4 +178,5 @@ NF.BS.GetDaysInMonth(2081, 4);     // → 32
 NF.ConvertToUnicode(2081);         // → '२०८१'
 ```
 
-See the main [README](../README.md) for the full option/event reference, and [options.md](./options.md) for integration-specific options.
+See the [component pages](/components/date-time-picker) for the full per-picker option and event
+tables, and [Options](/guide/options) for integration-specific options.

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue';
-import { nepaliFunctions as NF } from '../src/index.js';
+import { nepaliFunctions as NF } from '@lib/index.js';
 
 // AD → BS
 const ad = ref(new Date().toISOString().slice(0, 10));
@@ -54,10 +54,6 @@ async function copy() {
 
 <template>
   <section class="card">
-    <header>
-      <h2>Helper functions</h2>
-      <p>A tree-shakeable, <code>NepaliFunctions</code>-compatible toolkit for BS↔AD math — no picker required.</p>
-    </header>
     <div class="card-body">
       <div class="preview">
         <div class="conv">

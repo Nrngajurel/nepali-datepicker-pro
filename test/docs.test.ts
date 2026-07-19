@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
-// The interactive docs app: option-builders omit defaults, snippets are correct
-// per framework, and the Vue app actually mounts with a card per component.
+// The interactive docs components: option-builders omit defaults, snippets are
+// correct per framework, and the demo card each docs page embeds really mounts.
 import { test, expect } from 'vitest';
 import { createApp } from 'vue';
 
-import { DEFS, snippet } from '../playground/registry';
-import App from '../playground/App.vue';
+import { DEFS, snippet } from '../docs/.vitepress/theme/registry';
+import PickerDemo from '../docs/.vitepress/theme/components/PickerDemo.vue';
 
 const datetime = DEFS.find((d) => d.id === 'datetime')!;
 const range = DEFS.find((d) => d.id === 'range')!;
@@ -43,18 +43,30 @@ test('HTML snippet flags options that auto-init cannot express', () => {
   expect(html).toContain('data-nepali-datepicker');
 });
 
-test('the Vue docs app mounts hero, component cards, helpers and events', () => {
+function mountDemo(id: string): HTMLElement {
   const el = document.createElement('div');
   document.body.appendChild(el);
-  createApp(App).mount(el);
+  const app = createApp(PickerDemo, { id });
+  // VitePress registers ClientOnly globally; outside the site we render the
+  // slot directly so the live picker still mounts under jsdom.
+  app.component('ClientOnly', (_props, { slots }) => slots.default?.());
+  app.mount(el);
+  return el;
+}
 
-  expect(el.querySelector('.hero-title')?.textContent).toMatch(/Nepali Datepicker/);
-  for (const id of ['datetime', 'range', 'month', 'helpers', 'events']) {
-    expect(el.querySelector(`#${id}`)).toBeTruthy();
+test('each docs page mounts a live demo card with tabs, options and a snippet', () => {
+  for (const def of DEFS) {
+    const el = mountDemo(def.id);
+
+    expect(el.querySelectorAll('.fw-tabs button').length).toBe(5);
+    expect(el.querySelectorAll('.opt').length).toBe(def.controls.length);
+    // default framework = vanilla → the card shows this picker's mount call
+    expect(el.querySelector('.snippet pre')!.textContent || '').toContain(def.mountName);
+    // the picker really initialises against the DOM
+    expect(el.querySelector('.preview .ndp-trigger')).toBeTruthy();
   }
-  expect(el.querySelectorAll('.fw-tabs button').length).toBe(5);
-  // default framework = vanilla → the first picker card shows the mount call
-  expect(el.querySelector('#datetime pre')!.textContent || '').toContain('mountDateTimePicker');
-  // the three pickers each mount a live trigger
-  expect(el.querySelectorAll('.preview .ndp-trigger').length).toBe(3);
+});
+
+test('an unknown picker id fails loudly rather than rendering an empty card', () => {
+  expect(() => mountDemo('nope')).toThrow(/Unknown picker id/);
 });
