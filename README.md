@@ -64,6 +64,7 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 - [Browser support](#browser-support)
 - [Contributing](#contributing)
 - [License](#license)
+- Further reading: [docs/quick-start.md](./docs/quick-start.md) · [docs/options.md](./docs/options.md) · [docs/migration.md](./docs/migration.md)
 
 ---
 

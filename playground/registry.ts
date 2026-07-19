@@ -39,6 +39,12 @@ export interface EventDoc {
   desc: string;
 }
 
+export interface UseCase {
+  title: string;
+  description: string;
+  options: Record<string, unknown>;
+}
+
 export interface PickerDef {
   id: string;
   title: string;
@@ -52,6 +58,9 @@ export interface PickerDef {
   dataAttrMap: Record<string, string>;
   eventName: string;
   controls: Control[];
+  /** A realistic, fixed-option scenario shown alongside the interactive
+   *  playground above — not wired to the live preview controls. */
+  useCase: UseCase;
   /** Every option key `buildOptions` may emit — used to build a full reset
    *  template so un-setting an option in the live preview actually clears it. */
   optionKeys: string[];
@@ -121,6 +130,11 @@ export const DEFS: PickerDef[] = [
     dataAttr: 'data-nepali-datepicker',
     dataAttrMap: { withTime: 'data-with-time', timeFormat: 'data-time-format', minuteStep: 'data-minute-step', valueFormat: 'data-value-format', submitName: 'data-submit-name' },
     eventName: 'select.nepaliDatePicker',
+    useCase: {
+      title: 'Appointment booking form',
+      description: 'BS-mode date + time, no past dates, submits a clean AD ISO string to the server under a plain <form> field name.',
+      options: { withTime: true, minDate: 'today', valueFormat: 'iso', submitName: 'appointment_date' },
+    },
     controls: [
       { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
       { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
@@ -211,6 +225,11 @@ export const DEFS: PickerDef[] = [
     dataAttr: 'data-nepali-daterange',
     dataAttrMap: { fiscalStartMonth: 'data-fiscal-start-month', valueFormat: 'data-value-format' },
     eventName: 'apply.nepaliDateRangePicker',
+    useCase: {
+      title: 'Report filter',
+      description: "Nepali fiscal year presets (Shrawan start), submits the applied range as two AD ISO fields your backend can drop straight into a BETWEEN query.",
+      options: { fiscalStartMonth: 4, valueFormat: 'iso', submitName: { start: 'from_date', end: 'to_date' } },
+    },
     controls: [
       { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
       { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
@@ -290,6 +309,11 @@ export const DEFS: PickerDef[] = [
     dataAttr: 'data-nepali-monthpicker',
     dataAttrMap: { valueFormat: 'data-value-format', submitName: 'data-submit-name' },
     eventName: 'select.nepaliMonthPicker',
+    useCase: {
+      title: 'Payroll filter',
+      description: 'Pick a single BS month for a payslip; the picker resolves it to the AD first/last-day range and writes both bounds to hidden fields.',
+      options: { valueFormat: 'iso', submitName: { start: 'from_date', end: 'to_date' } },
+    },
     controls: [
       { key: 'locale', label: 'Locale', type: 'select', def: 'ne', choices: LOCALE },
       { key: 'displayFormat', label: 'Display format', type: 'text', def: '', placeholder: 'MMMM YYYY' },

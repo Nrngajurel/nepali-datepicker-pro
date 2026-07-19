@@ -70,6 +70,9 @@
   },
   "scripts": {
     "dev": "vite",
+    "docs:dev": "vite --config vite.docs.config.ts",
+    "docs:build": "vite build --config vite.docs.config.ts",
+    "docs:preview": "vite preview --config vite.docs.config.ts",
     "build": "vite build && vite build --config vite.umd.config.ts",
     "preview": "vite preview",
     "test": "vitest run",

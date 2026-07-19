@@ -2,10 +2,10 @@
 
 ## From `nepalidatepicker.sajanmaharjan.com.np`
 
-Use `nepaliFunctions` from `nepali-datepicker` instead of the global `window.NepaliFunctions` object:
+Use `nepaliFunctions` from `nepali-datepicker-pro` instead of the global `window.NepaliFunctions` object:
 
 ```ts
-import { nepaliFunctions } from 'nepali-datepicker';
+import { nepaliFunctions } from 'nepali-datepicker-pro';
 
 const bs = nepaliFunctions.AD2BS(new Date());
 const ad = nepaliFunctions.BS2AD(bs.year, bs.month, bs.day);
@@ -18,6 +18,8 @@ The compatibility layer preserves familiar names such as `AD2BS`, `BS2AD`, `Conv
 The range picker accepts the familiar `locale`, `opens`, `drops`, `autoApply`, `linkedCalendars`, and `ranges` shape:
 
 ```ts
+import { mountDateRangePicker } from 'nepali-datepicker-pro';
+
 mountDateRangePicker(input, {
   ranges: {
     Today: [new Date(), new Date()]

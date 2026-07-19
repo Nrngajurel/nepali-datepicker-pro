@@ -20,9 +20,11 @@ const liveOptions = computed(() => {
   return { ...reset, ...options.value };
 });
 const code = computed(() => snippet(props.def, options.value, props.framework));
+const useCaseCode = computed(() => snippet(props.def, props.def.useCase.options, props.framework));
 
 const result = ref('');
 const copied = ref(false);
+const useCaseCopied = ref(false);
 const host = ref<HTMLElement | null>(null);
 
 function onPicked(event: Event) {
@@ -39,6 +41,12 @@ async function copy() {
   await navigator.clipboard.writeText(code.value);
   copied.value = true;
   setTimeout(() => { copied.value = false; }, 1400);
+}
+
+async function copyUseCase() {
+  await navigator.clipboard.writeText(useCaseCode.value);
+  useCaseCopied.value = true;
+  setTimeout(() => { useCaseCopied.value = false; }, 1400);
 }
 </script>
 
@@ -109,10 +117,28 @@ async function copy() {
         <pre>{{ code }}</pre>
       </div>
     </div>
+
+    <div class="use-case">
+      <div class="opt-section-title">Real-world example — {{ def.useCase.title }}</div>
+      <p class="use-case-desc">{{ def.useCase.description }}</p>
+      <div class="snippet">
+        <div class="snippet-body">
+          <button class="copy-btn" :class="{ copied: useCaseCopied }" @click="copyUseCase">{{ useCaseCopied ? 'Copied!' : 'Copy' }}</button>
+          <pre>{{ useCaseCode }}</pre>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
 <style scoped>
+.use-case { border-top: 1px solid var(--line); padding: 16px 20px 0; }
+.use-case .opt-section-title {
+  font: 600 12px var(--mono); letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink-faint); margin: 0 0 6px;
+}
+.use-case-desc { margin: 0 0 10px; font-size: 13px; color: var(--ink-soft); }
+.use-case .snippet { border-top: 0; }
 .reference { border-top: 1px solid var(--line); }
 .reference details { border-bottom: 1px solid var(--line); }
 .reference summary {
