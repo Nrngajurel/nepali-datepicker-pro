@@ -29,6 +29,14 @@ export default defineConfig({
   sitemap: { hostname: SITE_URL },
 
   head: [
+    // Google Search Console ownership proof (URL-prefix property).
+    [
+      'meta',
+      {
+        name: 'google-site-verification',
+        content: 'Ia-RJH-I2dp9zdJx-wXFz-YwxLJpTNPpO2ckYQA_VQo',
+      },
+    ],
     ['meta', { name: 'author', content: 'Narayan Gajurel' }],
     [
       'meta',
