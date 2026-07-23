@@ -74,7 +74,7 @@ test('mount: emits select.nepaliMonthPicker with the report range', () => {
   const details: MonthResult[] = [];
   input.addEventListener('select.nepaliMonthPicker', (e) => details.push((e as CustomEvent).detail));
   input.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  document.querySelectorAll<HTMLButtonElement>('.ndp-monthcell')[5].click(); // Ashoj
+  document.querySelectorAll<HTMLButtonElement>('.ndp-monthcell')[5].click(); // Ashwin
   assert.equal(details.length, 1, 'event fired with detail');
   assert.ok(details[0].start instanceof Date && details[0].end instanceof Date);
   assert.equal((inst.getValue() as { month: number }).month, 6);

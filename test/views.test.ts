@@ -132,7 +132,7 @@ test('datetime: toggling to AD mode re-anchors the view and renders the Gregoria
   assert.equal(c.getState().viewMonth, 4, 'view re-anchors to the AD month of the same month');
 
   const header = root.querySelector('.ndp-cal-label-primary')!.textContent;
-  assert.match(header || '', /April 2024/, 'header shows the Gregorian month/year as primary once in AD mode');
+  assert.match(header || '', /Apr 2024/, 'header shows the Gregorian month/year as primary once in AD mode');
   const firstDay = root.querySelectorAll('.ndp-cell:not(.ndp-cell--empty)')[0];
   assert.equal(firstDay.querySelector('.ndp-cell-primary')!.textContent, '1', 'AD day 1 is the primary label in AD mode');
 
@@ -160,12 +160,12 @@ test('datetime: header and month grid show the overlapped month span, not a sing
   const root = render(c, 'datetime');
 
   // BS Baisakh (viewed month) straddles AD April/May — both should show, not just April.
-  assert.equal(root.querySelector('.ndp-cal-label-secondary')!.textContent, 'April/May 2024');
+  assert.equal(root.querySelector('.ndp-cal-label-secondary')!.textContent, 'Apr/May 2024');
 
   c.setView('month');
   const monthCells = () => [...root.querySelectorAll<HTMLElement>('.ndp-monthcell')];
-  assert.equal(monthCells()[0].querySelector('.ndp-monthcell-en')!.textContent, 'April/May', 'Baisakh cell shows the AD months it spans');
-  assert.equal(monthCells()[1].querySelector('.ndp-monthcell-en')!.textContent, 'May/June', 'Jestha cell shows the AD months it spans');
+  assert.equal(monthCells()[0].querySelector('.ndp-monthcell-en')!.textContent, 'Apr/May', 'Baisakh cell shows the AD months it spans');
+  assert.equal(monthCells()[1].querySelector('.ndp-monthcell-en')!.textContent, 'May/Jun', 'Jestha cell shows the AD months it spans');
 
   c.setView('day');
   c.toggleMode();

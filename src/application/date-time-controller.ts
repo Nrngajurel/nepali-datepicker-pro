@@ -31,6 +31,7 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
    */
   setValue(value: Date | DateTimeResult | { ad: Date } | null): void;
   selectDay(value: DateValue): void;
+  goToday(): void;
   setTime(hour: number, minute: number, second?: number): void;
   setHour(hour24: number): boolean;
   setMinute(minute: number): boolean;
@@ -275,6 +276,19 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       setState({ selected: value, viewYear: view.year, viewMonth: view.month });
       if (options.closeOnSelect ?? !options.withTime) {
         emit(value);
+        controller.hide();
+      }
+    },
+    // Jumps straight to today regardless of which month/year/view is
+    // currently showing — the calendar-grid equivalent of the time panel's
+    // "Now" button, for when you've navigated away and want back quickly.
+    goToday() {
+      const today = createDateValue(adapter, new Date());
+      if (controller.isDisabled(today)) return;
+      const view = viewYearMonthOf(state.mode, adapter, today.ad);
+      setState({ selected: today, viewYear: view.year, viewMonth: view.month, view: 'day' });
+      if (options.closeOnSelect ?? !options.withTime) {
+        emit(today);
         controller.hide();
       }
     },

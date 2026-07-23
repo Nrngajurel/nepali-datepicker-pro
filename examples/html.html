@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -18,32 +19,69 @@
   <script src="../dist/nepali-datepicker-pro.umd.cjs"></script>
 
   <style>
-    body { font: 15px/1.5 system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; color: #262b30; }
-    h1 { font-size: 20px; } h2 { font-size: 15px; margin-top: 28px; }
-    label { display: block; font-weight: 600; margin-bottom: 6px; }
-    .field { margin-bottom: 22px; }
-    input.ndp-input, input:not([type]) { min-width: 260px; }
-    .out { margin-top: 6px; font: 13px/1.4 ui-monospace, monospace; color: #245c7a; white-space: pre-wrap; }
-    button { padding: 8px 14px; border: 1px solid #2f8f4e; background: #2f8f4e; color: #fff; border-radius: 6px; cursor: pointer; }
+    body {
+      font: 15px/1.5 system-ui, sans-serif;
+      max-width: 640px;
+      margin: 40px auto;
+      padding: 0 16px;
+      color: #262b30;
+    }
+
+    h1 {
+      font-size: 20px;
+    }
+
+    h2 {
+      font-size: 15px;
+      margin-top: 28px;
+    }
+
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .field {
+      margin-bottom: 22px;
+    }
+
+    input.ndp-input,
+    input:not([type]) {
+      min-width: 260px;
+    }
+
+    .out {
+      margin-top: 6px;
+      font: 13px/1.4 ui-monospace, monospace;
+      color: #245c7a;
+      white-space: pre-wrap;
+    }
+
+    button {
+      padding: 8px 14px;
+      border: 1px solid #2f8f4e;
+      background: #2f8f4e;
+      color: #fff;
+      border-radius: 6px;
+      cursor: pointer;
+    }
   </style>
 </head>
+
 <body>
   <h1>Nepali Datepicker Pro — Plain HTML</h1>
   <p>Every picker below is wired purely with <code>data-*</code> attributes and a single
-     <code>NepaliPicker.autoInit()</code> call. No per-picker JavaScript.</p>
+    <code>NepaliPicker.autoInit()</code> call. No per-picker JavaScript.
+  </p>
 
   <!-- The <form> shows the "server value": the visible input displays a Nepali BS
        date, but data-submit-name injects a hidden field with the AD-ISO value. -->
   <form id="demo">
     <div class="field">
       <label for="dob">Date &amp; time (BS display → AD ISO to server)</label>
-      <input id="dob" type="text"
-             data-nepali-datepicker
-             data-with-time="true"
-             data-time-format="12h"
-             data-minute-step="5"
-             data-submit-name="appointment"
-             data-value-format="iso" />
+      <input id="dob" type="text" data-nepali-datepicker data-with-time="true" data-time-format="12h"
+        data-minute-step="5" data-submit-name="appointment" data-value-format="iso" />
       <div class="out" id="dob-out">— pick a date —</div>
     </div>
 
@@ -93,4 +131,5 @@
     });
   </script>
 </body>
+
 </html>

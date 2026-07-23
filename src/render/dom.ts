@@ -5,7 +5,7 @@ import type { DateTimeController } from '../application/date-time-controller.js'
 import { crossCalendarMonthSpan, viewYearBounds, viewYearMonthOf } from '../application/calendar-view.js';
 import type { MonthSpan } from '../application/calendar-view.js';
 import type { MonthPickerController } from '../application/month-picker-controller.js';
-import { GREGORIAN_MONTHS, nativeDateMath } from '../date-math/native-date-math.js';
+import { GREGORIAN_MONTHS_SHORT, nativeDateMath } from '../date-math/native-date-math.js';
 import { formatDateValue } from '../format/index.js';
 import { normalizeDigits } from '../format/parse.js';
 import { computePopupPosition } from '../position/index.js';
@@ -78,7 +78,7 @@ function navButton(glyph: string, aria: string, onClick: () => void, hidden = fa
 // doesn't. BS names render in Devanagari, AD names in English, matching how
 // each calendar is always scripted regardless of primary/secondary position.
 function monthSpanText(span: MonthSpan, otherMode: CalendarMode, adapter: CalendarAdapter, withYear = true): string {
-  const names = otherMode === 'AD' ? GREGORIAN_MONTHS : adapter.bsMonthNames('ne');
+  const names = otherMode === 'AD' ? GREGORIAN_MONTHS_SHORT : adapter.bsMonthNames('ne');
   const startName = names[span.start.month - 1];
   const endName = names[span.end.month - 1];
   const months = startName === endName ? startName : `${startName}/${endName}`;
@@ -124,7 +124,7 @@ function renderHeader(controller: ViewControls): HTMLElement {
   if (view === 'day') {
     const span = crossCalendarMonthSpan(mode, adapter, nativeDateMath, viewYear, viewMonth);
     if (mode === 'AD') {
-      primary = `${GREGORIAN_MONTHS[viewMonth - 1]} ${viewYear}`;
+      primary = `${GREGORIAN_MONTHS_SHORT[viewMonth - 1]} ${viewYear}`;
       secondary = monthSpanText(span, 'BS', adapter);
     } else {
       primary = `${adapter.bsMonthNames('ne')[viewMonth - 1]} ${adapter.toLocaleDigits(viewYear, 'ne')}`;
@@ -173,7 +173,7 @@ function renderMonthGrid(controller: ViewControls): HTMLElement {
   for (let index = 0; index < 12; index += 1) {
     const month = index + 1;
     const selected = month === viewMonth;
-    const primaryName = mode === 'AD' ? GREGORIAN_MONTHS[index] : adapter.bsMonthNames('ne')[index];
+    const primaryName = mode === 'AD' ? GREGORIAN_MONTHS_SHORT[index] : adapter.bsMonthNames('ne')[index];
     const btn = setText(el('button', `ndp-monthcell${selected ? ' is-selected' : ''}`, { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' }), primaryName);
     if (showSecondaryCalendar) {
       // The other calendar's month usually straddles this one (~half-month
@@ -252,7 +252,7 @@ function renderMonthRangeGrid(controller: DateRangeController): HTMLElement {
     const month = index + 1;
     const disabled = controller.isMonthDisabled(viewYear, month);
     const selected = !!selStart && selStart.year === viewYear && selStart.month === month;
-    const primaryName = mode === 'AD' ? GREGORIAN_MONTHS[index] : adapter.bsMonthNames('ne')[index];
+    const primaryName = mode === 'AD' ? GREGORIAN_MONTHS_SHORT[index] : adapter.bsMonthNames('ne')[index];
     const classes = ['ndp-monthcell'];
     if (selected) classes.push('is-selected');
     if (disabled) classes.push('is-disabled');
@@ -617,6 +617,15 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   const panel = el('div', panelClass, { role: 'dialog', 'aria-label': 'Date time picker' });
   const calCol = el('div', 'ndp-cal-col');
   calCol.appendChild(renderHeader(controller));
+
+  // Small "Today" shortcut, tucked above the grid rather than taking a full
+  // footer row — jumps back regardless of which month/year/view is showing,
+  // mirroring the time panel's "Now" button.
+  const todayRow = el('div', 'ndp-today-row');
+  const todayBtn = setText(el('button', 'ndp-today-btn', { type: 'button' }), 'आज / Today');
+  todayBtn.addEventListener('click', () => controller.goToday());
+  todayRow.appendChild(todayBtn);
+  calCol.appendChild(todayRow);
 
   if (state.view === 'day') {
     calCol.appendChild(renderWeekdays(state.mode));

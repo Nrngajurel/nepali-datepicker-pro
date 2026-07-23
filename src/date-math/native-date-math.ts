@@ -2,6 +2,7 @@ import type { DateMath, DateMathUnit } from '../types.js';
 
 const TOKEN_PATTERN = /YYYY|MMMM|MM|DD|HH|hh|mm|ss|A|dddd/g;
 export const GREGORIAN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export const GREGORIAN_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const MONTHS = GREGORIAN_MONTHS;
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

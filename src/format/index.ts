@@ -3,28 +3,16 @@ import type { BsDate, CalendarAdapter, CalendarMode, PickerLocale, ValueFormat }
 const WEEKDAYS_NE = ['आइतबार', 'सोमबार', 'मङ्गलबार', 'बुधबार', 'बिहिबार', 'शुक्रबार', 'शनिबार'];
 const WEEKDAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
+// Token positions are found in one pass over the *original* format string, so
+// a resolved value that happens to contain a token-like substring (e.g. the
+// month name "Ashwin" starting with the same letter as the "A" meridiem
+// token) is never re-scanned and mangled by a later replace pass — unlike
+// chained `.replace(token, value)` calls, which corrupted "Ashwin 2083" into
+// "AMshwin 2083" once the "A" replace ran over the already-substituted string.
+const TOKEN_PATTERN = /YYYY|MMMM|MM|DD|dddd|HH|hh|mm|ss|A/g;
+
 function pad2(value: number): string {
   return String(value).padStart(2, '0');
-}
-
-export function formatBsDate(bs: BsDate, adapter: CalendarAdapter, format = 'YYYY-MM-DD', locale: PickerLocale = 'en'): string {
-  const months = adapter.bsMonthNames(locale);
-  const raw = format
-    .replace(/YYYY/g, String(bs.year))
-    .replace(/MMMM/g, months[bs.month - 1] ?? String(bs.month))
-    .replace(/MM/g, pad2(bs.month))
-    .replace(/DD/g, pad2(bs.day));
-  return adapter.toLocaleDigits(raw, locale);
-}
-
-function applyTimeTokens(raw: string, date: Date): string {
-  const hour12 = date.getHours() % 12 || 12;
-  return raw
-    .replace(/HH/g, pad2(date.getHours()))
-    .replace(/hh/g, pad2(hour12))
-    .replace(/mm/g, pad2(date.getMinutes()))
-    .replace(/ss/g, pad2(date.getSeconds()))
-    .replace(/A/g, date.getHours() >= 12 ? 'PM' : 'AM');
 }
 
 export function formatDateValue(date: Date, adapter: CalendarAdapter, options: {
@@ -35,18 +23,26 @@ export function formatDateValue(date: Date, adapter: CalendarAdapter, options: {
   const mode = options.mode ?? 'BS';
   const locale = options.locale ?? 'en';
   const format = options.format ?? 'YYYY-MM-DD';
-  if (mode === 'BS') {
-    const raw = applyTimeTokens(formatBsDate(adapter.adToBs(date), adapter, format, locale), date);
-    return locale === 'ne' ? adapter.toLocaleDigits(raw, locale) : raw;
-  }
+  const hour12 = date.getHours() % 12 || 12;
+  const bs = mode === 'BS' ? adapter.adToBs(date) : null;
+  const bsMonths = mode === 'BS' ? adapter.bsMonthNames(locale) : null;
+  const adMonths = locale === 'ne' ? adapter.bsMonthNames('ne') : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const weekdays = locale === 'ne' ? WEEKDAYS_NE : WEEKDAYS_EN;
-  const months = locale === 'ne' ? adapter.bsMonthNames('ne') : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-  const raw = applyTimeTokens(format, date)
-    .replace(/YYYY/g, String(date.getFullYear()))
-    .replace(/MMMM/g, months[date.getMonth()] ?? String(date.getMonth() + 1))
-    .replace(/MM/g, pad2(date.getMonth() + 1))
-    .replace(/DD/g, pad2(date.getDate()))
-    .replace(/dddd/g, weekdays[date.getDay()] ?? '');
+  const raw = format.replace(TOKEN_PATTERN, (token) => {
+    switch (token) {
+      case 'YYYY': return String(bs ? bs.year : date.getFullYear());
+      case 'MMMM': return bs ? (bsMonths![bs.month - 1] ?? String(bs.month)) : (adMonths[date.getMonth()] ?? String(date.getMonth() + 1));
+      case 'MM': return pad2(bs ? bs.month : date.getMonth() + 1);
+      case 'DD': return pad2(bs ? bs.day : date.getDate());
+      case 'dddd': return weekdays[date.getDay()] ?? '';
+      case 'HH': return pad2(date.getHours());
+      case 'hh': return pad2(hour12);
+      case 'mm': return pad2(date.getMinutes());
+      case 'ss': return pad2(date.getSeconds());
+      case 'A': return date.getHours() >= 12 ? 'PM' : 'AM';
+      default: return token;
+    }
+  });
   return locale === 'ne' ? adapter.toLocaleDigits(raw, locale) : raw;
 }
 

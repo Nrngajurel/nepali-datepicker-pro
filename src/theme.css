@@ -4,15 +4,27 @@
   --ndp-color-primary-bg: #e8f5ed;
   --ndp-color-accent: #245c7a;
   --ndp-color-surface: #ffffff;
+  --ndp-color-surface-subtle: #f3f6f7;
+  --ndp-color-surface-hover: #e8ecef;
   --ndp-color-page: #f6f7f8;
   --ndp-color-text: #262b30;
   --ndp-color-text-muted: #717982;
-  --ndp-color-text-faint: #aeb5bd;
+  --ndp-color-text-faint: #727a83;
   --ndp-color-border: #dfe4e8;
-  --ndp-radius: 6px;
+  --ndp-color-danger: #d64545;
+  --ndp-color-focus: var(--ndp-color-accent);
+  --ndp-radius: 8px;
+  --ndp-radius-lg: 14px;
   --ndp-shadow: 0 12px 30px rgba(18, 28, 38, 0.16);
   --ndp-z-index: 1000;
   --ndp-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif;
+  --ndp-transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --ndp-transition: none;
+  }
 }
 
 .ndp-trigger {
@@ -58,22 +70,22 @@
 }
 
 .ndp-trigger:focus-visible {
-  outline: 2px solid white;
+  outline: 2px solid var(--ndp-color-focus);
   outline-offset: 2px;
 }
 
 /* Typed value that doesn't parse to a valid, allowed date. */
 .ndp-trigger.ndp-input-invalid {
-  color: #d64545;
-  border-color: #d64545;
+  color: var(--ndp-color-danger);
+  border-color: var(--ndp-color-danger);
 }
 
 .ndp-trigger.ndp-input-invalid:focus-visible {
-  outline-color: #d64545;
+  outline-color: var(--ndp-color-danger);
 }
 
 .ndp-trigger-wrap:has(.ndp-input-invalid) {
-  border-color: #d64545;
+  border-color: var(--ndp-color-danger);
 }
 
 .ndp-trigger-wrap {
@@ -107,10 +119,10 @@
 .ndp-mode-toggle {
   appearance: none;
   flex: 0 0 auto;
-  width: 36px;
+  width: 38px;
   border: 0;
   border-left: 1px solid var(--ndp-color-border);
-  background: #f3f6f7;
+  background: var(--ndp-color-surface-subtle);
   color: var(--ndp-color-text-muted);
   font-size: 16px;
   line-height: 1;
@@ -118,11 +130,17 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: var(--ndp-transition);
 }
 
 .ndp-mode-toggle:hover {
-  background: #e8ecef;
+  background: var(--ndp-color-surface-hover);
   color: var(--ndp-color-text);
+}
+
+.ndp-mode-toggle:focus-visible {
+  outline: 2px solid var(--ndp-color-focus);
+  outline-offset: -2px;
 }
 
 .ndp-mode-toggle[data-mode="BS"] {
@@ -133,23 +151,29 @@
   appearance: none;
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 7px;
   transform: translateY(-50%);
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
   border: 0;
   border-radius: 50%;
   background: var(--ndp-color-text-faint);
   color: var(--ndp-color-surface);
   font-size: 12px;
-  line-height: 18px;
+  line-height: 22px;
   text-align: center;
   cursor: pointer;
   padding: 0;
+  transition: var(--ndp-transition);
 }
 
 .ndp-clear:hover {
   background: var(--ndp-color-text-muted);
+}
+
+.ndp-clear:focus-visible {
+  outline: 2px solid var(--ndp-color-focus);
+  outline-offset: 2px;
 }
 
 .ndp-panel-root {
@@ -164,10 +188,9 @@
 
 .ndp-panel {
   display: flex;
-  width: min(680px, calc(100vw - 16px));
   overflow: hidden;
   border: 1px solid var(--ndp-color-border);
-  border-radius: var(--ndp-radius);
+  border-radius: var(--ndp-radius-lg);
   background: var(--ndp-color-surface);
   box-shadow: var(--ndp-shadow);
   color: var(--ndp-color-text);
@@ -205,6 +228,98 @@
   margin-top: 8px;
 }
 
+/* The with-time datetime panel (calendar + time sidebar) — denser than the
+   default sizing so the combined width/height footprint reads smaller,
+   without going as tight as the date-only or range panels. Scoped away from
+   `.ndp-panel--date-only` since that variant has its own, separate sizing. */
+.ndp-panel--datetime:not(.ndp-panel--date-only) {
+  width: min(500px, calc(100vw - 16px));
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-cal-col {
+  /* Bottom stays tight (matches the separate `.ndp-panel--datetime .ndp-cal-col`
+     bottom-padding rule below) — the button row underneath needs less air. */
+  padding: 12px 12px 4px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-cell {
+  height: 40px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-cal-header {
+  padding: 6px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-weekdays {
+  margin-top: 8px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-button-row {
+  margin-top: 10px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-apply,
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-secondary {
+  padding: 9px 12px;
+  font-size: 13px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-panel {
+  width: 168px;
+  gap: 12px;
+  padding: 12px 10px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-title {
+  font-size: 12px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-input {
+  width: 40px;
+  padding: 6px 0;
+  font-size: 18px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-entry-colon {
+  font-size: 18px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-ampm {
+  min-width: 40px;
+  padding: 6px 4px;
+  font-size: 13px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-wheel {
+  width: 40px;
+  height: 150px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-wheel-list {
+  /* Keeps the scroll-snap center band aligned with the shrunk item height:
+     (wheel height − item height) / 2 = (150 − 30) / 2. */
+  padding: 60px 0;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-wheel-item {
+  height: 30px;
+  font-size: 15px;
+  line-height: 30px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-wheel-item.is-selected {
+  font-size: 17px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-wheels::before {
+  height: 30px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-now {
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
 /* Range picker is compact — narrower panel, smaller cells, denser layout. */
 .ndp-panel--compact {
   width: min(520px, calc(100vw - 16px));
@@ -233,8 +348,8 @@
 }
 
 .ndp-panel--compact .ndp-nav {
-  min-width: 26px;
-  min-height: 26px;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 .ndp-panel--compact .ndp-cal-label-primary {
@@ -336,17 +451,27 @@
   color: var(--ndp-color-text);
   text-align: left;
   cursor: pointer;
+  transition: var(--ndp-transition);
 }
 
 .ndp-preset:hover,
 .ndp-submenu-item:hover {
-  background: #f2f5f7;
+  background: var(--ndp-color-surface-subtle);
+}
+
+.ndp-preset:focus-visible,
+.ndp-submenu-item:focus-visible {
+  outline: 2px solid var(--ndp-color-focus);
+  outline-offset: -2px;
 }
 
 .ndp-preset.is-active {
   background: var(--ndp-color-primary-bg);
   color: var(--ndp-color-primary);
   font-weight: 700;
+  /* Colored left edge makes the active preset readable at a glance in the
+     list, not just a font-weight/tint difference. */
+  box-shadow: inset 3px 0 0 var(--ndp-color-primary);
 }
 
 .ndp-submenu-list {
@@ -412,32 +537,6 @@
   color: var(--ndp-color-text-faint);
 }
 
-/* Popup-level mode toggle (single button, e.g. inside range input group). */
-.ndp-input-group .ndp-mode-toggle {
-  appearance: none;
-  flex: 0 0 auto;
-  width: 36px;
-  border: 0;
-  border-left: 1px solid var(--ndp-color-border);
-  background: #f3f6f7;
-  color: var(--ndp-color-text-muted);
-  font-size: 16px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.ndp-input-group .ndp-mode-toggle:hover {
-  background: #e8ecef;
-  color: var(--ndp-color-text);
-}
-
-.ndp-input-group .ndp-mode-toggle[data-mode="BS"] {
-  color: var(--ndp-color-primary);
-}
-
 /* Custom-range guidance banner. */
 .ndp-range-hint {
   margin-bottom: 10px;
@@ -462,16 +561,22 @@
 }
 
 .ndp-nav {
-  min-width: 30px;
-  min-height: 30px;
+  min-width: 34px;
+  min-height: 34px;
   border-radius: 4px;
   background: transparent;
   color: #fff;
   cursor: pointer;
+  transition: var(--ndp-transition);
 }
 
 .ndp-nav:hover {
   background: rgba(255, 255, 255, 0.18);
+}
+
+.ndp-nav:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
 }
 
 .ndp-nav.is-hidden {
@@ -488,18 +593,27 @@
   font: inherit;
   text-align: center;
   cursor: pointer;
+  transition: var(--ndp-transition);
 }
 
 .ndp-cal-label:hover {
   background: rgba(255, 255, 255, 0.18);
 }
 
+.ndp-cal-label:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -2px;
+}
+
 .ndp-cal-label-primary {
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .ndp-cal-label-secondary {
   font-size: 11px;
+  font-weight: 600;
   opacity: 0.86;
 }
 
@@ -517,8 +631,18 @@
 
 .ndp-weekday {
   padding: 4px 0;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+/* Saturday is Nepal's weekly holiday — the calendar convention (matching
+   printed BS calendars) is to mark that whole column in red. The grid always
+   lays out Sunday-first regardless of mode, so column 7 is always Saturday. */
+.ndp-weekday:nth-child(7n) {
+  color: var(--ndp-color-danger);
 }
 
 .ndp-grid {
@@ -532,33 +656,43 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: var(--ndp-radius);
   background: transparent;
   color: var(--ndp-color-text);
   cursor: pointer;
   text-align: center;
+  transition: var(--ndp-transition);
 }
 
 .ndp-cell--empty {
   cursor: default;
 }
 
+/* Flat, quiet dim instead of a strikethrough — reads as "not here" rather
+   than "crossed out," and avoids stacking two separate dimming effects
+   (a faint color on top of reduced opacity) that made it look muddy. */
 .ndp-cell.is-disabled {
   cursor: not-allowed;
-  color: var(--ndp-color-text-faint);
-  text-decoration: line-through;
-  opacity: 0.55;
+  color: var(--ndp-color-text);
+  opacity: 0.32;
 }
 
 .ndp-cell.is-disabled:hover {
   background: transparent;
 }
 
-.ndp-cell:not(.ndp-cell--empty):hover {
+.ndp-cell:not(.ndp-cell--empty):not(.is-disabled):hover {
   background: var(--ndp-color-primary-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ndp-color-primary) 30%, transparent);
+}
+
+.ndp-cell:not(.ndp-cell--empty):focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ndp-color-focus);
+  outline: none;
 }
 
 .ndp-cell-primary {
+  font-size: 15px;
   font-weight: 700;
 }
 
@@ -572,10 +706,42 @@
   border-radius: 0;
 }
 
+/* Range caps round only their outer edge so a multi-day selection reads as
+   one continuous pill instead of three disconnected shapes. This only kicks
+   in when the cap is actually adjacent to other selected days (`is-in-range`
+   is present alongside): the single-date/datetime pickers reuse
+   `is-range-start` for their one-and-only "selected" cell (no real range,
+   never paired with `is-in-range`), so that stays fully rounded on all four
+   corners, same as a single-day range (start === end, both classes present). */
+.ndp-cell.is-range-start.is-in-range:not(.is-range-end) {
+  border-top-left-radius: var(--ndp-radius);
+  border-bottom-left-radius: var(--ndp-radius);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.ndp-cell.is-range-end.is-in-range:not(.is-range-start) {
+  border-top-right-radius: var(--ndp-radius);
+  border-bottom-right-radius: var(--ndp-radius);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* A single-day range (start === end) and the plain date/datetime pickers'
+   "selected" cell both land here and stay fully rounded. */
+.ndp-cell.is-range-start.is-range-end,
+.ndp-cell.is-range-start:not(.is-in-range),
+.ndp-cell.is-range-end:not(.is-in-range) {
+  border-radius: var(--ndp-radius);
+}
+
 .ndp-cell.is-range-start,
 .ndp-cell.is-range-end {
   background: var(--ndp-color-primary);
   color: #fff;
+  /* Selected caps get a colored "lift" so they read as raised/tactile, not
+     just a flat color swap. */
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--ndp-color-primary) 40%, transparent);
 }
 
 .ndp-cell.is-range-start .ndp-cell-secondary,
@@ -583,8 +749,30 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
+/* Saturday column reads in red, like a printed BS calendar — unless the cell
+   is disabled (muted takes over) or selected/in-range (white takes over). */
+.ndp-cell:nth-child(7n):not(.is-disabled) .ndp-cell-primary,
+.ndp-cell:nth-child(7n):not(.is-disabled) .ndp-cell-secondary {
+  color: var(--ndp-color-danger);
+}
+
+/* "Today" gets a ring instead of relying on color alone, so it stays
+   legible for colorblind users and reads as a distinct, tactile state even
+   unselected. Selected days already carry their own shadow, so the ring only
+   shows when today isn't also the picked day. */
+.ndp-cell.is-today:not(.is-range-start):not(.is-range-end) {
+  box-shadow: inset 0 0 0 1.5px var(--ndp-color-primary);
+}
+
 .ndp-cell.is-today:not(.is-range-start):not(.is-range-end) .ndp-cell-primary {
   color: var(--ndp-color-primary);
+}
+
+.ndp-cell.is-range-start:nth-child(7n) .ndp-cell-primary,
+.ndp-cell.is-range-end:nth-child(7n) .ndp-cell-primary,
+.ndp-cell.is-range-start:nth-child(7n) .ndp-cell-secondary,
+.ndp-cell.is-range-end:nth-child(7n) .ndp-cell-secondary {
+  color: #fff;
 }
 
 /* Month & year selection views (opened by clicking the header label). */
@@ -609,19 +797,28 @@
   border-radius: var(--ndp-radius);
   background: transparent;
   color: var(--ndp-color-text);
-  font: 700 14px var(--ndp-font);
+  font: 700 15px var(--ndp-font);
   cursor: pointer;
+  transition: var(--ndp-transition);
 }
 
 .ndp-monthcell:hover,
 .ndp-yearcell:not(.ndp-yearcell--empty):hover {
   background: var(--ndp-color-primary-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ndp-color-primary) 30%, transparent);
+}
+
+.ndp-monthcell:not(.is-disabled):focus-visible,
+.ndp-yearcell:not(.ndp-yearcell--empty):focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ndp-color-focus);
+  outline: none;
 }
 
 .ndp-monthcell.is-selected,
 .ndp-yearcell.is-selected {
   background: var(--ndp-color-primary);
   color: #fff;
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--ndp-color-primary) 40%, transparent);
 }
 
 .ndp-monthcell-en,
@@ -642,8 +839,7 @@
 }
 
 .ndp-monthcell.is-disabled {
-  opacity: 0.4;
-  text-decoration: line-through;
+  opacity: 0.32;
   cursor: not-allowed;
   pointer-events: none;
 }
@@ -667,6 +863,35 @@
   margin-top: 12px;
 }
 
+.ndp-today-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+.ndp-today-btn {
+  appearance: none;
+  border: 1px solid var(--ndp-color-border);
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: transparent;
+  color: var(--ndp-color-primary);
+  font: 700 11px var(--ndp-font);
+  line-height: 1.6;
+  cursor: pointer;
+  transition: var(--ndp-transition);
+}
+
+.ndp-today-btn:hover {
+  background: var(--ndp-color-primary-bg);
+  border-color: var(--ndp-color-primary);
+}
+
+.ndp-today-btn:focus-visible {
+  outline: 2px solid var(--ndp-color-focus);
+  outline-offset: 1px;
+}
+
 .ndp-time-panel {
   display: flex;
   width: 190px;
@@ -675,7 +900,7 @@
   gap: 14px;
   border-left: 1px solid var(--ndp-color-border);
   padding: 14px 12px;
-  background: #fbfcfd;
+  background: var(--ndp-color-page);
 }
 
 .ndp-time-title {
@@ -713,12 +938,12 @@
 }
 
 .ndp-time-input.ndp-input-invalid {
-  color: #d64545;
-  border-color: #d64545;
+  color: var(--ndp-color-danger);
+  border-color: var(--ndp-color-danger);
 }
 
 .ndp-time-input.ndp-input-invalid:focus-visible {
-  outline-color: #d64545;
+  outline-color: var(--ndp-color-danger);
 }
 
 .ndp-time-entry-colon {
@@ -792,7 +1017,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(#fbfcfd, transparent 34%, transparent 66%, #fbfcfd);
+  background: linear-gradient(var(--ndp-color-page), transparent 34%, transparent 66%, var(--ndp-color-page));
 }
 
 .ndp-wheel-list {
@@ -834,9 +1059,8 @@
 }
 
 .ndp-wheel-item.is-disabled {
-  color: var(--ndp-color-text-faint);
-  text-decoration: line-through;
-  opacity: 0.55;
+  color: var(--ndp-color-text-muted);
+  opacity: 0.32;
   cursor: not-allowed;
 }
 
@@ -856,11 +1080,17 @@
   color: var(--ndp-color-text);
   font: 700 13px var(--ndp-font);
   cursor: pointer;
+  transition: var(--ndp-transition);
 }
 
 .ndp-time-now:hover {
   background: var(--ndp-color-primary-bg);
   color: var(--ndp-color-primary);
+}
+
+.ndp-time-now:focus-visible {
+  outline: 2px solid var(--ndp-color-focus);
+  outline-offset: 1px;
 }
 
 .ndp-apply,
@@ -871,17 +1101,41 @@
   padding: 10px 12px;
   cursor: pointer;
   font-weight: 700;
+  transition: var(--ndp-transition);
 }
 
 .ndp-apply {
   background: var(--ndp-color-primary);
   color: #fff;
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--ndp-color-primary) 30%, transparent);
+}
+
+.ndp-apply:hover {
+  background: var(--ndp-color-primary-hover);
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--ndp-color-primary) 45%, transparent);
+  transform: translateY(-1px);
+}
+
+.ndp-apply:active {
+  background: var(--ndp-color-primary-hover);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--ndp-color-primary) 30%, transparent);
+  transform: translateY(0);
+}
+
+.ndp-apply:focus-visible,
+.ndp-secondary:focus-visible {
+  outline: 2px solid var(--ndp-color-focus);
+  outline-offset: 1px;
 }
 
 .ndp-secondary {
   border: 1px solid var(--ndp-color-border);
-  background: #fff;
+  background: var(--ndp-color-surface);
   color: var(--ndp-color-text);
+}
+
+.ndp-secondary:hover {
+  background: var(--ndp-color-surface-subtle);
 }
 
 @media (max-width: 560px) {
