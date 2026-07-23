@@ -67,5 +67,6 @@ A recurring design point: the calendar `mode` (BS/AD) and `displayFormat` shown 
 - `dist/` is git-ignored; it's only produced by `npm run build` and is what actually ships to npm (`package.json` `files`).
 - `docs/.vitepress/dist/` (built docs site) and `docs/.vitepress/cache/` are also git-ignored.
 - `references/` (the vendored reference oracle script used to originally generate `calendar-data`) is git-ignored — local-only, not part of the package or the checked-in source of truth.
+- `skills/nepali-datepicker-pro/` (`SKILL.md` + `reference.md`) is a checked-in, hand-maintained Agent Skill for *consumers* of this package (not for developing this repo) — it ships via `package.json` `files`. It mirrors `README.md`'s options tables/events/gotchas; when a picker option, event, or entry-point behavior changes, update `skills/nepali-datepicker-pro/reference.md` alongside `README.md` in the same pass, not just the changelog.
 
 while commiting never ever keep claude as coworker

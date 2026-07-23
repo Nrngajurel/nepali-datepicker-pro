@@ -7,6 +7,15 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-24
+
+### Added
+
+- `skills/nepali-datepicker-pro/` — an AI agent skill (`SKILL.md` + `reference.md`) shipped
+  in the npm package, covering install, the five entry points, options tables, events, and
+  common gotchas, so a coding agent (e.g. Claude Code) integrating this package into a
+  consumer project can work from ground-truth docs instead of guessing at the API.
+
 ## [0.3.0] - 2026-07-24
 
 ### Added

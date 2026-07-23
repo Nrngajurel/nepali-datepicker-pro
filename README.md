@@ -63,6 +63,7 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 - [Styling](#styling)
 - [TypeScript](#typescript)
 - [Browser support](#browser-support)
+- [AI agent skill](#ai-agent-skill)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -486,6 +487,21 @@ All framework wrappers are fully typed:
 Evergreen browsers (Chrome, Firefox, Safari, Edge — last 2 versions). No IE11 support; the package targets ES2020+.
 
 ---
+
+## AI agent skill
+
+The package ships an [Agent Skill](https://docs.claude.com/en/docs/claude-code/skills)
+at `node_modules/nepali-datepicker-pro/skills/nepali-datepicker-pro/` — a
+`SKILL.md` + `reference.md` pair covering install, all five entry points, every
+option, events, and common gotchas, kept in sync with this README. If you use
+Claude Code (or another agent that reads skills from a project directory), copy or
+symlink it into your project so the agent integrates this package from ground-truth
+docs instead of guessing:
+
+```bash
+mkdir -p .claude/skills
+cp -r node_modules/nepali-datepicker-pro/skills/nepali-datepicker-pro .claude/skills/
+```
 
 ## Contributing
 
