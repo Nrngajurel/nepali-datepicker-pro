@@ -7,6 +7,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- Pinned `esbuild`/`vite` (via `overrides` in `package.json`) to patched versions to close the
+  `npm audit` findings pulled in transitively through `vitepress`'s bundled dev-server deps.
+  Dev-tooling only — does not affect the published package.
+
 ## [0.4.0] - 2026-07-24
 
 ### Added
