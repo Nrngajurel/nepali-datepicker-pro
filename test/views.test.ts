@@ -119,6 +119,64 @@ test('range: update({ mode }) switches the calendar system live', () => {
   assert.equal(c.getState().mode, 'AD');
 });
 
+test('datetime: toggling to AD mode re-anchors the view and renders the Gregorian calendar', () => {
+  const c = createDateTimeController({ value: base() }); // 2081-01-01 BS = 2024-04-13 AD
+  c.show();
+  const root = render(c, 'datetime');
+  assert.equal(c.getState().viewYear, 2081);
+  assert.equal(c.getState().viewMonth, 1);
+
+  c.toggleMode();
+  assert.equal(c.getState().mode, 'AD');
+  assert.equal(c.getState().viewYear, 2024, 'view re-anchors to the AD year of the same month');
+  assert.equal(c.getState().viewMonth, 4, 'view re-anchors to the AD month of the same month');
+
+  const header = root.querySelector('.ndp-cal-label-primary')!.textContent;
+  assert.match(header || '', /April 2024/, 'header shows the Gregorian month/year as primary once in AD mode');
+  const firstDay = root.querySelectorAll('.ndp-cell:not(.ndp-cell--empty)')[0];
+  assert.equal(firstDay.querySelector('.ndp-cell-primary')!.textContent, '1', 'AD day 1 is the primary label in AD mode');
+
+  c.navigateMonth(1);
+  assert.equal(c.getState().viewYear, 2024);
+  assert.equal(c.getState().viewMonth, 5, 'navigating in AD mode steps a real Gregorian month, not a relabeled BS one');
+});
+
+test('range: toggling to AD mode re-anchors the view to the Gregorian calendar', () => {
+  const c = createDateRangeController({ value: { start: base(), end: base() } });
+  assert.equal(c.getState().viewYear, 2081);
+  assert.equal(c.getState().viewMonth, 1);
+
+  c.toggleMode();
+  assert.equal(c.getState().viewYear, 2024);
+  assert.equal(c.getState().viewMonth, 4);
+
+  c.navigateMonth(1);
+  assert.equal(c.getState().viewMonth, 5, 'navigates a real Gregorian month once in AD mode');
+});
+
+test('datetime: header and month grid show the overlapped month span, not a single misleading anchor', () => {
+  const c = createDateTimeController({ value: base() }); // 2081-01-01 BS = 2024-04-13 AD
+  c.show();
+  const root = render(c, 'datetime');
+
+  // BS Baisakh (viewed month) straddles AD April/May — both should show, not just April.
+  assert.equal(root.querySelector('.ndp-cal-label-secondary')!.textContent, 'April/May 2024');
+
+  c.setView('month');
+  const monthCells = () => [...root.querySelectorAll<HTMLElement>('.ndp-monthcell')];
+  assert.equal(monthCells()[0].querySelector('.ndp-monthcell-en')!.textContent, 'April/May', 'Baisakh cell shows the AD months it spans');
+  assert.equal(monthCells()[1].querySelector('.ndp-monthcell-en')!.textContent, 'May/June', 'Jestha cell shows the AD months it spans');
+
+  c.setView('day');
+  c.toggleMode();
+  // AD January straddles BS Poush/Magh; jump to January of the same view year.
+  c.navigateMonth(1 - c.getState().viewMonth);
+  assert.equal(c.getState().viewYear, 2024);
+  assert.equal(c.getState().viewMonth, 1);
+  const secondary = root.querySelector('.ndp-cal-label-secondary')!.textContent;
+  assert.match(secondary || '', /पौष.*माघ/, 'January in AD mode shows both BS months it straddles, not just one');
+});
+
 test('range: "Pick a Month" preset switches to whole-month selection', () => {
   const c = createDateRangeController({ value: { start: base(), end: base() } });
   c.show();
@@ -143,6 +201,30 @@ test('range: "Pick a Month" preset switches to whole-month selection', () => {
   const y = range.end.bs.year;
   assert.equal(range.end.bs.day, defaultCalendarAdapter.daysInBsMonth(y, 7), 'ends on the last day of the month');
   assert.ok(root.querySelector('.ndp-monthcell.is-selected'), 'picked month is highlighted');
+});
+
+test('range: "Pick a Month" in AD mode spans a Gregorian month, not a misread BS one', () => {
+  const c = createDateRangeController({ value: { start: base(), end: base() } }); // viewYear/viewMonth = 2081 BS, 1
+  c.toggleMode(); // re-anchors the view to 2024 AD, 4
+  c.show();
+  const root = render(c, 'range');
+
+  const monthPreset = [...root.querySelectorAll<HTMLButtonElement>('.ndp-preset')].find((b) => b.textContent === 'Pick a Month')!;
+  monthPreset.click();
+
+  const header = root.querySelector('.ndp-cal-label-primary')!.textContent;
+  assert.match(header || '', /2024 AD/, 'month-select header shows the Gregorian year, not BS');
+
+  const cells = [...root.querySelectorAll<HTMLButtonElement>('.ndp-monthcell')];
+  cells[4].click(); // May (index 4) of 2024 AD
+
+  const range = c.getState().range!;
+  assert.equal(range.start.ad.getFullYear(), 2024, 'picking a month in AD mode must not land on an old BS-misread date');
+  assert.equal(range.start.ad.getMonth(), 4, 'range starts on May 1st (0-indexed month 4)');
+  assert.equal(range.start.ad.getDate(), 1);
+  assert.equal(range.end.ad.getFullYear(), 2024);
+  assert.equal(range.end.ad.getMonth(), 4);
+  assert.equal(range.end.ad.getDate(), 31, 'ends on May 31st');
 });
 
 test('range: choosing another preset leaves month mode', () => {

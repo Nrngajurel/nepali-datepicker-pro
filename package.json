@@ -1,6 +1,6 @@
 {
   "name": "nepali-datepicker-pro",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "description": "Framework-agnostic Nepali BS/AD date, datetime, and range picker with a same-screen time picker. Works from vanilla JS, a <script> tag, jQuery, Vue, and React.",
   "type": "module",
   "license": "MIT",
@@ -8,7 +8,7 @@
     "name": "Narayan Gajurel",
     "email": "nrngajurel@gmail.com"
   },
-  "homepage": "https://github.com/nrngajurel/nepali-datepicker-pro#readme",
+  "homepage": "https://nepali-datepicker-pro.vercel.app",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nrngajurel/nepali-datepicker-pro.git"
@@ -24,8 +24,13 @@
     "bs-calendar",
     "nepali-calendar",
     "nepali-date",
+    "nepali-date-converter",
+    "bs-to-ad",
+    "ad-to-bs",
     "date-range-picker",
+    "month-picker",
     "time-picker",
+    "nepali-fiscal-year",
     "vue",
     "react",
     "jquery",

@@ -53,7 +53,7 @@ test('submitName injects a hidden input with the AD ISO value while the display 
   const hidden = document.querySelector<HTMLInputElement>('input[type=hidden][name=dob]')!;
   assert.ok(hidden, 'hidden submit field injected');
   assert.equal(hidden.value, '2024-04-13', 'hidden field carries AD ISO');
-  assert.match(input.value, /२०८१/, 'visible input still shows Nepali BS');
+  assert.match(input.value, /2081/, 'visible input still shows the BS year (default locale is en)');
   assert.equal(input.getAttribute('name'), null, 'visible input name removed so only the machine value submits');
 });
 

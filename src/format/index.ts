@@ -7,7 +7,7 @@ function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
 
-export function formatBsDate(bs: BsDate, adapter: CalendarAdapter, format = 'YYYY-MM-DD', locale: PickerLocale = 'ne'): string {
+export function formatBsDate(bs: BsDate, adapter: CalendarAdapter, format = 'YYYY-MM-DD', locale: PickerLocale = 'en'): string {
   const months = adapter.bsMonthNames(locale);
   const raw = format
     .replace(/YYYY/g, String(bs.year))
@@ -33,7 +33,7 @@ export function formatDateValue(date: Date, adapter: CalendarAdapter, options: {
   locale?: PickerLocale;
 } = {}): string {
   const mode = options.mode ?? 'BS';
-  const locale = options.locale ?? 'ne';
+  const locale = options.locale ?? 'en';
   const format = options.format ?? 'YYYY-MM-DD';
   if (mode === 'BS') {
     const raw = applyTimeTokens(formatBsDate(adapter.adToBs(date), adapter, format, locale), date);

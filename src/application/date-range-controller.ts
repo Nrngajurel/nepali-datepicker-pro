@@ -1,5 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
+import { buildViewMonthCells, clampViewYear, firstOfViewMonth, lastOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
 import { isDayDisabled, resolveBound } from './constraints.js';
 import { createDateRange, createDateValue, dateValueFromBs, isSameDateValue } from '../domain/date-value.js';
 import { formatRange, formatMachineValue, stringifyMachineValue } from '../format/index.js';
@@ -69,25 +70,29 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   const providedRange = options.value !== undefined ? options.value : options.defaultValue;
   const initialRange = providedRange ?? (options.defaultPresetId ? resolvePresetRange(options.defaultPresetId) : null);
   const viewAnchor = initialRange ?? resolveInitialRange();
+  const initialMode: CalendarMode = options.mode ?? 'BS';
+  const initialView = viewYearMonthOf(initialMode, adapter, viewAnchor.end);
 
   let state: DateRangeControllerState = {
     isOpen: false,
-    mode: options.mode ?? 'BS',
+    mode: initialMode,
     allowModeToggle: options.allowModeToggle !== false,
-    viewYear: adapter.adToBs(viewAnchor.end).year,
-    viewMonth: adapter.adToBs(viewAnchor.end).month,
+    viewYear: initialView.year,
+    viewMonth: initialView.month,
     range: initialRange ? createDateRange(createDateValue(adapter, initialRange.start), createDateValue(adapter, initialRange.end)) : null,
     pendingStart: null,
     hoverDate: null,
     activePresetId: providedRange ? null : (options.defaultPresetId ?? null),
     openSubmenuId: null,
     view: 'day',
-    yearGroupStart: adapter.adToBs(viewAnchor.end).year - 6,
+    yearGroupStart: initialView.year - 6,
     selectionUnit: 'day',
   };
 
-  const firstOfMonth = (year: number, month: number): DateValue => dateValueFromBs(adapter, { year, month, day: 1 });
-  const lastOfMonth = (year: number, month: number): DateValue => dateValueFromBs(adapter, { year, month, day: adapter.daysInBsMonth(year, month) });
+  // Mode-aware: "Pick a Month" spans a whole BS month when mode is BS, or a
+  // whole Gregorian month when mode is AD — whichever calendar is active.
+  const firstOfMonth = (year: number, month: number): DateValue => createDateValue(adapter, firstOfViewMonth(state.mode, adapter, year, month));
+  const lastOfMonth = (year: number, month: number): DateValue => createDateValue(adapter, lastOfViewMonth(state.mode, adapter, dateMath, year, month));
 
   const pad2 = (n: number): string => String(n).padStart(2, '0');
 
@@ -128,7 +133,15 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   }
 
   function clampYear(year: number): number {
-    return Math.max(adapter.minSupportedYear, Math.min(adapter.maxSupportedYear, year));
+    return clampViewYear(state.mode, adapter, year);
+  }
+
+  // Re-express the currently viewed month in a new mode, anchored on the same
+  // real month so toggling BS/AD doesn't jump the calendar to an unrelated page.
+  function reviewInMode(nextMode: CalendarMode): Pick<DateRangeControllerState, 'mode' | 'viewYear' | 'viewMonth' | 'yearGroupStart'> {
+    const anchor = firstOfViewMonth(state.mode, adapter, state.viewYear, state.viewMonth);
+    const view = viewYearMonthOf(nextMode, adapter, anchor);
+    return { mode: nextMode, viewYear: view.year, viewMonth: view.month, yearGroupStart: clampViewYear(nextMode, adapter, view.year - 6) };
   }
 
   function resolveInitialRange(): { start: Date; end: Date } {
@@ -170,7 +183,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
         mode: state.mode,
         format: options.displayFormat ?? options.locale?.format ?? 'YYYY-MM-DD',
         separator: options.locale?.separator,
-        locale: state.mode === 'BS' ? 'ne' : 'en',
+        locale: 'en',
       }),
       startValue,
       endValue,
@@ -212,7 +225,10 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       options = { ...options, ...patch };
       presets = normalizePresets(options, adapter, dateMath);
       const next: Partial<DateRangeControllerState> = {};
-      if ('mode' in patch) next.mode = options.mode ?? 'BS';
+      if ('mode' in patch) {
+        const nextMode = options.mode ?? 'BS';
+        if (nextMode !== state.mode) Object.assign(next, reviewInMode(nextMode));
+      }
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
       setState(next);
     },
@@ -293,14 +309,15 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     },
     toggleMode() {
       if (!state.allowModeToggle) return;
-      setState({ mode: state.mode === 'BS' ? 'AD' : 'BS' });
+      setState(reviewInMode(state.mode === 'BS' ? 'AD' : 'BS'));
     },
     selectPreset(id) {
       const preset = presets.find((item) => item.id === id);
       if (!preset?.resolve) return;
       const resolved = preset.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
       const range = createDateRange(createDateValue(adapter, resolved.start), createDateValue(adapter, resolved.end));
-      setState({ range, activePresetId: id, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: range.end.bs.year, viewMonth: range.end.bs.month, openSubmenuId: null });
+      const view = viewYearMonthOf(state.mode, adapter, range.end.ad);
+      setState({ range, activePresetId: id, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: view.year, viewMonth: view.month, openSubmenuId: null });
       options.onChange?.({ start: range.start.ad, end: range.end.ad });
     },
     selectSubmenuItem(submenuId, itemId) {
@@ -308,7 +325,8 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if (!item?.resolve) return;
       const resolved = item.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
       const range = createDateRange(createDateValue(adapter, resolved.start), createDateValue(adapter, resolved.end));
-      setState({ range, activePresetId: itemId, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: range.end.bs.year, viewMonth: range.end.bs.month, openSubmenuId: null });
+      const view = viewYearMonthOf(state.mode, adapter, range.end.ad);
+      setState({ range, activePresetId: itemId, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: view.year, viewMonth: view.month, openSubmenuId: null });
     },
     toggleSubmenu(id) {
       setState({ openSubmenuId: state.openSubmenuId === id ? null : id });
@@ -333,11 +351,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       return isDayDisabled(value.ad, options, dateMath);
     },
     yearBounds() {
-      if (state.mode === 'BS') return { min: adapter.minSupportedYear, max: adapter.maxSupportedYear };
-      return {
-        min: adapter.bsToAd(adapter.minSupportedYear, 1, 1).getFullYear() + 1,
-        max: adapter.bsToAd(adapter.maxSupportedYear, 1, 1).getFullYear(),
-      };
+      return viewYearBounds(state.mode, adapter);
     },
     typedString: () => (state.range ? `${dvToAscii(state.range.start)} – ${dvToAscii(state.range.end)}` : ''),
     typedReference() {
@@ -357,7 +371,8 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       }
       const range = parseTypedRange(text);
       if (!range) return 'invalid';
-      setState({ range, pendingStart: null, hoverDate: null, activePresetId: null, selectionUnit: 'day', viewYear: range.end.bs.year, viewMonth: range.end.bs.month });
+      const view = viewYearMonthOf(state.mode, adapter, range.end.ad);
+      setState({ range, pendingStart: null, hoverDate: null, activePresetId: null, selectionUnit: 'day', viewYear: view.year, viewMonth: view.month });
       options.onChange?.({ start: range.start.ad, end: range.end.ad });
       emit(range);
       return 'valid';
@@ -366,12 +381,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       return dateValueFromBs(adapter, { year, month, day });
     },
     buildMonthCells(year, month) {
-      const days = adapter.daysInBsMonth(year, month);
-      const leading = adapter.bsToAd(year, month, 1).getDay();
-      const cells: Array<DateValue | null> = Array.from({ length: leading }, () => null);
-      for (let day = 1; day <= days; day += 1) cells.push(controller.cellForBs(year, month, day));
-      while (cells.length % 7 !== 0) cells.push(null);
-      return cells;
+      return buildViewMonthCells(state.mode, adapter, dateMath, year, month);
     },
   };
 

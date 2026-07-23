@@ -20,25 +20,26 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 <table>
   <tr>
     <td align="center">
-      <img src="./images/date-picker.png" alt="Date Picker" width="400" />
+      <img src="https://nepali-datepicker-pro.vercel.app/images/date-picker.png" alt="Date Picker" width="400" />
       <br><strong>Date Picker</strong>
     </td>
     <td align="center">
-      <img src="./images/date-range-picker.png" alt="Date Range Picker" width="400" />
+      <img src="https://nepali-datepicker-pro.vercel.app/images/date-range-picker.png" alt="Date Range Picker" width="400" />
       <br><strong>Date Range Picker</strong>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="./images/date-time-picker.png" alt="Date Time Picker" width="400" />
+      <img src="https://nepali-datepicker-pro.vercel.app/images/date-time-picker.png" alt="Date Time Picker" width="400" />
       <br><strong>Date Time Picker</strong>
     </td>
     <td align="center">
-      <img src="./images/month-picker.png" alt="Month Picker" width="400" />
+      <img src="https://nepali-datepicker-pro.vercel.app/images/month-picker.png" alt="Month Picker" width="400" />
       <br><strong>Month Picker</strong>
     </td>
   </tr>
 </table>
+
 ---
 
 ## Table of contents
@@ -64,8 +65,8 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 - [Browser support](#browser-support)
 - [Contributing](#contributing)
 - [License](#license)
-- Full documentation, with live configurable demos: **<https://nepali-datepicker-pro.vercel.app/>**
-- Further reading: [quick start](./docs/guide/quick-start.md) · [options](./docs/guide/options.md) · [migration](./docs/guide/migration.md)
+
+📖 **Full documentation, with live configurable demos: <https://nepali-datepicker-pro.vercel.app/>**
 
 ---
 
@@ -306,7 +307,7 @@ Single date, optional same-screen time picker. Click the header to jump by month
 | `minTime` / `maxTime` | `{ hour, minute }` | — | Clamp the selectable time of day |
 | `disabledTimes` | `(h, m) => boolean` | — | Disable specific hours/minutes |
 | `defaultTime` | `{ hour, minute }` | now | Time used when `withTime` turns on with no value |
-| `locale` | `'ne' \| 'en'` | `'ne'` | Digit and month-name language |
+| `locale` | `'ne' \| 'en'` | `'en'` | Digit and month-name language |
 | `minDate` / `maxDate` | `Date \| 'today' \| '+7d'` | — | Earliest / latest selectable day (relative tokens allowed) |
 | `disabledWeekdays` | `number[]` | `[]` | `0` = Sunday … `6` = Saturday |
 | `disabledDates` | `(date) => boolean` | — | Disable a specific day |
@@ -356,7 +357,7 @@ Pick one BS month — for a monthly report or a payslip filter — and get back 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `value` / `defaultValue` | `{ year, month } \| null` | — | Controlled / initial selected BS month |
-| `locale` | `'ne' \| 'en'` | `'ne'` | Digit and month-name language |
+| `locale` | `'ne' \| 'en'` | `'en'` | Digit and month-name language |
 | `minYear` / `maxYear` | `number (BS)` | `1970` / `2100` | Range of BS years the grid can navigate |
 | `displayFormat` | `string` | `MMMM YYYY` | dayjs-style tokens for the input text |
 | `allowInput` | `boolean` | `true` | Segmented `YYYY-MM` typing |

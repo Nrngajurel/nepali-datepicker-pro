@@ -29,7 +29,7 @@ test('controller: selecting a month emits BS month + AD start/end range', () => 
   assert.equal(result.start.getDate(), 16);
   assert.equal(result.end.getDate(), 16);
   assert.equal(result.end.getMonth() + 1, 8);
-  assert.match(result.formatted, /श्रावण/);
+  assert.match(result.formatted, /Shrawan/, 'default locale is en');
 });
 
 test('controller: picking a month closes the picker', () => {

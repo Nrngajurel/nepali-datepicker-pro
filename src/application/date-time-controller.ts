@@ -1,5 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
+import { buildViewMonthCells, clampViewYear, firstOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
 import { isDayDisabled } from './constraints.js';
 import { createDateValue, dateValueFromBs } from '../domain/date-value.js';
 import { formatDateValue, formatMachineValue } from '../format/index.js';
@@ -68,17 +69,19 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   const initialDate = providedValue ?? new Date();
   const initialValue = createDateValue(adapter, initialDate);
   const defaultTime = options.defaultTime ?? { hour: initialDate.getHours(), minute: initialDate.getMinutes(), second: initialDate.getSeconds() };
+  const initialMode: CalendarMode = options.mode ?? 'BS';
+  const initialView = viewYearMonthOf(initialMode, adapter, initialValue.ad);
 
   let state: DateTimeControllerState = {
     isOpen: false,
-    mode: options.mode ?? 'BS',
+    mode: initialMode,
     allowModeToggle: options.allowModeToggle !== false,
-    viewYear: initialValue.bs.year,
-    viewMonth: initialValue.bs.month,
+    viewYear: initialView.year,
+    viewMonth: initialView.month,
     selected: providedValue ? initialValue : null,
     time: options.withTime ? { hour: defaultTime.hour, minute: defaultTime.minute, second: 0 } : null,
     view: 'day',
-    yearGroupStart: initialValue.bs.year - 6,
+    yearGroupStart: initialView.year - 6,
     timeFormat: options.timeFormat ?? '24h',
     minuteStep: options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1,
   };
@@ -89,7 +92,15 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   }
 
   function clampYear(year: number): number {
-    return Math.max(adapter.minSupportedYear, Math.min(adapter.maxSupportedYear, year));
+    return clampViewYear(state.mode, adapter, year);
+  }
+
+  // Re-express the currently viewed month in a new mode, anchored on the same
+  // real month so toggling BS/AD doesn't jump the calendar to an unrelated page.
+  function reviewInMode(nextMode: CalendarMode): Pick<DateTimeControllerState, 'mode' | 'viewYear' | 'viewMonth' | 'yearGroupStart'> {
+    const anchor = firstOfViewMonth(state.mode, adapter, state.viewYear, state.viewMonth);
+    const view = viewYearMonthOf(nextMode, adapter, anchor);
+    return { mode: nextMode, viewYear: view.year, viewMonth: view.month, yearGroupStart: clampViewYear(nextMode, adapter, view.year - 6) };
   }
 
   // Wrap a value into [0, size) so spinners roll over (23:00 + 1h → 00:00).
@@ -168,10 +179,11 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
 
   // Shared state mutation for preview/commit of a parsed typed value.
   function applyParsed(parsed: { value: DateValue; time: { hour: number; minute: number } | null }): void {
+    const view = viewYearMonthOf(state.mode, adapter, parsed.value.ad);
     const patch: Partial<DateTimeControllerState> = {
       selected: parsed.value,
-      viewYear: parsed.value.bs.year,
-      viewMonth: parsed.value.bs.month,
+      viewYear: view.year,
+      viewMonth: view.month,
     };
     if (parsed.time && state.time) {
       patch.time = clampTime({ hour: parsed.time.hour, minute: parsed.time.minute, second: 0 });
@@ -191,7 +203,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
         format: options.displayFormat ?? (options.withTime
           ? (state.timeFormat === '12h' ? 'YYYY-MM-DD hh:mm A' : 'YYYY-MM-DD HH:mm')
           : 'YYYY-MM-DD'),
-        locale: options.locale ?? (state.mode === 'BS' ? 'ne' : 'en'),
+        locale: options.locale ?? 'en',
       }),
       value: formatMachineValue({ ad, bs: value.bs, time: state.time ?? undefined }, options.valueFormat ?? 'iso', adapter, !!options.withTime),
     };
@@ -225,7 +237,10 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     update(patch) {
       options = { ...options, ...patch };
       const next: Partial<DateTimeControllerState> = {};
-      if ('mode' in patch) next.mode = options.mode ?? 'BS';
+      if ('mode' in patch) {
+        const nextMode = options.mode ?? 'BS';
+        if (nextMode !== state.mode) Object.assign(next, reviewInMode(nextMode));
+      }
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
       if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '24h';
       if ('minuteStep' in patch) next.minuteStep = options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1;
@@ -253,7 +268,8 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     selectDay(value) {
       if (controller.isDisabled(value)) return;
-      setState({ selected: value, viewYear: value.bs.year, viewMonth: value.bs.month });
+      const view = viewYearMonthOf(state.mode, adapter, value.ad);
+      setState({ selected: value, viewYear: view.year, viewMonth: view.month });
       if (options.closeOnSelect ?? !options.withTime) {
         emit(value);
         controller.hide();
@@ -332,7 +348,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     toggleMode() {
       if (!state.allowModeToggle) return;
-      setState({ mode: state.mode === 'BS' ? 'AD' : 'BS' });
+      setState(reviewInMode(state.mode === 'BS' ? 'AD' : 'BS'));
     },
     isDisabled(value) {
       return isDayDisabled(value.ad, options, nativeDateMath);
@@ -366,11 +382,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       return toAscii(state.selected ?? createDateValue(adapter, new Date()));
     },
     yearBounds() {
-      if (state.mode === 'BS') return { min: adapter.minSupportedYear, max: adapter.maxSupportedYear };
-      return {
-        min: adapter.bsToAd(adapter.minSupportedYear, 1, 1).getFullYear() + 1,
-        max: adapter.bsToAd(adapter.maxSupportedYear, 1, 1).getFullYear(),
-      };
+      return viewYearBounds(state.mode, adapter);
     },
     // An hour is disabled when it lies entirely outside min/max, or when every
     // step-minute in it is rejected by disabledTimes.
@@ -394,12 +406,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       return dateValueFromBs(adapter, { year, month, day });
     },
     buildMonthCells(year, month) {
-      const days = adapter.daysInBsMonth(year, month);
-      const leading = adapter.bsToAd(year, month, 1).getDay();
-      const cells: Array<DateValue | null> = Array.from({ length: leading }, () => null);
-      for (let day = 1; day <= days; day += 1) cells.push(controller.cellForBs(year, month, day));
-      while (cells.length % 7 !== 0) cells.push(null);
-      return cells;
+      return buildViewMonthCells(state.mode, adapter, nativeDateMath, year, month);
     },
   };
 

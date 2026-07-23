@@ -2,18 +2,22 @@ import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import type { DateRangeController } from '../application/date-range-controller.js';
 import { previewRange } from '../application/date-range-controller.js';
 import type { DateTimeController } from '../application/date-time-controller.js';
+import { crossCalendarMonthSpan, viewYearBounds, viewYearMonthOf } from '../application/calendar-view.js';
+import type { MonthSpan } from '../application/calendar-view.js';
 import type { MonthPickerController } from '../application/month-picker-controller.js';
+import { GREGORIAN_MONTHS, nativeDateMath } from '../date-math/native-date-math.js';
 import { formatDateValue } from '../format/index.js';
 import { normalizeDigits } from '../format/parse.js';
 import { computePopupPosition } from '../position/index.js';
-import type { CalendarMode, DateRange, DateValue } from '../types.js';
+import type { CalendarAdapter, CalendarMode, DateRange, DateValue } from '../types.js';
 
 type CalendarView = 'day' | 'month' | 'year';
 
 // The subset of controller behaviour the shared header + month/year grids use.
-// Both the datetime and range controllers satisfy this structurally.
+// Both the datetime and range controllers satisfy this structurally. `mode` is
+// absent on the month picker (always BS), so it's read as `mode ?? 'BS'`.
 interface ViewControls {
-  getState(): { view: CalendarView; viewYear: number; viewMonth: number; yearGroupStart: number };
+  getState(): { view: CalendarView; viewYear: number; viewMonth: number; yearGroupStart: number; mode?: CalendarMode };
   navigateMonth(delta: number): void;
   navigateYear(delta: number): void;
   navigateYearGroup(delta: number): void;
@@ -68,11 +72,29 @@ function navButton(glyph: string, aria: string, onClick: () => void, hidden = fa
   return button;
 }
 
+// Label a cross-calendar month span as "Month/Month[ Year/Year]" when the
+// viewed month overlaps two months of the other calendar (the usual case —
+// BS/AD months are offset by roughly half a month), or a single name when it
+// doesn't. BS names render in Devanagari, AD names in English, matching how
+// each calendar is always scripted regardless of primary/secondary position.
+function monthSpanText(span: MonthSpan, otherMode: CalendarMode, adapter: CalendarAdapter, withYear = true): string {
+  const names = otherMode === 'AD' ? GREGORIAN_MONTHS : adapter.bsMonthNames('ne');
+  const startName = names[span.start.month - 1];
+  const endName = names[span.end.month - 1];
+  const months = startName === endName ? startName : `${startName}/${endName}`;
+  if (!withYear) return months;
+  const yearOf = (y: number) => (otherMode === 'AD' ? String(y) : adapter.toLocaleDigits(y, 'ne'));
+  const years = span.start.year === span.end.year ? yearOf(span.start.year) : `${yearOf(span.start.year)}/${yearOf(span.end.year)}`;
+  return `${months} ${years}`;
+}
+
 // View-aware header: the label drills down day → month → year, and the arrows
-// step month/year/year-group depending on which view is showing.
+// step month/year/year-group depending on which view is showing. The active
+// `mode` decides which calendar is the big/primary label (what's navigated)
+// and which is the small/secondary hint — the two swap when mode is 'AD'.
 function renderHeader(controller: ViewControls): HTMLElement {
   const adapter = defaultCalendarAdapter;
-  const { view, viewYear, viewMonth, yearGroupStart } = controller.getState();
+  const { view, viewYear, viewMonth, yearGroupStart, mode = 'BS' } = controller.getState();
   const header = el('div', 'ndp-cal-header');
 
   let outerPrev: HTMLElement;
@@ -100,17 +122,34 @@ function renderHeader(controller: ViewControls): HTMLElement {
   let primary: string;
   let secondary: string;
   if (view === 'day') {
-    primary = `${adapter.bsMonthNames('ne')[viewMonth - 1]} ${adapter.toLocaleDigits(viewYear, 'ne')}`;
-    secondary = formatDateValue(adapter.bsToAd(viewYear, viewMonth, 1), adapter, { mode: 'AD', format: 'MMMM YYYY', locale: 'en' });
+    const span = crossCalendarMonthSpan(mode, adapter, nativeDateMath, viewYear, viewMonth);
+    if (mode === 'AD') {
+      primary = `${GREGORIAN_MONTHS[viewMonth - 1]} ${viewYear}`;
+      secondary = monthSpanText(span, 'BS', adapter);
+    } else {
+      primary = `${adapter.bsMonthNames('ne')[viewMonth - 1]} ${adapter.toLocaleDigits(viewYear, 'ne')}`;
+      secondary = monthSpanText(span, 'AD', adapter);
+    }
     label.addEventListener('click', () => controller.setView('month'));
   } else if (view === 'month') {
-    primary = adapter.toLocaleDigits(viewYear, 'ne');
-    secondary = `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`;
+    if (mode === 'AD') {
+      primary = String(viewYear);
+      secondary = `${adapter.adToBs(new Date(viewYear, 0, 1)).year} BS`;
+    } else {
+      primary = adapter.toLocaleDigits(viewYear, 'ne');
+      secondary = `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`;
+    }
     label.addEventListener('click', () => controller.setView('year'));
   } else {
-    const end = Math.min(yearGroupStart + 11, adapter.maxSupportedYear);
-    primary = `${adapter.toLocaleDigits(yearGroupStart, 'ne')} – ${adapter.toLocaleDigits(end, 'ne')}`;
-    secondary = `${adapter.bsToAd(yearGroupStart, 1, 1).getFullYear()} – ${adapter.bsToAd(end, 1, 1).getFullYear()}`;
+    const { max } = viewYearBounds(mode, adapter);
+    const end = Math.min(yearGroupStart + 11, max);
+    if (mode === 'AD') {
+      primary = `${yearGroupStart} – ${end}`;
+      secondary = `${adapter.adToBs(new Date(yearGroupStart, 0, 1)).year} – ${adapter.adToBs(new Date(end, 0, 1)).year} BS`;
+    } else {
+      primary = `${adapter.toLocaleDigits(yearGroupStart, 'ne')} – ${adapter.toLocaleDigits(end, 'ne')}`;
+      secondary = `${adapter.bsToAd(yearGroupStart, 1, 1).getFullYear()} – ${adapter.bsToAd(end, 1, 1).getFullYear()}`;
+    }
     label.addEventListener('click', () => controller.setView('day'));
   }
   label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${primary} ▾`));
@@ -120,41 +159,50 @@ function renderHeader(controller: ViewControls): HTMLElement {
   return header;
 }
 
-function renderWeekdays(): HTMLElement {
+function renderWeekdays(mode: CalendarMode = 'BS'): HTMLElement {
   const row = el('div', 'ndp-weekdays', { role: 'row' });
-  defaultCalendarAdapter.bsWeekdayShort('ne').forEach((weekday) => row.appendChild(setText(el('div', 'ndp-weekday', { role: 'columnheader' }), weekday)));
+  defaultCalendarAdapter.bsWeekdayShort(mode === 'AD' ? 'en' : 'ne').forEach((weekday) => row.appendChild(setText(el('div', 'ndp-weekday', { role: 'columnheader' }), weekday)));
   return row;
 }
 
 function renderMonthGrid(controller: ViewControls): HTMLElement {
   const adapter = defaultCalendarAdapter;
-  const { viewMonth } = controller.getState();
+  const { viewYear, viewMonth, mode = 'BS' } = controller.getState();
+  const otherMode: CalendarMode = mode === 'AD' ? 'BS' : 'AD';
   const grid = el('div', 'ndp-monthgrid', { role: 'grid' });
-  adapter.bsMonthNames('ne').forEach((name, index) => {
+  for (let index = 0; index < 12; index += 1) {
     const month = index + 1;
     const selected = month === viewMonth;
-    const btn = setText(el('button', `ndp-monthcell${selected ? ' is-selected' : ''}`, { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' }), name);
-    btn.appendChild(setText(el('span', 'ndp-monthcell-en'), adapter.bsMonthNames('en')[index]));
+    const primaryName = mode === 'AD' ? GREGORIAN_MONTHS[index] : adapter.bsMonthNames('ne')[index];
+    // The other calendar's month usually straddles this one (~half-month
+    // offset), so show both overlapped months, e.g. "Baisakh/Jestha".
+    const span = crossCalendarMonthSpan(mode, adapter, nativeDateMath, viewYear, month);
+    const secondaryName = monthSpanText(span, otherMode, adapter, false);
+    const btn = setText(el('button', `ndp-monthcell${selected ? ' is-selected' : ''}`, { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' }), primaryName);
+    btn.appendChild(setText(el('span', 'ndp-monthcell-en'), secondaryName));
     btn.addEventListener('click', () => controller.selectMonthView(month));
     grid.appendChild(btn);
-  });
+  }
   return grid;
 }
 
 function renderYearGrid(controller: ViewControls): HTMLElement {
   const adapter = defaultCalendarAdapter;
-  const { viewYear, yearGroupStart } = controller.getState();
+  const { viewYear, yearGroupStart, mode = 'BS' } = controller.getState();
+  const { min, max } = viewYearBounds(mode, adapter);
   const grid = el('div', 'ndp-yeargrid', { role: 'grid' });
   for (let i = 0; i < 12; i += 1) {
     const year = yearGroupStart + i;
-    if (year < adapter.minSupportedYear || year > adapter.maxSupportedYear) {
+    if (year < min || year > max) {
       grid.appendChild(el('div', 'ndp-yearcell ndp-yearcell--empty', { role: 'gridcell' }));
       continue;
     }
     const selected = year === viewYear;
     const btn = el('button', `ndp-yearcell${selected ? ' is-selected' : ''}`, { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' });
-    btn.appendChild(setText(el('span', 'ndp-yearcell-bs'), adapter.toLocaleDigits(year, 'ne')));
-    btn.appendChild(setText(el('span', 'ndp-yearcell-en'), String(adapter.bsToAd(year, 1, 1).getFullYear())));
+    const primaryDigits = mode === 'AD' ? String(year) : adapter.toLocaleDigits(year, 'ne');
+    const secondaryLabel = mode === 'AD' ? String(adapter.adToBs(new Date(year, 0, 1)).year) : String(adapter.bsToAd(year, 1, 1).getFullYear());
+    btn.appendChild(setText(el('span', 'ndp-yearcell-bs'), primaryDigits));
+    btn.appendChild(setText(el('span', 'ndp-yearcell-en'), secondaryLabel));
     btn.addEventListener('click', () => controller.selectYearView(year));
     grid.appendChild(btn);
   }
@@ -164,42 +212,55 @@ function renderYearGrid(controller: ViewControls): HTMLElement {
 // Year navigation header used while picking a month. The grid is months, so the
 // inner ‹ › step whole years; the outer slots stay hidden so the header keeps
 // the same 5-column layout (and full-width centered label) as the day header.
+// Mode-aware: "Pick a Month" spans a BS or a Gregorian month depending on mode.
 function renderMonthRangeHeader(controller: DateRangeController): HTMLElement {
   const adapter = defaultCalendarAdapter;
-  const { viewYear } = controller.getState();
+  const { viewYear, mode } = controller.getState();
   const header = el('div', 'ndp-cal-header');
   const outerPrev = navButton('«', '', () => {}, true);
   const innerPrev = navButton('‹', 'Previous year', () => controller.navigateYear(-1));
   const innerNext = navButton('›', 'Next year', () => controller.navigateYear(1));
   const outerNext = navButton('»', '', () => {}, true);
   const label = el('div', 'ndp-cal-label ndp-cal-label--static');
-  label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${adapter.toLocaleDigits(viewYear, 'ne')} BS`));
-  label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`));
+  if (mode === 'AD') {
+    label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${viewYear} AD`));
+    label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), `${adapter.adToBs(new Date(viewYear, 0, 1)).year} BS`));
+  } else {
+    label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${adapter.toLocaleDigits(viewYear, 'ne')} BS`));
+    label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`));
+  }
   header.append(outerPrev, innerPrev, label, innerNext, outerNext);
   return header;
 }
 
-// The 12-month grid for month mode: one click selects the whole BS month, and
-// the range spans that month's first → last day.
+// The 12-month grid for month mode: one click selects the whole month (BS or
+// Gregorian, per the active mode), and the range spans that month's first →
+// last day.
 function renderMonthRangeGrid(controller: DateRangeController): HTMLElement {
   const adapter = defaultCalendarAdapter;
   const state = controller.getState();
   const viewYear = state.viewYear;
+  const mode = state.mode;
+  const otherMode: CalendarMode = mode === 'AD' ? 'BS' : 'AD';
   const sel = state.range;
+  const selStart = sel ? viewYearMonthOf(mode, adapter, sel.start.ad) : null;
   const grid = el('div', 'ndp-monthgrid ndp-monthgrid--range', { role: 'grid' });
-  adapter.bsMonthNames('ne').forEach((name, index) => {
+  for (let index = 0; index < 12; index += 1) {
     const month = index + 1;
     const disabled = controller.isMonthDisabled(viewYear, month);
-    const selected = !!sel && sel.start.bs.year === viewYear && sel.start.bs.month === month;
+    const selected = !!selStart && selStart.year === viewYear && selStart.month === month;
+    const primaryName = mode === 'AD' ? GREGORIAN_MONTHS[index] : adapter.bsMonthNames('ne')[index];
+    const span = crossCalendarMonthSpan(mode, adapter, nativeDateMath, viewYear, month);
+    const secondaryName = monthSpanText(span, otherMode, adapter, false);
     const classes = ['ndp-monthcell'];
     if (selected) classes.push('is-selected');
     if (disabled) classes.push('is-disabled');
-    const btn = setText(el('button', classes.join(' '), { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' }), name);
-    btn.appendChild(setText(el('span', 'ndp-monthcell-en'), adapter.bsMonthNames('en')[index]));
+    const btn = setText(el('button', classes.join(' '), { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' }), primaryName);
+    btn.appendChild(setText(el('span', 'ndp-monthcell-en'), secondaryName));
     if (disabled) btn.setAttribute('aria-disabled', 'true');
     else btn.addEventListener('click', () => controller.selectMonth(viewYear, month));
     grid.appendChild(btn);
-  });
+  }
   return grid;
 }
 
@@ -283,7 +344,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
   } else {
     calCol.appendChild(renderHeader(controller));
     if (state.view === 'day') {
-      calCol.appendChild(renderWeekdays());
+      calCol.appendChild(renderWeekdays(state.mode));
       const grid = el('div', 'ndp-grid', { role: 'grid' });
       const preview = previewRange(state);
       controller.buildMonthCells(state.viewYear, state.viewMonth).forEach((cell) => {
@@ -295,8 +356,10 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
         const cls = classForRange(cell, preview, controller.getToday()) + (disabled ? ' is-disabled' : '');
         const btn = el('button', cls, { type: 'button', role: 'gridcell', 'aria-selected': inRange(preview, cell) ? 'true' : 'false' });
         if (disabled) btn.setAttribute('aria-disabled', 'true');
-        btn.appendChild(setText(el('span', 'ndp-cell-primary'), adapter.toLocaleDigits(cell.bs.day, 'ne')));
-        btn.appendChild(setText(el('span', 'ndp-cell-secondary'), String(cell.ad.getDate())));
+        const primaryDay = state.mode === 'AD' ? String(cell.ad.getDate()) : adapter.toLocaleDigits(cell.bs.day, 'ne');
+        const secondaryDay = state.mode === 'AD' ? adapter.toLocaleDigits(cell.bs.day, 'ne') : String(cell.ad.getDate());
+        btn.appendChild(setText(el('span', 'ndp-cell-primary'), primaryDay));
+        btn.appendChild(setText(el('span', 'ndp-cell-secondary'), secondaryDay));
         if (!disabled) {
           btn.addEventListener('click', () => controller.selectDay(cell));
           btn.addEventListener('mouseenter', () => controller.hoverDay(cell));
@@ -550,7 +613,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   calCol.appendChild(renderHeader(controller));
 
   if (state.view === 'day') {
-    calCol.appendChild(renderWeekdays());
+    calCol.appendChild(renderWeekdays(state.mode));
     const grid = el('div', 'ndp-grid', { role: 'grid' });
     const todayBs = adapter.todayBs();
     const today = controller.cellForBs(todayBs.year, todayBs.month, todayBs.day);
@@ -566,8 +629,10 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
       if (disabled) classes.push('is-disabled');
       const btn = el('button', classes.join(' '), { type: 'button', role: 'gridcell', 'aria-selected': isSameDay(cell, state.selected) ? 'true' : 'false' });
       if (disabled) btn.setAttribute('aria-disabled', 'true');
-      btn.appendChild(setText(el('span', 'ndp-cell-primary'), adapter.toLocaleDigits(cell.bs.day, 'ne')));
-      btn.appendChild(setText(el('span', 'ndp-cell-secondary'), String(cell.ad.getDate())));
+      const primaryDay = state.mode === 'AD' ? String(cell.ad.getDate()) : adapter.toLocaleDigits(cell.bs.day, 'ne');
+      const secondaryDay = state.mode === 'AD' ? adapter.toLocaleDigits(cell.bs.day, 'ne') : String(cell.ad.getDate());
+      btn.appendChild(setText(el('span', 'ndp-cell-primary'), primaryDay));
+      btn.appendChild(setText(el('span', 'ndp-cell-secondary'), secondaryDay));
       if (!disabled) btn.addEventListener('click', () => controller.selectDay(cell));
       grid.appendChild(btn);
     });

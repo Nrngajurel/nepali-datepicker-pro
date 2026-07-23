@@ -1,7 +1,8 @@
 import type { DateMath, DateMathUnit } from '../types.js';
 
 const TOKEN_PATTERN = /YYYY|MMMM|MM|DD|HH|hh|mm|ss|A|dddd/g;
-const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+export const GREGORIAN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTHS = GREGORIAN_MONTHS;
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function clone(date: Date): Date {

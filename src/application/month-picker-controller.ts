@@ -30,7 +30,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
   let options = { ...initialOptions };
   const adapter = options.adapter ?? defaultCalendarAdapter;
   // Read live so a runtime `update({ locale })` re-labels the month grid.
-  const currentLocale = (): PickerLocale => options.locale ?? 'ne';
+  const currentLocale = (): PickerLocale => options.locale ?? 'en';
   let listeners: Array<(value: MonthResult) => void> = [];
   let stateListeners: Array<() => void> = [];
 
