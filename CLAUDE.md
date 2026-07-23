@@ -27,6 +27,10 @@ npx vitest run test/engine.test.ts -t "some test name"
 
 CI (`.github/workflows/ci.yml`) runs, in order: `npm ci` → `npm run lint` → `npm test` → `npm run build`. `prepublishOnly` runs the same three before an npm publish.
 
+## Changelog
+
+`CHANGELOG.md` (repo root, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format) is maintained on every change — update it in the same pass as the code, not as an afterthought. Add entries under `## [Unreleased]`, in the appropriate `### Added` / `### Changed` / `### Fixed` / `### Docs` subsection (create the subsection if it doesn't exist yet under Unreleased). When a version is actually released (`package.json` bumped + published), rename `[Unreleased]` to the new version + date and start a fresh empty `[Unreleased]` above it. Keep entries user-facing (what changed and why it matters to someone consuming the package), not implementation narration.
+
 ## Architecture
 
 Everything is one package, layered bottom-up. Higher layers depend only on the layer(s) below; there is no reverse dependency.
@@ -36,7 +40,7 @@ Everything is one package, layered bottom-up. Higher layers depend only on the l
 3. **`date-math/native-date-math.ts`** — the plain-AD-calendar counterpart (`DateMath` interface): add/diff/format/parse/startOf/endOf on native `Date`, no library (no dayjs/moment).
 4. **`domain/date-value.ts`** — small value types pairing an AD `Date` with its `BsDate` projection.
 5. **`format/index.ts`** — display formatting (`formatDateValue`, `formatRange`, dayjs-style tokens) _and_ the display/submission split: `formatMachineValue` turns a date into the "server" value per `ValueFormat` (`'iso' | 'iso-bs' | 'timestamp' | 'date-object'` or a custom `{ calendar, format }`), independent of what's shown on screen. This is the mechanism behind `valueFormat`/`submitName`/`altField` in the public API.
-6. **`application/*-controller.ts`** — headless state machines, one per picker (`date-time-controller.ts`, `date-range-controller.ts`, `month-picker-controller.ts`), plus `constraints.ts` (min/max/disabled-day logic shared across them) and `presets.ts` (date-range quick-picks incl. fiscal-year-aware ranges). Controllers own state and business rules; they know nothing about the DOM.
+6. **`application/*-controller.ts`** — headless state machines, one per picker (`date-time-controller.ts`, `date-range-controller.ts`, `month-picker-controller.ts`), plus `constraints.ts` (min/max/disabled-day logic shared across them), `presets.ts` (date-range quick-picks incl. fiscal-year-aware ranges), and `calendar-view.ts` (mode-aware calendar-navigation helpers — converting a viewed year/month between BS and AD, month/year bounds, day-grid building, and cross-calendar month-span labels — shared by the date-time and date-range controllers so BS/AD mode toggling walks the actual calendar being switched to, not just relabels it). Controllers own state and business rules; they know nothing about the DOM.
 7. **`render/dom.ts`** — pure(ish) DOM rendering functions for each picker's popup panel (`renderDateTimePanel`, `renderRangePanel`, `renderMonthPickerPanel`) plus `positionPopup` (`position/index.ts` — opens/drops placement logic for `appendTo`/`opens`/`drops`).
 8. **`autoinit/`** — the glue layer that wires a controller + renderer to a real `<input>`: `segmented-field.ts` (keyboard-editable segmented input, driven by schemas in `segment-schemas.ts`), and `index.ts` (`mountDateTimePicker`, `mountDateRangePicker`, `mountMonthPicker`, `setDefaults`, `regional`, `autoInit` for `data-nepali-datepicker` attribute scanning). This is the vanilla-JS public surface and what every framework wrapper ultimately calls.
 9. **`a11y/index.ts`** — small ARIA/focus helpers used by the render layer.

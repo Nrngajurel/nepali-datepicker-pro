@@ -11,6 +11,7 @@ export interface DateRangeControllerState {
   isOpen: boolean;
   mode: CalendarMode;
   allowModeToggle: boolean;
+  showSecondaryCalendar: boolean;
   viewYear: number;
   viewMonth: number;
   range: DateRange | null;
@@ -77,6 +78,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     isOpen: false,
     mode: initialMode,
     allowModeToggle: options.allowModeToggle !== false,
+    showSecondaryCalendar: options.showSecondaryCalendar !== false,
     viewYear: initialView.year,
     viewMonth: initialView.month,
     range: initialRange ? createDateRange(createDateValue(adapter, initialRange.start), createDateValue(adapter, initialRange.end)) : null,
@@ -230,6 +232,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
         if (nextMode !== state.mode) Object.assign(next, reviewInMode(nextMode));
       }
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
+      if ('showSecondaryCalendar' in patch) next.showSecondaryCalendar = options.showSecondaryCalendar !== false;
       setState(next);
     },
     destroy() {

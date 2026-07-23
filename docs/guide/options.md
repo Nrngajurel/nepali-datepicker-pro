@@ -22,14 +22,22 @@ interact.
 
 ## Locale & formatting
 
-- `locale` — `'ne' | 'en'`, controls digit script and month names.
+- `locale` — `'ne' | 'en'` (default `'en'`), controls digit script and month names.
 - `displayFormat` — dayjs-style tokens for what the *input* shows (e.g. `YYYY-MM-DD[ HH:mm]`).
   This is purely cosmetic and independent of `valueFormat`.
 
+## Single vs. dual calendar
+
+- `showSecondaryCalendar` (default `true`) — the header, month/year grid, and day cells all show
+  a small hint from the *other* calendar next to the active one (e.g. a BS month cell also shows
+  the Gregorian month(s) it overlaps, since a BS month always straddles two AD months and vice
+  versa). Set it to `false` to show only the active `mode`'s calendar, for people who'd rather
+  focus on one system at a time. Available on all three pickers and live-updatable via `.update()`.
+
 ## Decoupling display from submitted value
 
-These three exist so a BS-mode, Nepali-digit picker can still hand your backend a clean value
-with zero conversion glue — see the README's [Sending the right value to your
+These three exist so a picker's display calendar/locale can differ from what actually reaches
+your backend, with zero conversion glue — see the README's [Sending the right value to your
 backend](https://github.com/nrngajurel/nepali-datepicker-pro#sending-the-right-value-to-your-backend)
 section for the full writeup.
 

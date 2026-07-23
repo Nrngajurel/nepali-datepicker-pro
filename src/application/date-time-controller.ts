@@ -11,6 +11,7 @@ export interface DateTimeControllerState {
   isOpen: boolean;
   mode: CalendarMode;
   allowModeToggle: boolean;
+  showSecondaryCalendar: boolean;
   viewYear: number;
   viewMonth: number;
   selected: DateValue | null;
@@ -76,6 +77,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     isOpen: false,
     mode: initialMode,
     allowModeToggle: options.allowModeToggle !== false,
+    showSecondaryCalendar: options.showSecondaryCalendar !== false,
     viewYear: initialView.year,
     viewMonth: initialView.month,
     selected: providedValue ? initialValue : null,
@@ -242,6 +244,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
         if (nextMode !== state.mode) Object.assign(next, reviewInMode(nextMode));
       }
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
+      if ('showSecondaryCalendar' in patch) next.showSecondaryCalendar = options.showSecondaryCalendar !== false;
       if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '24h';
       if ('minuteStep' in patch) next.minuteStep = options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1;
       if (('minTime' in patch || 'maxTime' in patch) && state.time) next.time = clampTime(state.time);

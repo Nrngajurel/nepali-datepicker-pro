@@ -12,15 +12,21 @@ const range = DEFS.find((d) => d.id === 'range')!;
 const month = DEFS.find((d) => d.id === 'month')!;
 
 test('buildOptions omits defaults and keeps changed values', () => {
-  expect(datetime.buildOptions({ withTime: false, timeFormat: '24h', minuteStep: 1, locale: 'ne', closeOnSelect: 'default', displayFormat: '' })).toEqual({});
-  expect(datetime.buildOptions({ withTime: true, timeFormat: '12h', minuteStep: 5, locale: 'en', closeOnSelect: 'false', displayFormat: '' }))
-    .toEqual({ withTime: true, timeFormat: '12h', minuteStep: 5, locale: 'en', closeOnSelect: false });
+  expect(datetime.buildOptions({ withTime: false, timeFormat: '24h', minuteStep: 1, locale: 'en', closeOnSelect: 'default', displayFormat: '' })).toEqual({});
+  expect(datetime.buildOptions({ withTime: true, timeFormat: '12h', minuteStep: 5, locale: 'ne', closeOnSelect: 'false', displayFormat: '' }))
+    .toEqual({ withTime: true, timeFormat: '12h', minuteStep: 5, locale: 'ne', closeOnSelect: false });
+  expect(datetime.buildOptions({ showSecondaryCalendar: false, timeFormat: '24h', minuteStep: 1, locale: 'en', closeOnSelect: 'default', displayFormat: '' }))
+    .toEqual({ showSecondaryCalendar: false });
   expect(range.buildOptions({ mode: 'BS', fiscalStartMonth: 4, autoApply: false, presets: 'default', displayFormat: '' })).toEqual({});
   expect(range.buildOptions({ mode: 'AD', fiscalStartMonth: 1, autoApply: true, presets: 'none', displayFormat: '' }))
     .toEqual({ mode: 'AD', fiscalStartMonth: 1, autoApply: true, presets: false });
-  expect(month.buildOptions({ locale: 'ne', displayFormat: '', minYear: '', maxYear: '' })).toEqual({});
-  expect(month.buildOptions({ locale: 'en', displayFormat: 'MMMM YYYY', minYear: '2075', maxYear: '2090' }))
-    .toEqual({ locale: 'en', displayFormat: 'MMMM YYYY', minYear: 2075, maxYear: 2090 });
+  expect(range.buildOptions({ mode: 'BS', fiscalStartMonth: 4, autoApply: false, presets: 'default', displayFormat: '', showSecondaryCalendar: false }))
+    .toEqual({ showSecondaryCalendar: false });
+  expect(month.buildOptions({ locale: 'en', displayFormat: '', minYear: '', maxYear: '' })).toEqual({});
+  expect(month.buildOptions({ locale: 'ne', displayFormat: 'MMMM YYYY', minYear: '2075', maxYear: '2090' }))
+    .toEqual({ locale: 'ne', displayFormat: 'MMMM YYYY', minYear: 2075, maxYear: 2090 });
+  expect(month.buildOptions({ locale: 'en', displayFormat: '', minYear: '', maxYear: '', showSecondaryCalendar: false }))
+    .toEqual({ showSecondaryCalendar: false });
 });
 
 test('snippets are correct for every framework', () => {

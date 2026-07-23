@@ -22,6 +22,10 @@ matches exactly what you're looking at.
   stays open long enough to set the time.
 - **Constraints accept relative tokens.** `minDate: 'today'`, `maxDate: '+1m'` and friends are
   resolved at open time, not at mount time.
+- **Toggling BS/AD really switches the calendar.** The header, month/year grids and day cells all
+  navigate the calendar you switch to (not just relabel it), and show the overlapped span of the
+  other calendar as a hint (e.g. a BS month shows "April/May" since it straddles two AD months).
+  Set `showSecondaryCalendar: false` to hide that hint and show only the active calendar.
 
 ## See also
 

@@ -138,12 +138,13 @@ export const DEFS: PickerDef[] = [
     controls: [
       { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
       { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
+      { key: 'showSecondaryCalendar', label: 'Show secondary calendar', hint: 'small BS/AD hint on header & cells', type: 'bool', def: true },
       { key: 'withTime', label: 'Include time', type: 'bool', def: false },
       { key: 'timeFormat', label: 'Time format', type: 'select', def: '24h', choices: [{ value: '24h', label: '24-hour' }, { value: '12h', label: '12-hour (AM/PM)' }], enabledWhen: (v) => !!v.withTime },
       { key: 'minuteStep', label: 'Minute step', type: 'number', def: 1, min: 1, max: 30, enabledWhen: (v) => !!v.withTime },
       { key: 'minHour', label: 'Earliest hour', hint: '0–23 (minTime)', type: 'number', def: 0, min: 0, max: 23, enabledWhen: (v) => !!v.withTime },
       { key: 'maxHour', label: 'Latest hour', hint: '0–23 (maxTime)', type: 'number', def: 23, min: 0, max: 23, enabledWhen: (v) => !!v.withTime },
-      { key: 'locale', label: 'Locale', type: 'select', def: 'ne', choices: LOCALE },
+      { key: 'locale', label: 'Locale', type: 'select', def: 'en', choices: LOCALE },
       { key: 'closeOnSelect', label: 'Close on select', type: 'select', def: 'default', choices: [{ value: 'default', label: 'Default' }, { value: 'true', label: 'Always' }, { value: 'false', label: 'Never' }] },
       { key: 'minDate', label: 'Min date', hint: "Date | 'today' | '+7d'", type: 'text', def: '', placeholder: 'today' },
       { key: 'maxDate', label: 'Max date', type: 'text', def: '', placeholder: '+1m' },
@@ -157,10 +158,11 @@ export const DEFS: PickerDef[] = [
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['mode', 'allowModeToggle', 'withTime', 'timeFormat', 'minuteStep', 'minTime', 'maxTime', 'locale', 'closeOnSelect', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'clearable', 'allowInput', 'valueFormat', 'submitName', 'displayFormat', 'opens', 'drops'],
+    optionKeys: ['mode', 'allowModeToggle', 'showSecondaryCalendar', 'withTime', 'timeFormat', 'minuteStep', 'minTime', 'maxTime', 'locale', 'closeOnSelect', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'clearable', 'allowInput', 'valueFormat', 'submitName', 'displayFormat', 'opens', 'drops'],
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the picker opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
+      { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: 'Show the other calendar as a small hint on the header, month/year grid, and day cells. false shows only the active mode.' },
       { name: 'value / defaultValue', type: 'Date | null', def: '— (empty)', desc: 'Controlled / initial selected date. Empty until set.' },
       { name: 'withTime', type: 'boolean', def: 'false', desc: 'Show a same-screen time picker: type into the accessible HH:mm spinbutton fields (Arrow keys step, Nepali digits accepted) or scroll the wheel.' },
       { name: 'timeFormat', type: "'12h' | '24h'", def: "'24h'", desc: 'Clock style when withTime is on.' },
@@ -168,7 +170,7 @@ export const DEFS: PickerDef[] = [
       { name: 'minTime / maxTime', type: '{ hour, minute }', def: '—', desc: 'Clamp the selectable time of day; out-of-range hours show disabled on the wheel.' },
       { name: 'disabledTimes', type: '(h, m) => boolean', def: '—', desc: 'Disable specific hours/minutes on the time wheel.' },
       { name: 'defaultTime', type: '{ hour, minute }', def: 'now', desc: 'Time used when withTime turns on with no value.' },
-      { name: 'locale', type: "'ne' | 'en'", def: "'ne'", desc: 'Digit and month-name language.' },
+      { name: 'locale', type: "'ne' | 'en'", def: "'en'", desc: 'Digit and month-name language.' },
       { name: 'minDate / maxDate', type: "Date | 'today' | '+7d'", def: '—', desc: 'Earliest / latest selectable day (relative tokens allowed).' },
       { name: 'disabledWeekdays', type: 'number[]', def: '[]', desc: 'Grey-out weekdays (0 = Sunday … 6 = Saturday).' },
       { name: 'disabledDates', type: '(date) => boolean', def: '—', desc: 'Return true to disable a specific day.' },
@@ -191,12 +193,13 @@ export const DEFS: PickerDef[] = [
       const o: Record<string, unknown> = {};
       if (v.mode && v.mode !== 'BS') o.mode = v.mode;
       if (v.allowModeToggle === false) o.allowModeToggle = false;
+      if (v.showSecondaryCalendar === false) o.showSecondaryCalendar = false;
       if (v.withTime) o.withTime = true;
       if (v.withTime && v.timeFormat !== '24h') o.timeFormat = v.timeFormat;
       if (v.withTime && Number(v.minuteStep) !== 1) o.minuteStep = Number(v.minuteStep);
       if (v.withTime && Number(v.minHour) > 0) o.minTime = { hour: Number(v.minHour), minute: 0 };
       if (v.withTime && Number(v.maxHour) < 23) o.maxTime = { hour: Number(v.maxHour), minute: 0 };
-      if (v.locale !== 'ne') o.locale = v.locale;
+      if (v.locale !== 'en') o.locale = v.locale;
       if (v.closeOnSelect !== 'default') o.closeOnSelect = v.closeOnSelect === 'true';
       if (v.minDate) o.minDate = v.minDate;
       if (v.maxDate) o.maxDate = v.maxDate;
@@ -233,6 +236,7 @@ export const DEFS: PickerDef[] = [
     controls: [
       { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
       { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
+      { key: 'showSecondaryCalendar', label: 'Show secondary calendar', hint: 'small BS/AD hint on header & cells', type: 'bool', def: true },
       { key: 'fiscalStartMonth', label: 'Fiscal start month', hint: '1–12 (Shrawan = 4)', type: 'number', def: 4, min: 1, max: 12 },
       { key: 'autoApply', label: 'Auto-apply', hint: 'commit on 2nd click', type: 'bool', def: false },
       { key: 'presets', label: 'Presets', type: 'select', def: 'default', choices: [{ value: 'default', label: 'Default presets' }, { value: 'none', label: 'No presets' }] },
@@ -248,10 +252,11 @@ export const DEFS: PickerDef[] = [
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['mode', 'allowModeToggle', 'fiscalStartMonth', 'autoApply', 'presets', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'autoUpdateInput', 'clearable', 'allowInput', 'valueFormat', 'displayFormat', 'opens', 'drops'],
+    optionKeys: ['mode', 'allowModeToggle', 'showSecondaryCalendar', 'fiscalStartMonth', 'autoApply', 'presets', 'minDate', 'maxDate', 'disabledWeekdays', 'disabledDates', 'autoUpdateInput', 'clearable', 'allowInput', 'valueFormat', 'displayFormat', 'opens', 'drops'],
     optionDocs: [
       { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the range opens in.' },
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
+      { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: 'Show the other calendar as a small hint on the header, month/year grid, and day cells. false shows only the active mode.' },
       { name: 'value / defaultValue', type: '{ start, end } | null', def: '— (empty)', desc: 'Controlled / initial range. Empty until set (or use defaultPresetId).' },
       { name: 'presets', type: "PresetDefinition[] | 'default' | false", def: "'default'", desc: "Quick-range rail (includes 'Pick a Month'); false hides it." },
       { name: 'defaultPresetId', type: 'string | null', def: '—', desc: 'Preset highlighted when the popup opens.' },
@@ -279,6 +284,7 @@ export const DEFS: PickerDef[] = [
       const o: Record<string, unknown> = {};
       if (v.mode !== 'BS') o.mode = v.mode;
       if (v.allowModeToggle === false) o.allowModeToggle = false;
+      if (v.showSecondaryCalendar === false) o.showSecondaryCalendar = false;
       if (Number(v.fiscalStartMonth) !== 4) o.fiscalStartMonth = Number(v.fiscalStartMonth);
       if (v.autoApply) o.autoApply = true;
       if (v.presets === 'none') o.presets = false;
@@ -315,7 +321,8 @@ export const DEFS: PickerDef[] = [
       options: { valueFormat: 'iso', submitName: { start: 'from_date', end: 'to_date' } },
     },
     controls: [
-      { key: 'locale', label: 'Locale', type: 'select', def: 'ne', choices: LOCALE },
+      { key: 'locale', label: 'Locale', type: 'select', def: 'en', choices: LOCALE },
+      { key: 'showSecondaryCalendar', label: 'Show secondary calendar', hint: 'small AD hint on header & cells', type: 'bool', def: true },
       { key: 'displayFormat', label: 'Display format', type: 'text', def: '', placeholder: 'MMMM YYYY' },
       { key: 'minYear', label: 'Min year (BS)', type: 'text', def: '', placeholder: '1970' },
       { key: 'maxYear', label: 'Max year (BS)', type: 'text', def: '', placeholder: '2100' },
@@ -326,10 +333,11 @@ export const DEFS: PickerDef[] = [
       { key: 'opens', label: 'Opens', hint: 'horizontal align', type: 'select', def: 'auto', choices: OPENS },
       { key: 'drops', label: 'Drops', hint: 'vertical direction', type: 'select', def: 'auto', choices: DROPS },
     ],
-    optionKeys: ['locale', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'allowInput', 'valueFormat', 'submitName', 'opens', 'drops'],
+    optionKeys: ['locale', 'showSecondaryCalendar', 'displayFormat', 'minYear', 'maxYear', 'clearable', 'allowInput', 'valueFormat', 'submitName', 'opens', 'drops'],
     optionDocs: [
       { name: 'value / defaultValue', type: '{ year, month } | null', def: '— (empty)', desc: 'Controlled / initial selected BS month. Empty until set.' },
-      { name: 'locale', type: "'ne' | 'en'", def: "'ne'", desc: 'Digit and month-name language.' },
+      { name: 'locale', type: "'ne' | 'en'", def: "'en'", desc: 'Digit and month-name language.' },
+      { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: 'Show the AD calendar as a small hint on the header and month/year grid. false shows only BS.' },
       { name: 'minYear / maxYear', type: 'number (BS)', def: '1970 / 2100', desc: 'Range of BS years the grid can navigate.' },
       { name: 'displayFormat', type: 'string', def: 'MMMM YYYY', desc: 'dayjs-style tokens for the input text.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the month in a segmented `YYYY-MM` field (↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
@@ -346,7 +354,8 @@ export const DEFS: PickerDef[] = [
     ],
     buildOptions(v) {
       const o: Record<string, unknown> = {};
-      if (v.locale !== 'ne') o.locale = v.locale;
+      if (v.locale !== 'en') o.locale = v.locale;
+      if (v.showSecondaryCalendar === false) o.showSecondaryCalendar = false;
       if (v.displayFormat) o.displayFormat = v.displayFormat;
       if (v.minYear) o.minYear = Number(v.minYear);
       if (v.maxYear) o.maxYear = Number(v.maxYear);

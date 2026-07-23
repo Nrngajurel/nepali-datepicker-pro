@@ -20,6 +20,9 @@ familiar `daterangepicker.js` option shape (`ranges`, `opens`, `drops`, `autoApp
   picking.
 - **Two-field submission.** `submitName: { start: 'from_date', end: 'to_date' }` writes two
   hidden inputs, which drops straight into a `WHERE date BETWEEN ? AND ?` query.
+- **Toggling BS/AD really switches the calendar**, including "Pick a Month" — navigation, the
+  month/year grids, and day cells all walk whichever calendar is active. Set
+  `showSecondaryCalendar: false` to hide the other calendar's hint and focus on one system.
 
 ## See also
 

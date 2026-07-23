@@ -30,9 +30,9 @@ calendar system on both your UI and your database. This one separates the two co
 - **The engine is independent of the UI.** `nepaliFunctions` and the calendar adapter work on
   their own — you can convert dates, validate them and do BS month math without rendering
   anything. See [Helper functions](/api/helpers).
-- **What you display is not what you submit.** A BS-mode picker showing Nepali digits can still
-  hand your backend a clean AD ISO string, with no conversion glue in your form handler. See
-  [Options](/guide/options).
+- **What you display is not what you submit.** A BS-mode picker — in Nepali digits if you set
+  `locale: 'ne'`, English by default — can still hand your backend a clean AD ISO string, with no
+  conversion glue in your form handler. See [Options](/guide/options).
 - **One package, every stack.** The same core is wrapped for Vue, React, jQuery and plain HTML
   auto-init, so a mixed codebase doesn't need four different pickers.
 

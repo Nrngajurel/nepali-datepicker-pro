@@ -177,6 +177,24 @@ test('datetime: header and month grid show the overlapped month span, not a sing
   assert.match(secondary || '', /पौष.*माघ/, 'January in AD mode shows both BS months it straddles, not just one');
 });
 
+test('datetime: showSecondaryCalendar: false hides the other calendar everywhere, and is live-updatable', () => {
+  const c = createDateTimeController({ value: base(), showSecondaryCalendar: false });
+  c.show();
+  const root = render(c, 'datetime');
+
+  assert.equal(root.querySelector('.ndp-cal-label-secondary'), null, 'no secondary label in the header');
+  assert.equal(root.querySelector('.ndp-cell-secondary'), null, 'no secondary digits on day cells');
+
+  c.setView('month');
+  assert.equal(root.querySelector('.ndp-monthcell-en'), null, 'no secondary month names in the month grid');
+  c.setView('year');
+  assert.equal(root.querySelector('.ndp-yearcell-en'), null, 'no secondary years in the year grid');
+  c.setView('day');
+
+  c.update({ showSecondaryCalendar: true });
+  assert.ok(root.querySelector('.ndp-cal-label-secondary'), 'update() turns the secondary calendar back on live');
+});
+
 test('range: "Pick a Month" preset switches to whole-month selection', () => {
   const c = createDateRangeController({ value: { start: base(), end: base() } });
   c.show();

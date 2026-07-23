@@ -9,6 +9,7 @@ export interface MonthPickerControllerState {
   viewMonth: number;
   yearGroupStart: number;
   selected: MonthValue | null;
+  showSecondaryCalendar: boolean;
 }
 
 export interface MonthPickerController extends PickerInstance<MonthResult, MonthPickerOptions> {
@@ -46,6 +47,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     viewMonth: initial.month,
     yearGroupStart: initial.year - 6,
     selected: providedMonth ? { year: providedMonth.year, month: providedMonth.month } : null,
+    showSecondaryCalendar: options.showSecondaryCalendar !== false,
   };
 
   function setState(patch: Partial<MonthPickerControllerState>): void {
@@ -106,7 +108,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     },
     update(patch) {
       options = { ...options, ...patch };
-      setState({});
+      setState('showSecondaryCalendar' in patch ? { showSecondaryCalendar: options.showSecondaryCalendar !== false } : {});
     },
     destroy() {
       listeners = [];

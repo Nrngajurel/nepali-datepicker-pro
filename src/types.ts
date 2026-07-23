@@ -70,6 +70,10 @@ export interface DateTimeResult {
 export interface DateTimePickerOptions {
   mode?: CalendarMode;
   allowModeToggle?: boolean;
+  /** Show the other calendar as a small secondary hint next to the header,
+   *  month/year grid, and day cells. `false` shows only the active `mode`'s
+   *  calendar, for people who want to focus on one system at a time. */
+  showSecondaryCalendar?: boolean;
   locale?: PickerLocale;
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   value?: Date | null;
@@ -151,6 +155,10 @@ export interface DateRangeResult {
 export interface DateRangePickerOptions {
   mode?: CalendarMode;
   allowModeToggle?: boolean;
+  /** Show the other calendar as a small secondary hint next to the header,
+   *  month/year grid, and day cells. `false` shows only the active `mode`'s
+   *  calendar, for people who want to focus on one system at a time. */
+  showSecondaryCalendar?: boolean;
   locale?: RangePickerLocale;
   weekStartsOn?: 0 | 1 | 2 | 3 | 4 | 5 | 6;
   value?: { start: Date; end: Date } | null;
@@ -196,6 +204,10 @@ export interface MonthValue {
 
 export interface MonthPickerOptions {
   locale?: PickerLocale;
+  /** Show the AD calendar as a small secondary hint next to the header and
+   *  month/year grid. `false` shows only the BS month names/years, for people
+   *  who want to focus on one system at a time. */
+  showSecondaryCalendar?: boolean;
   value?: MonthValue | null;
   defaultValue?: MonthValue | null;
   clearable?: boolean;

@@ -300,6 +300,7 @@ Single date, optional same-screen time picker. Click the header to jump by month
 |---|---|---|---|
 | `mode` | `'BS' \| 'AD'` | `'BS'` | Calendar system the picker opens in |
 | `allowModeToggle` | `boolean` | `true` | Show the BS/AD swap button on the input |
+| `showSecondaryCalendar` | `boolean` | `true` | Show the other calendar as a small hint on the header, month/year grid, and day cells. `false` shows only the active `mode` |
 | `value` / `defaultValue` | `Date \| null` | — | Controlled / initial selected date |
 | `withTime` | `boolean` | `false` | Show the time picker (keyboard-accessible spinbuttons + wheel) |
 | `timeFormat` | `'12h' \| '24h'` | `'24h'` | Clock style when `withTime` is on |
@@ -331,6 +332,7 @@ Start/end range with a presets rail, fiscal-year helpers, and a BS/AD switch.
 |---|---|---|---|
 | `mode` | `'BS' \| 'AD'` | `'BS'` | Calendar system the range opens in |
 | `allowModeToggle` | `boolean` | `true` | Show the BS/AD swap button |
+| `showSecondaryCalendar` | `boolean` | `true` | Show the other calendar as a small hint on the header, month/year grid, and day cells. `false` shows only the active `mode` |
 | `value` / `defaultValue` | `{ start, end } \| null` | — | Controlled / initial range |
 | `presets` | `PresetDefinition[] \| 'default' \| false` | `'default'` | Quick-range rail, includes "Pick a Month"; `false` hides it |
 | `defaultPresetId` | `string \| null` | — | Preset highlighted when the popup opens |
@@ -358,6 +360,7 @@ Pick one BS month — for a monthly report or a payslip filter — and get back 
 |---|---|---|---|
 | `value` / `defaultValue` | `{ year, month } \| null` | — | Controlled / initial selected BS month |
 | `locale` | `'ne' \| 'en'` | `'en'` | Digit and month-name language |
+| `showSecondaryCalendar` | `boolean` | `true` | Show the AD calendar as a small hint on the header and month/year grid. `false` shows only BS |
 | `minYear` / `maxYear` | `number (BS)` | `1970` / `2100` | Range of BS years the grid can navigate |
 | `displayFormat` | `string` | `MMMM YYYY` | dayjs-style tokens for the input text |
 | `allowInput` | `boolean` | `true` | Segmented `YYYY-MM` typing |
