@@ -36,6 +36,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Clearing a picker now tells your code. Before, the × button changed nothing for `onChange`,
+  Vue's `v-model`, React or jQuery. Every picker now has an `onClear` option, a `clear.*` DOM event
+  (`clear.nepaliDatePicker`, `clear.nepaliDateRangePicker`, `clear.nepaliMonthPicker`), and
+  `clear()` / `onClear(cb)` instance methods (jQuery: `'clear'`). Vue sets `v-model` to `null` and
+  emits `@clear`. The × button, the date-time Clear button and erasing the typed text all count;
+  `setValue(null)` stays silent.
 - `destroy()` no longer removes your `<input>` from the page. The input is moved back to where it
   was, its original `name`, classes and attributes are restored, and its listeners are removed, so
   it can be mounted again (e.g. jQuery's destroy-then-reinit pattern).

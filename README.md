@@ -244,9 +244,9 @@ const payrollMonth = ref<MonthResult | null>(null);
 
 | Component | Events |
 |---|---|
-| `NepaliDateTimePicker` | `@change`, `@open`, `@close`, `@changeMonthYear` |
-| `NepaliDateRangePicker` | `@change`, `@open`, `@close` |
-| `NepaliMonthPicker` | `@change`, `@open`, `@close` |
+| `NepaliDateTimePicker` | `@change`, `@clear`, `@open`, `@close`, `@changeMonthYear` |
+| `NepaliDateRangePicker` | `@change`, `@clear`, `@open`, `@close` |
+| `NepaliMonthPicker` | `@change`, `@clear`, `@open`, `@close` |
 
 ### jQuery
 
@@ -303,6 +303,7 @@ install($);
 | `'option'` | `$` (chainable) | `('option', 'minDate', new Date())` |
 | `'show'` | `$` (chainable) | Open the popup |
 | `'hide'` | `$` (chainable) | Close the popup |
+| `'clear'` | `$` (chainable) | Clear the value as the user would (fires `onClear`) |
 | `'destroy'` | `$` (chainable) | Tear down the instance and clean up |
 
 ---
@@ -337,7 +338,7 @@ Single date, optional same-screen time picker. Click the header to jump by month
 | `altField` | `string \| HTMLElement` | — | Write the machine value into an existing field |
 | `altFormat` | `ValueFormat` | `valueFormat` | Override format for `altField`/`submitName` only |
 
-**Events:** `onChange(result)`, `onChangeMonthYear(year, month)`, `onOpen()`, `onClose()`, and a bubbling DOM event `select.nepaliDatePicker`.
+**Events:** `onChange(result)`, `onChangeMonthYear(year, month)`, `onClear()`, `onOpen()`, `onClose()`, and bubbling DOM events `select.nepaliDatePicker` / `clear.nepaliDatePicker`.
 
 **HTML attrs:** `data-with-time`, `data-time-format`, `data-minute-step`, `data-value-format`, `data-submit-name`.
 
@@ -365,7 +366,7 @@ Start/end range with a presets rail, fiscal-year helpers, and a BS/AD switch.
 | `submitName` | `string \| { start, end }` | — | One combined field, or a start/end pair |
 | `altField` | `string \| HTMLElement \| { start, end }` | — | Same, targeting existing field(s) |
 
-**Events:** `onApply(result)`, `onChange({ start?, end? })` (fires on first click / preset selection, before Apply), `onOpen()`, `onClose()`, DOM event `apply.nepaliDateRangePicker`.
+**Events:** `onApply(result)`, `onChange({ start?, end? })` (fires on first click / preset selection, before Apply), `onClear()`, `onOpen()`, `onClose()`, DOM events `apply.nepaliDateRangePicker` / `clear.nepaliDateRangePicker`.
 
 **HTML attrs:** `data-fiscal-start-month`, `data-value-format`.
 
@@ -461,6 +462,8 @@ With jQuery, use `addEventListener` (or the `onChange`/`onApply` options), not `
 | `NepaliDateTimePicker` | `onChange(result)`, `onChangeMonthYear(y, m)` | `select.nepaliDatePicker` |
 | `NepaliDateRangePicker` | `onApply(result)`, `onChange({ start?, end? })` | `apply.nepaliDateRangePicker` |
 | `NepaliMonthPicker` | `onChange(result)` | `select.nepaliMonthPicker` |
+
+**Clearing.** When the user clears a picker (the × button, the date-time panel's Clear button, or erasing the typed text), every picker calls `onClear()` and dispatches a bubbling `clear.nepaliDatePicker` / `clear.nepaliDateRangePicker` / `clear.nepaliMonthPicker` event. The change events don't fire for a clear. `instance.clear()` does the same from code, and `instance.onClear(cb)` subscribes. `setValue(null)` clears silently. In Vue, a clear sets `v-model` to `null` and emits `@clear`.
 
 ### Vue template events
 

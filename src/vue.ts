@@ -88,6 +88,8 @@ export const NepaliDateTimePicker = defineComponent({
     change: (result: DateTimeResult) => true,
     open: () => true,
     close: () => true,
+    /** The user cleared the value; v-model is set to null. */
+    clear: () => true,
     changeMonthYear: (year: number, month: number) => true,
   },
 
@@ -107,6 +109,12 @@ export const NepaliDateTimePicker = defineComponent({
           emit('update:modelValue', result.ad);
           emit('change', result);
           props.options?.onChange?.(result);
+        },
+
+        onClear() {
+          emit('update:modelValue', null);
+          emit('clear');
+          props.options?.onClear?.();
         },
 
         onOpen() {
@@ -137,7 +145,7 @@ export const NepaliDateTimePicker = defineComponent({
       () => props.options,
       (next) => {
         if (!next) return;
-        const { onChange, onOpen, onClose, onChangeMonthYear, ...rest } = next;
+        const { onChange, onOpen, onClose, onChangeMonthYear, onClear, ...rest } = next;
         instance?.update(rest);
       },
       { deep: true },
@@ -177,6 +185,8 @@ export const NepaliDateRangePicker = defineComponent({
     change: (result: DateRangeResult) => true,
     open: () => true,
     close: () => true,
+    /** The user cleared the value; v-model is set to null. */
+    clear: () => true,
   },
 
   setup(props, { emit }) {
@@ -194,6 +204,12 @@ export const NepaliDateRangePicker = defineComponent({
           emit('update:modelValue', { start: result.start, end: result.end });
           emit('change', result);
           props.options?.onApply?.(result);
+        },
+
+        onClear() {
+          emit('update:modelValue', null);
+          emit('clear');
+          props.options?.onClear?.();
         },
 
         onOpen() {
@@ -217,7 +233,7 @@ export const NepaliDateRangePicker = defineComponent({
       () => props.options,
       (next) => {
         if (!next) return;
-        const { onApply, onOpen, onClose, onChange, ...rest } = next;
+        const { onApply, onOpen, onClose, onChange, onClear, ...rest } = next;
         instance?.update(rest);
       },
       { deep: true },
@@ -250,6 +266,8 @@ export const NepaliMonthPicker = defineComponent({
     change: (result: MonthResult) => true,
     open: () => true,
     close: () => true,
+    /** The user cleared the value; v-model is set to null. */
+    clear: () => true,
   },
 
   setup(props, { emit }) {
@@ -270,6 +288,12 @@ export const NepaliMonthPicker = defineComponent({
           emit('update:modelValue', result);
           emit('change', result);
           props.options?.onChange?.(result);
+        },
+
+        onClear() {
+          emit('update:modelValue', null);
+          emit('clear');
+          props.options?.onClear?.();
         },
 
         onOpen() {
@@ -296,7 +320,7 @@ export const NepaliMonthPicker = defineComponent({
       () => props.options,
       (next) => {
         if (!next) return;
-        const { onChange, onOpen, onClose, ...rest } = next;
+        const { onChange, onOpen, onClose, onClear, ...rest } = next;
         instance?.update(rest);
       },
       { deep: true },

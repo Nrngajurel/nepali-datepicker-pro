@@ -34,6 +34,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
   const currentLocale = (): PickerLocale => options.locale ?? 'en';
   let listeners: Array<(value: MonthResult) => void> = [];
   let stateListeners: Array<() => void> = [];
+  let clearListeners: Array<() => void> = [];
 
   // Selected only when a month is explicitly provided; otherwise empty. The
   // grid still opens on the current BS month.
@@ -113,6 +114,19 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     destroy() {
       listeners = [];
       stateListeners = [];
+      clearListeners = [];
+    },
+    clear() {
+      if (!state.selected) return;
+      setState({ selected: null });
+      options.onClear?.();
+      clearListeners.forEach((listener) => listener());
+    },
+    onClear(cb) {
+      clearListeners.push(cb);
+      return () => {
+        clearListeners = clearListeners.filter((listener) => listener !== cb);
+      };
     },
     onChange(cb) {
       listeners.push(cb);
@@ -161,7 +175,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     },
     commitTyped(text) {
       const status = controller.validateTyped(text);
-      if (status === 'empty') { if (state.selected) setState({ selected: null }); return 'empty'; }
+      if (status === 'empty') { controller.clear(); return 'empty'; }
       if (status === 'invalid') return 'invalid';
       const m = /^\s*(\d{1,4})-(\d{1,2})\s*$/.exec(text)!;
       const year = Number(m[1]);

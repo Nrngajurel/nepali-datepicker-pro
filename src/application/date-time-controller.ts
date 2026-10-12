@@ -65,6 +65,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   const adapter = options.adapter ?? defaultCalendarAdapter;
   let listeners: Array<(value: DateTimeResult) => void> = [];
   let stateListeners: Array<() => void> = [];
+  let clearListeners: Array<() => void> = [];
   // A value is selected only when `value`/`defaultValue` is explicitly provided;
   // otherwise the field starts empty. The calendar still opens on today's month.
   const providedValue = options.value !== undefined ? options.value : options.defaultValue;
@@ -263,6 +264,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     destroy() {
       listeners = [];
       stateListeners = [];
+      clearListeners = [];
     },
     onChange(cb) {
       listeners.push(cb);
@@ -333,7 +335,16 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       controller.hide();
     },
     clear() {
+      if (!state.selected) return;
       setState({ selected: null });
+      options.onClear?.();
+      clearListeners.forEach((listener) => listener());
+    },
+    onClear(cb) {
+      clearListeners.push(cb);
+      return () => {
+        clearListeners = clearListeners.filter((listener) => listener !== cb);
+      };
     },
     navigateMonth(delta) {
       let year = state.viewYear;
@@ -380,7 +391,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     commitTyped(text) {
       const parsed = parseTyped(text);
       if (parsed === 'empty') {
-        if (state.selected) setState({ selected: null });
+        controller.clear();
         return 'empty';
       }
       if (parsed === 'invalid') return 'invalid';

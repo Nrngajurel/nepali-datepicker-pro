@@ -211,3 +211,23 @@ describe('NepaliMonthPicker (Vue)', () => {
     apps.pop();
   });
 });
+
+describe('clearing', () => {
+  test('the × button sets v-model to null and emits @clear', async () => {
+    const model = ref<Date | null>(new Date(2024, 3, 15));
+    let cleared = 0;
+    const host = mountApp(() =>
+      h(NepaliDateTimePicker, {
+        modelValue: model.value,
+        'onUpdate:modelValue': (v: Date | null) => { model.value = v; },
+        onClear: () => { cleared += 1; },
+      }),
+    );
+    await nextTick();
+    (host.querySelector('.ndp-clear') as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await nextTick();
+    expect(model.value).toBeNull();
+    expect(cleared).toBe(1);
+    expect(host.querySelector('input')!.value).toBe('');
+  });
+});

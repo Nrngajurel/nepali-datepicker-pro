@@ -4,6 +4,7 @@ import { ref } from 'vue';
 const callbacks = [
   ['onChange', 'value committed / range partial changed', 'all'],
   ['onApply', 'range applied (start + end)', 'range'],
+  ['onClear', 'user cleared the value (×, Clear, erased text)', 'all'],
   ['onOpen / onClose', 'popup shown / hidden', 'all'],
   ['onChangeMonthYear', 'navigated to a new month/year', 'date-time'],
 ];
@@ -12,9 +13,10 @@ const domEvents = [
   ['select.nepaliDatePicker', 'date-time value committed', 'date-time'],
   ['apply.nepaliDateRangePicker', 'range applied', 'range'],
   ['select.nepaliMonthPicker', 'month selected (with AD range)', 'month'],
+  ['clear.nepaliDatePicker / clear.nepaliDateRangePicker / clear.nepaliMonthPicker', 'user cleared the value', 'all'],
 ];
 
-const methods = ['getValue()', 'setValue(v)', 'show()', 'hide()', 'update(patch)', 'onChange(cb) → unsubscribe', 'destroy()'];
+const methods = ['getValue()', 'setValue(v)', 'show()', 'hide()', 'update(patch)', 'onChange(cb) → unsubscribe', 'clear()', 'onClear(cb) → unsubscribe', 'destroy()'];
 
 const copied = ref(false);
 const example = `const picker = mountDateTimePicker(input, {

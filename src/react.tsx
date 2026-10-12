@@ -118,6 +118,7 @@ export function NepaliDateTimePicker({
   const onChangeCb = useLatest(options.onChange);
   const onOpenCb = useLatest(options.onOpen);
   const onCloseCb = useLatest(options.onClose);
+  const onClearCb = useLatest(options.onClear);
   const onChangeMonthYearCb = useLatest(options.onChangeMonthYear);
 
   const { hostRef, instanceRef } = useImperativePicker<
@@ -129,12 +130,13 @@ export function NepaliDateTimePicker({
       onChange: (r) => onChangeCb.current?.(r),
       onOpen: () => onOpenCb.current?.(),
       onClose: () => onCloseCb.current?.(),
+      onClear: () => onClearCb.current?.(),
       onChangeMonthYear: (y, m) => onChangeMonthYearCb.current?.(y, m),
     }),
   );
 
   // Propagate structural config changes (never callbacks).
-  const { onChange, onOpen, onClose, onChangeMonthYear, ...config } = options;
+  const { onChange, onOpen, onClose, onChangeMonthYear, onClear, ...config } = options;
   const fingerprint = configFingerprint(config as Record<string, unknown>);
   useEffect(() => {
     instanceRef.current?.update(config as Partial<DateTimePickerOptions>);
@@ -158,6 +160,7 @@ export function NepaliDateRangePicker({
   const onChangeCb = useLatest(options.onChange);
   const onOpenCb = useLatest(options.onOpen);
   const onCloseCb = useLatest(options.onClose);
+  const onClearCb = useLatest(options.onClear);
 
   const { hostRef, instanceRef } = useImperativePicker<
     DateRangeResult,
@@ -169,10 +172,11 @@ export function NepaliDateRangePicker({
       onChange: (p) => onChangeCb.current?.(p),
       onOpen: () => onOpenCb.current?.(),
       onClose: () => onCloseCb.current?.(),
+      onClear: () => onClearCb.current?.(),
     }),
   );
 
-  const { onApply, onChange, onOpen, onClose, ...config } = options;
+  const { onApply, onChange, onOpen, onClose, onClear, ...config } = options;
   const fingerprint = configFingerprint(config as Record<string, unknown>);
   useEffect(() => {
     instanceRef.current?.update(config as Partial<DateRangePickerOptions>);
@@ -195,6 +199,7 @@ export function NepaliMonthPicker({
   const onChangeCb = useLatest(options.onChange);
   const onOpenCb = useLatest(options.onOpen);
   const onCloseCb = useLatest(options.onClose);
+  const onClearCb = useLatest(options.onClear);
 
   const { hostRef, instanceRef } = useImperativePicker<
     MonthResult,
@@ -205,10 +210,11 @@ export function NepaliMonthPicker({
       onChange: (r) => onChangeCb.current?.(r),
       onOpen: () => onOpenCb.current?.(),
       onClose: () => onCloseCb.current?.(),
+      onClear: () => onClearCb.current?.(),
     }),
   );
 
-  const { onChange, onOpen, onClose, ...config } = options;
+  const { onChange, onOpen, onClose, onClear, ...config } = options;
   const fingerprint = configFingerprint(config as Record<string, unknown>);
   useEffect(() => {
     instanceRef.current?.update(config as Partial<MonthPickerOptions>);

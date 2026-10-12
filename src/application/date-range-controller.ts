@@ -64,6 +64,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   let presets = normalizePresets(options, adapter, dateMath);
   let listeners: Array<(value: DateRangeResult) => void> = [];
   let stateListeners: Array<() => void> = [];
+  let clearListeners: Array<() => void> = [];
   const today = createDateValue(adapter, new Date());
   // A range is shown only when explicitly provided via value/defaultValue, or
   // when a defaultPresetId names a preset. Otherwise the picker starts empty and
@@ -238,11 +239,24 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     destroy() {
       listeners = [];
       stateListeners = [];
+      clearListeners = [];
     },
     onChange(cb) {
       listeners.push(cb);
       return () => {
         listeners = listeners.filter((listener) => listener !== cb);
+      };
+    },
+    clear() {
+      if (!state.range && !state.pendingStart) return;
+      setState({ range: null, pendingStart: null, hoverDate: null });
+      options.onClear?.();
+      clearListeners.forEach((listener) => listener());
+    },
+    onClear(cb) {
+      clearListeners.push(cb);
+      return () => {
+        clearListeners = clearListeners.filter((listener) => listener !== cb);
       };
     },
     selectDay(value) {
@@ -369,7 +383,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     },
     commitTyped(text) {
       if (text.trim() === '') {
-        if (state.range) setState({ range: null, pendingStart: null, hoverDate: null });
+        controller.clear();
         return 'empty';
       }
       const range = parseTypedRange(text);

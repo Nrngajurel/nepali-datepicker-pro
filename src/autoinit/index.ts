@@ -203,7 +203,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     ? withInputGroup(
       trigger,
       () => merged.clearable !== false && controller.getValue() !== null,
-      () => controller.setValue(null),
+      () => controller.clear(),
       { mode: () => controller.getState().mode, toggle: () => controller.toggleMode(), enabled: () => merged.allowModeToggle !== false },
     )
     : null;
@@ -293,6 +293,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
+  controller.onClear(() => target.dispatchEvent(new CustomEvent('clear.nepaliDateRangePicker', { bubbles: true })));
   controller.onChange((value) => {
     updateInput(value);
     inputGroup?.updateClear();
@@ -340,7 +341,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     ? withInputGroup(
       trigger,
       () => merged.clearable !== false && controller.getValue() !== null,
-      () => controller.setValue(null),
+      () => controller.clear(),
       { mode: () => controller.getState().mode, toggle: () => controller.toggleMode(), enabled: () => merged.allowModeToggle !== false },
     )
     : null;
@@ -434,6 +435,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   if (!allowInput) trigger.addEventListener('focus', () => controller.show(), { signal });
   trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
+  controller.onClear(() => target.dispatchEvent(new CustomEvent('clear.nepaliDatePicker', { bubbles: true })));
   controller.onChange((value) => {
     updateInput(value);
     inputGroup?.updateClear();
@@ -480,7 +482,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
   const inputGroup = trigger instanceof HTMLInputElement
-    ? withInputGroup(trigger, () => merged.clearable !== false && controller.getValue() !== null, () => controller.setValue(null))
+    ? withInputGroup(trigger, () => merged.clearable !== false && controller.getValue() !== null, () => controller.clear())
     : null;
 
   // A month is a from→to date range, so it delivers start/end machine values
@@ -566,6 +568,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
+  controller.onClear(() => target.dispatchEvent(new CustomEvent('clear.nepaliMonthPicker', { bubbles: true })));
   controller.onChange((value) => {
     updateInput(value);
     inputGroup?.updateClear();

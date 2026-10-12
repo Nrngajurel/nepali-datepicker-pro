@@ -19,6 +19,15 @@ however your stack prefers.
 - **DOM events** bubble, so one delegated listener on a form can serve every picker inside it.
   This is the path to use with auto-init or a server-rendered page.
 
+## Clearing
+
+When the user clears a picker (the × button, the date-time panel's Clear button, or erasing the
+typed text), it calls `onClear()` and dispatches a bubbling `clear.nepaliDatePicker`,
+`clear.nepaliDateRangePicker` or `clear.nepaliMonthPicker` event. The change events don't fire
+for a clear. `instance.clear()` does the same from code, `instance.onClear(cb)` subscribes, and
+`setValue(null)` clears without notifying. In Vue a clear sets `v-model` to `null` and emits
+`@clear`.
+
 ## Teardown
 
 `destroy()` is safe to call more than once, and removes the portal, the document-level listeners

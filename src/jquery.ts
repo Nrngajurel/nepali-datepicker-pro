@@ -65,6 +65,7 @@ type PluginMethod =
   | 'show'
   | 'hide'
   | 'destroy'
+  | 'clear'
   | 'option';
 
 // ─── shared plugin factory ────────────────────────────────────────────────────
@@ -106,6 +107,7 @@ function makePlugin<TResult, TOptions extends object>(
 
         switch (method) {
           case 'show':    inst.show(); break;
+          case 'clear':   inst.clear(); break;
           case 'hide':    inst.hide(); break;
           case 'destroy':
             inst.destroy();
@@ -212,7 +214,7 @@ type PluginCalls<TResult, TOptions, TValue> = {
   (method: 'getState'): unknown;
   (method: 'setValue', unused: undefined, value: TValue | null): JQuery;
   <K extends keyof TOptions>(method: 'option', name: K, value: TOptions[K]): JQuery;
-  (method: 'show' | 'hide' | 'destroy'): JQuery;
+  (method: 'show' | 'hide' | 'destroy' | 'clear'): JQuery;
 };
 
 declare global {

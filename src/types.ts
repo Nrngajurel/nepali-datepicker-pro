@@ -106,6 +106,8 @@ export interface DateTimePickerOptions {
   allowInput?: boolean;
   onChange?: (value: DateTimeResult) => void;
   onOpen?: () => void;
+  /** The user cleared the value (× button, the panel's Clear button, or erasing the typed text). */
+  onClear?: () => void;
   onClose?: () => void;
   onChangeMonthYear?: (year: number, month: number) => void;
   adapter?: CalendarAdapter;
@@ -192,6 +194,8 @@ export interface DateRangePickerOptions {
   onApply?: (range: DateRangeResult) => void;
   onChange?: (partial: { start?: Date; end?: Date }) => void;
   onOpen?: () => void;
+  /** The user cleared the value (× button, the panel's Clear button, or erasing the typed text). */
+  onClear?: () => void;
   onClose?: () => void;
   adapter?: CalendarAdapter;
   dateMath?: DateMath;
@@ -228,6 +232,8 @@ export interface MonthPickerOptions {
   drops?: 'down' | 'up' | 'auto';
   onChange?: (value: MonthResult) => void;
   onOpen?: () => void;
+  /** The user cleared the value (× button, the panel's Clear button, or erasing the typed text). */
+  onClear?: () => void;
   onClose?: () => void;
   adapter?: CalendarAdapter;
 }
@@ -259,4 +265,9 @@ export interface PickerInstance<TValue, TOptions> {
   update(patch: Partial<TOptions>): void;
   destroy(): void;
   onChange(cb: (value: TValue) => void): () => void;
+  /** Clear the value as if the user did it: fires `onClear` and the `clear.*` DOM event.
+   *  (`setValue(null)` clears silently.) */
+  clear(): void;
+  /** Subscribe to user clears; returns an unsubscribe function. */
+  onClear(cb: () => void): () => void;
 }

@@ -206,3 +206,32 @@ test('destroy() on a non-input target removes the generated trigger button', () 
   mountDateTimePicker(host).destroy();
   assert.equal(host.children.length, 0);
 });
+
+test('clearing notifies: × button fires onClear, the clear.* DOM event and onClear subscribers; setValue(null) stays silent', async () => {
+  const { mountDateRangePicker, mountMonthPicker } = await import('../src/index');
+  const cases = [
+    { event: 'clear.nepaliDatePicker', mount: (el: HTMLInputElement, onClear: () => void) => mountDateTimePicker(el, { value: new Date(2024, 3, 15), onClear }) },
+    { event: 'clear.nepaliDateRangePicker', mount: (el: HTMLInputElement, onClear: () => void) => mountDateRangePicker(el, { value: { start: new Date(2024, 3, 1), end: new Date(2024, 3, 5) }, onClear }) },
+    { event: 'clear.nepaliMonthPicker', mount: (el: HTMLInputElement, onClear: () => void) => mountMonthPicker(el, { value: { year: 2081, month: 1 }, onClear }) },
+  ];
+  for (const { event, mount } of cases) {
+    document.body.innerHTML = '';
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    const calls: string[] = [];
+    const picker = mount(input, () => calls.push('option'));
+    picker.onClear(() => calls.push('subscriber'));
+    input.addEventListener(event, () => calls.push('dom'));
+
+    document.querySelector<HTMLElement>('.ndp-clear')!.click();
+    assert.deepEqual([...calls].sort(), ['dom', 'option', 'subscriber'], event);
+    assert.equal(picker.getValue(), null);
+    assert.equal(input.value, '');
+
+    document.querySelector<HTMLElement>('.ndp-clear')!.click();
+    assert.equal(calls.length, 3, 'clearing an empty picker notifies nothing');
+
+    picker.setValue(null);
+    assert.equal(calls.length, 3, 'setValue(null) is silent');
+  }
+});

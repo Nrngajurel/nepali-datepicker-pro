@@ -135,6 +135,8 @@ interface PickerInstance<TValue, TOptions> {
   update(patch: Partial<TOptions>): void;
   destroy(): void;
   onChange(cb: (value: TValue) => void): () => void; // returns unsubscribe fn
+  clear(): void;                                     // clear as the user would: fires onClear + clear.* event
+  onClear(cb: () => void): () => void;               // returns unsubscribe fn
 }
 ```
 
@@ -154,6 +156,7 @@ three plugins are declared on `JQuery` (merges with `@types/jquery`).
 | `'option'` | `$` (chainable) | `('option', 'minDate', new Date())` |
 | `'show'` | `$` (chainable) | Open the popup |
 | `'hide'` | `$` (chainable) | Close the popup |
+| `'clear'` | `$` (chainable) | Clear the value as the user would (fires `onClear`) |
 | `'destroy'` | `$` (chainable) | Tear down the instance and clean up |
 
 Same three plugin names as the mount functions, camelCased: `nepaliDateTimePicker`,
@@ -167,13 +170,17 @@ Same three plugin names as the mount functions, camelCased: `nepaliDateTimePicke
 | `NepaliDateRangePicker` | `onApply(result)`, `onChange({ start?, end? })` | `apply.nepaliDateRangePicker` |
 | `NepaliMonthPicker` | `onChange(result)` | `select.nepaliMonthPicker` |
 
-Every picker also fires `onOpen()` / `onClose()`.
+Every picker also fires `onOpen()` / `onClose()`, and on a user clear (× button, Clear
+button, erased text) `onClear()` plus a bubbling `clear.nepaliDatePicker` /
+`clear.nepaliDateRangePicker` / `clear.nepaliMonthPicker` event — change events don't
+fire for a clear. `setValue(null)` clears silently.
 
 jQuery: listen to the DOM events with `addEventListener`, not `$(el).on(...)` —
 jQuery parses the part after the dot as a namespace, so the handler never fires.
 
 Vue 3 template events (alternative to passing callbacks through `:options`; both fire
-if you do both): `@change`, `@open`, `@close`, and `@changeMonthYear` (datetime only).
+if you do both): `@change`, `@clear` (v-model becomes `null`), `@open`, `@close`, and
+`@changeMonthYear` (datetime only).
 
 ## Autoinit / vanilla helpers
 
