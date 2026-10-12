@@ -84,7 +84,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
-    "prepublishOnly": "npm run lint && npm run test && npm run build"
+    "prepublishOnly": "npm run lint && npm run test && npm run build",
+    "test:e2e": "playwright test"
   },
   "peerDependencies": {
     "jquery": ">=3",
@@ -113,6 +114,7 @@
     }
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@types/jquery": "^4.0.1",
     "@types/node": "^20.0.0",
     "@types/react": "^19.2.17",

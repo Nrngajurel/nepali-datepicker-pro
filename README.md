@@ -93,6 +93,7 @@ Most "Nepali date picker" packages on npm are jQuery plugins from 2016, ship no 
 - 🎯 **Decoupled machine value** — `valueFormat: 'iso' | 'iso-bs' | 'timestamp'`, plus `submitName` / `altField` to wire straight into a native `<form>` POST
 - ⌨️ **Keyboard-editable, masked inputs** — no read-only trap; type or arrow-key through segments
 - 🖼️ **Portal-based popup** — `appendTo`, `opens`, `drops` for layout-safe positioning inside modals/tables
+- 📱 **Phone-friendly** — on narrow screens (≤ 560px) the popup becomes a bottom sheet with a tap-to-close backdrop, range presets turn into a swipeable chip row, and the year view is a single scrollable list of every supported year
 - 🧩 **Five entry points** — `vanilla`, `/react`, `/vue`, `/jquery`, and a UMD build for a plain `<script>` tag
 - 📦 **Tree-shakeable ESM** + CJS/UMD fallback, full `.d.ts` types, single CSS file
 
@@ -458,6 +459,8 @@ Import the single stylesheet once; every picker shares the same design tokens (C
 
 No CSS-in-JS, no Tailwind requirement, no shadow DOM — plain classes you can override normally.
 
+On viewports ≤ 560px wide the popup is shown as a bottom sheet: the portal gets the `ndp-sheet` class (target `.ndp-sheet .ndp-panel` to restyle it), and `opens`/`drops` don't apply there.
+
 ---
 
 ## TypeScript
@@ -513,6 +516,7 @@ cd nepali-datepicker-pro
 npm install
 npm run dev      # VitePress docs site, with live component demos
 npm run test     # vitest
+npm run test:e2e # Playwright: real browsers, desktop + phone viewports
 npm run lint     # tsc --noEmit
 npm run build    # ESM + UMD + .d.ts into dist/
 ```

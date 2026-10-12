@@ -22,6 +22,7 @@
     // the .vue module shim would otherwise never load.
     "docs/.vitepress/**/*.ts",
     "docs/.vitepress/shims-vue.d.ts",
+    "e2e",
     "*.config.ts"
   ]
 }

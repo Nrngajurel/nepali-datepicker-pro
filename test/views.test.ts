@@ -52,6 +52,32 @@ test('datetime: month view → header → year view → pick year drills back to
   assert.equal(c.getState().view, 'month', 'picking a year returns to month view');
 });
 
+test('year view lists every supported year in one scrolling grid, no paging arrows', () => {
+  const c = createDateTimeController({ value: base() });
+  c.show();
+  const root = render(c, 'datetime');
+  c.setView('year');
+  const { minSupportedYear, maxSupportedYear } = defaultCalendarAdapter;
+  const cells = root.querySelectorAll('.ndp-yearcell');
+  assert.equal(cells.length, maxSupportedYear - minSupportedYear + 1, 'one cell per supported BS year');
+  assert.equal(root.querySelectorAll('.ndp-yearcell.is-selected').length, 1);
+  assert.equal(root.querySelector('.ndp-yearcell.is-selected .ndp-yearcell-bs')!.textContent, defaultCalendarAdapter.toLocaleDigits(2081, 'ne'));
+  assert.equal(root.querySelectorAll('.ndp-cal-header .ndp-nav:not(.is-hidden)').length, 0, 'no ‹ › paging in the year view');
+  root.querySelector<HTMLButtonElement>('.ndp-cal-label')!.click();
+  assert.equal(c.getState().view, 'day', 'year header label returns to the day view');
+});
+
+test('year view in AD mode lists AD years', () => {
+  const c = createDateTimeController({ value: base(), mode: 'AD' });
+  c.show();
+  const root = render(c, 'datetime');
+  c.setView('year');
+  const years = [...root.querySelectorAll('.ndp-yearcell-bs')].map((n) => Number(n.textContent));
+  assert.ok(years.includes(2024) && years.includes(1999), 'AD years present');
+  assert.deepEqual(years, [...years].sort((a, b) => a - b), 'ascending order');
+  assert.equal(root.querySelector('.ndp-yearcell.is-selected .ndp-yearcell-bs')!.textContent, '2024');
+});
+
 test('range: month/year view works the same way', () => {
   const c = createDateRangeController({});
   c.show();

@@ -10,3 +10,5 @@ docs/.vitepress/dist/
 references/
 .vercel
 .env*
+test-results/
+playwright-report/

@@ -91,3 +91,34 @@ test('autoInit wires data-with-time="true" to a working time panel', () => {
   const panel = open(input);
   assert.ok(panel?.querySelector('.ndp-time-panel'), 'autoInit + data-with-time shows the time panel');
 });
+
+test('bottom sheet: phone-width viewports dock the popup and the backdrop closes it', () => {
+  const original = window.matchMedia;
+  window.matchMedia = ((query: string) => ({ matches: query.includes('max-width: 560px'), media: query })) as unknown as typeof window.matchMedia;
+  try {
+    const input = document.createElement('input');
+    document.body.appendChild(input);
+    mountDateTimePicker(input);
+    open(input);
+    const portal = document.querySelector<HTMLElement>('.ndp-panel-root')!;
+    assert.ok(portal.classList.contains('ndp-sheet'), 'popup is a bottom sheet');
+    assert.equal(portal.style.top, '', 'no anchored top/left — CSS docks it to the bottom');
+    // A tap inside the panel keeps it open; a tap on the portal itself (the backdrop) closes it.
+    portal.querySelector('.ndp-cal-label')!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    assert.equal(portal.style.display, 'block', 'panel tap keeps it open');
+    portal.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    assert.equal(portal.style.display, 'none', 'backdrop tap closes the sheet');
+  } finally {
+    window.matchMedia = original;
+  }
+});
+
+test('desktop-width viewports keep the anchored dropdown', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  mountDateTimePicker(input);
+  open(input);
+  const portal = document.querySelector<HTMLElement>('.ndp-panel-root')!;
+  assert.equal(portal.classList.contains('ndp-sheet'), false);
+  assert.notEqual(portal.style.top, '');
+});

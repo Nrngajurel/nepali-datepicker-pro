@@ -217,7 +217,9 @@ or the framework components instead.
 ## Styling
 
 Single stylesheet, CSS custom properties for theming — no CSS-in-JS, no Tailwind
-requirement, no shadow DOM:
+requirement, no shadow DOM. On viewports ≤ 560px the popup renders as a bottom
+sheet (portal gets class `ndp-sheet`; `opens`/`drops` are ignored there), and the
+year view is one scrollable list of every supported year:
 
 ```css
 :root {

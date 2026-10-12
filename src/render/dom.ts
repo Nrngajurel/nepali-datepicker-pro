@@ -94,7 +94,7 @@ function monthSpanText(span: MonthSpan, otherMode: CalendarMode, adapter: Calend
 // and which is the small/secondary hint — the two swap when mode is 'AD'.
 function renderHeader(controller: ViewControls): HTMLElement {
   const adapter = defaultCalendarAdapter;
-  const { view, viewYear, viewMonth, yearGroupStart, mode = 'BS', showSecondaryCalendar = true } = controller.getState();
+  const { view, viewYear, viewMonth, mode = 'BS', showSecondaryCalendar = true } = controller.getState();
   const header = el('div', 'ndp-cal-header');
 
   let outerPrev: HTMLElement;
@@ -112,9 +112,10 @@ function renderHeader(controller: ViewControls): HTMLElement {
     innerNext = navButton('›', 'Next year', () => controller.navigateYear(1));
     outerNext = navButton('»', '', () => {}, true);
   } else {
+    // The year grid scrolls through every year, so no paging arrows.
     outerPrev = navButton('«', '', () => {}, true);
-    innerPrev = navButton('‹', 'Previous years', () => controller.navigateYearGroup(-1));
-    innerNext = navButton('›', 'Next years', () => controller.navigateYearGroup(1));
+    innerPrev = navButton('‹', '', () => {}, true);
+    innerNext = navButton('›', '', () => {}, true);
     outerNext = navButton('»', '', () => {}, true);
   }
 
@@ -131,7 +132,7 @@ function renderHeader(controller: ViewControls): HTMLElement {
       secondary = monthSpanText(span, 'AD', adapter);
     }
     label.addEventListener('click', () => controller.setView('month'));
-  } else if (view === 'month') {
+  } else {
     if (mode === 'AD') {
       primary = String(viewYear);
       secondary = `${adapter.adToBs(new Date(viewYear, 0, 1)).year} BS`;
@@ -139,18 +140,7 @@ function renderHeader(controller: ViewControls): HTMLElement {
       primary = adapter.toLocaleDigits(viewYear, 'ne');
       secondary = `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`;
     }
-    label.addEventListener('click', () => controller.setView('year'));
-  } else {
-    const { max } = viewYearBounds(mode, adapter);
-    const end = Math.min(yearGroupStart + 11, max);
-    if (mode === 'AD') {
-      primary = `${yearGroupStart} – ${end}`;
-      secondary = `${adapter.adToBs(new Date(yearGroupStart, 0, 1)).year} – ${adapter.adToBs(new Date(end, 0, 1)).year} BS`;
-    } else {
-      primary = `${adapter.toLocaleDigits(yearGroupStart, 'ne')} – ${adapter.toLocaleDigits(end, 'ne')}`;
-      secondary = `${adapter.bsToAd(yearGroupStart, 1, 1).getFullYear()} – ${adapter.bsToAd(end, 1, 1).getFullYear()}`;
-    }
-    label.addEventListener('click', () => controller.setView('day'));
+    label.addEventListener('click', () => controller.setView(view === 'month' ? 'year' : 'day'));
   }
   label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${primary} ▾`));
   if (showSecondaryCalendar) label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), secondary));
@@ -187,17 +177,16 @@ function renderMonthGrid(controller: ViewControls): HTMLElement {
   return grid;
 }
 
+// Every supported year in one scrollable grid (rather than paging 12 at a
+// time with ‹ ›), opened scrolled so the current view year sits in the middle.
+// Scrolling / flicking is far quicker than stepping pages, especially on touch.
 function renderYearGrid(controller: ViewControls): HTMLElement {
   const adapter = defaultCalendarAdapter;
-  const { viewYear, yearGroupStart, mode = 'BS', showSecondaryCalendar = true } = controller.getState();
+  const { viewYear, mode = 'BS', showSecondaryCalendar = true } = controller.getState();
   const { min, max } = viewYearBounds(mode, adapter);
-  const grid = el('div', 'ndp-yeargrid', { role: 'grid' });
-  for (let i = 0; i < 12; i += 1) {
-    const year = yearGroupStart + i;
-    if (year < min || year > max) {
-      grid.appendChild(el('div', 'ndp-yearcell ndp-yearcell--empty', { role: 'gridcell' }));
-      continue;
-    }
+  const grid = el('div', 'ndp-yeargrid', { role: 'grid', 'aria-label': 'Select year' });
+  let selectedCell: HTMLElement | null = null;
+  for (let year = min; year <= max; year += 1) {
     const selected = year === viewYear;
     const btn = el('button', `ndp-yearcell${selected ? ' is-selected' : ''}`, { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' });
     const primaryDigits = mode === 'AD' ? String(year) : adapter.toLocaleDigits(year, 'ne');
@@ -207,8 +196,15 @@ function renderYearGrid(controller: ViewControls): HTMLElement {
       btn.appendChild(setText(el('span', 'ndp-yearcell-en'), secondaryLabel));
     }
     btn.addEventListener('click', () => controller.selectYearView(year));
+    if (selected) selectedCell = btn;
     grid.appendChild(btn);
   }
+  // Center the selected year once the grid is laid out (it isn't attached yet).
+  const center = (): void => {
+    if (selectedCell) grid.scrollTop = selectedCell.offsetTop - (grid.clientHeight - selectedCell.offsetHeight) / 2;
+  };
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(center);
+  else center();
   return grid;
 }
 
@@ -704,7 +700,45 @@ export function renderMonthPickerPanel(root: HTMLElement, controller: MonthPicke
   root.appendChild(panel);
 }
 
+// Phone-width viewports get the popup as a bottom sheet (full width, docked to
+// the bottom, scrollable, over a dimmed backdrop) instead of a dropdown pinned
+// under the input — a dropdown taller than the screen gets cut off on a phone.
+// Matches the `max-width: 560px` breakpoint in theme.css.
+export function isSheetViewport(): boolean {
+  if (typeof window === 'undefined') return false;
+  if (typeof window.matchMedia === 'function') return window.matchMedia('(max-width: 560px)').matches;
+  return window.innerWidth <= 560;
+}
+
+// Slide the bottom sheet up once per open. The panel element is rebuilt on
+// every state change, so a plain CSS animation on it would replay on each tap
+// inside the sheet; the enter class scopes it to the opening moment.
+export function playSheetEnter(popup: HTMLElement): void {
+  if (!popup.classList.contains('ndp-sheet')) return;
+  popup.classList.add('ndp-sheet--enter');
+  const done = (): void => {
+    popup.classList.remove('ndp-sheet--enter');
+    popup.removeEventListener('animationend', onEnd);
+  };
+  // The backdrop's shorter fade ends first and bubbles here too — wait for
+  // the slide itself, or it would be cut off mid-way.
+  const onEnd = (event: AnimationEvent): void => {
+    if (event.animationName === 'ndp-sheet-up') done();
+  };
+  popup.addEventListener('animationend', onEnd);
+  window.setTimeout(done, 1000); // reduced motion: no animation, no animationend
+}
+
 export function positionPopup(trigger: HTMLElement, popup: HTMLElement, options: { opens?: 'left' | 'right' | 'center' | 'auto'; drops?: 'down' | 'up' | 'auto' } = {}): void {
+  const sheet = isSheetViewport();
+  popup.classList.toggle('ndp-sheet', sheet);
+  if (sheet) {
+    // Placement comes from the .ndp-sheet CSS (left/right/bottom: 0).
+    popup.style.position = 'fixed';
+    popup.style.top = '';
+    popup.style.left = '';
+    return;
+  }
   // Set fixed position + a throwaway top/left so the browser computes
   // the correct shrink-wrap box before we measure it. On first open the
   // portal is position:static and spans the full viewport width — the

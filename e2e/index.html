@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Picker e2e fixture</title>
+  <link rel="stylesheet" href="/src/theme.css">
+  <style>
+    body { margin: 0; padding: 16px; font-family: sans-serif; }
+    label { display: block; margin: 12px 0 4px; }
+    .spacer { height: 1200px; }
+  </style>
+</head>
+<body>
+  <form id="form" onsubmit="return false">
+    <label for="date">Date</label>
+    <input id="date">
+    <label for="datetime">Date &amp; time</label>
+    <input id="datetime">
+    <label for="range">Range</label>
+    <input id="range">
+    <label for="month">Month</label>
+    <input id="month">
+  </form>
+  <div class="spacer"></div>
+  <script type="module">
+    import { mountDateTimePicker, mountDateRangePicker, mountMonthPicker } from '/src/index.ts';
+
+    const changes = { date: [], datetime: [], range: [], month: [] };
+    const record = (key) => (value) => changes[key].push(value);
+    window.changes = changes;
+    window.pickers = {
+      date: mountDateTimePicker(document.getElementById('date'), { value: new Date(2024, 3, 15), submitName: 'date_value', onChange: record('date') }),
+      datetime: mountDateTimePicker(document.getElementById('datetime'), { value: new Date(2024, 3, 15, 9, 0), withTime: true, onChange: record('datetime') }),
+      range: mountDateRangePicker(document.getElementById('range'), { value: { start: new Date(2024, 3, 1), end: new Date(2024, 3, 10) }, onChange: record('range') }),
+      month: mountMonthPicker(document.getElementById('month'), { value: { year: 2081, month: 1 }, onChange: record('month') }),
+    };
+    window.ready = true;
+  </script>
+</body>
+</html>

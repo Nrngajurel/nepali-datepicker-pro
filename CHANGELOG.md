@@ -7,11 +7,26 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Phone-friendly popup: on screens 560px wide or less, every picker opens as a bottom sheet —
+  full width, docked to the bottom, scrollable, with Done/Apply kept in reach and a dimmed
+  backdrop you tap to close. Previously the dropdown could run off the bottom of the screen.
+- Range picker presets show as a swipeable row of chips on phones instead of a tall list above the
+  calendar.
+
 ### Changed
 
+- The year view is now one scrollable list of every supported year, opened centered on the current
+  year, instead of pages of 12 years stepped with ‹ › buttons. Scroll or swipe to any year directly.
 - Pinned `esbuild`/`vite` (via `overrides` in `package.json`) to patched versions to close the
   `npm audit` findings pulled in transitively through `vitepress`'s bundled dev-server deps.
   Dev-tooling only — does not affect the published package.
+
+### Fixed
+
+- On phones, the date-time picker's time panel now spans the full width under the calendar
+  instead of staying a narrow 168px strip.
 
 ## [0.4.0] - 2026-07-24
 

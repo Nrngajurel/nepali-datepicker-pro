@@ -7,7 +7,7 @@ import { attachSegmentedField } from './segmented-field.js';
 import type { SegmentedField } from './segmented-field.js';
 import { dateSchema, monthSchema, rangeSchema } from './segment-schemas.js';
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
-import { positionPopup, renderDateTimePanel, renderMonthPickerPanel, renderRangePanel } from '../render/dom.js';
+import { playSheetEnter, positionPopup, renderDateTimePanel, renderMonthPickerPanel, renderRangePanel } from '../render/dom.js';
 import type { DateRangePickerOptions, DateRangeResult, DateTimePickerOptions, DateTimeResult, MonthPickerOptions, MonthResult, PickerInstance } from '../types.js';
 
 export const regional = {
@@ -124,8 +124,11 @@ function makeLiveUpdate<T extends { update: (patch: Partial<O>) => void; getStat
 
 function trackPosition(trigger: HTMLElement, portal: HTMLElement, options: { opens?: 'left' | 'right' | 'center' | 'auto'; drops?: 'down' | 'up' | 'auto' }, getOpen: () => boolean): () => void {
   let raf = 0;
-  function reposition() {
+  function reposition(event?: Event) {
     if (!getOpen() || portal.style.display === 'none') return;
+    // Scrolling inside the popup (year grid, time wheels, the bottom sheet)
+    // doesn't move it relative to the trigger.
+    if (event?.type === 'scroll' && event.target instanceof Node && portal.contains(event.target)) return;
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => positionPopup(trigger, portal, options));
   }
@@ -158,7 +161,9 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
 
   const unsubscribe = (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange(render);
   const outside = (event: MouseEvent) => {
-    if (!portal.contains(event.target as Node) && event.target !== trigger) controller.hide();
+    // A tap on the portal itself (not the panel inside it) is the bottom
+    // sheet's backdrop, so it closes too.
+    if (event.target === portal || (!portal.contains(event.target as Node) && event.target !== trigger)) controller.hide();
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
@@ -224,7 +229,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderRangePanel(portal, controller);
-      if (!wasOpen) positionPopup(trigger, portal, merged);
+      if (!wasOpen) { positionPopup(trigger, portal, merged); playSheetEnter(portal); }
     } else {
       portal.innerHTML = '';
     }
@@ -300,7 +305,9 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   resolveAppendTo(target, merged.appendTo).appendChild(portal);
   const unsubscribe = (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange(render);
   const outside = (event: MouseEvent) => {
-    if (!portal.contains(event.target as Node) && event.target !== trigger) controller.hide();
+    // A tap on the portal itself (not the panel inside it) is the bottom
+    // sheet's backdrop, so it closes too.
+    if (event.target === portal || (!portal.contains(event.target as Node) && event.target !== trigger)) controller.hide();
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
@@ -353,7 +360,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderDateTimePanel(portal, controller);
-      if (!wasOpen) positionPopup(trigger, portal, merged);
+      if (!wasOpen) { positionPopup(trigger, portal, merged); playSheetEnter(portal); }
     } else {
       portal.innerHTML = '';
     }
@@ -448,7 +455,9 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   resolveAppendTo(target, merged.appendTo ?? merged.container).appendChild(portal);
   const unsubscribe = (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange(render);
   const outside = (event: MouseEvent) => {
-    if (!portal.contains(event.target as Node) && event.target !== trigger) controller.hide();
+    // A tap on the portal itself (not the panel inside it) is the bottom
+    // sheet's backdrop, so it closes too.
+    if (event.target === portal || (!portal.contains(event.target as Node) && event.target !== trigger)) controller.hide();
   };
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
@@ -507,7 +516,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderMonthPickerPanel(portal, controller);
-      if (!wasOpen) positionPopup(trigger, portal, merged);
+      if (!wasOpen) { positionPopup(trigger, portal, merged); playSheetEnter(portal); }
     } else {
       portal.innerHTML = '';
     }
