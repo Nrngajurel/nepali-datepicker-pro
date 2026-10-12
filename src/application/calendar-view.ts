@@ -43,6 +43,33 @@ export function clampViewYear(mode: CalendarMode, adapter: CalendarAdapter, year
   return Math.max(min, Math.min(max, year));
 }
 
+// First and last month, in the active mode's calendar, whose every day the
+// conversion table covers — i.e. the months a day grid can be built for. BS is
+// whole years; in AD the table starts and ends mid-month, so those partial
+// months are left out.
+export function viewMonthBounds(mode: CalendarMode, adapter: CalendarAdapter): { min: ViewYearMonth; max: ViewYearMonth } {
+  const minYear = adapter.minSupportedYear;
+  const maxYear = adapter.maxSupportedYear;
+  if (mode === 'BS') return { min: { year: minYear, month: 1 }, max: { year: maxYear, month: 12 } };
+  const first = adapter.bsToAd(minYear, 1, 1);
+  const last = adapter.bsToAd(maxYear, 12, adapter.daysInBsMonth(maxYear, 12));
+  const monthOf = (date: Date): ViewYearMonth => ({ year: date.getFullYear(), month: date.getMonth() + 1 });
+  const min = first.getDate() === 1 ? monthOf(first) : monthOf(new Date(first.getFullYear(), first.getMonth() + 1, 1));
+  const endsMonth = new Date(last.getFullYear(), last.getMonth() + 1, 0).getDate() === last.getDate();
+  const max = endsMonth ? monthOf(last) : monthOf(new Date(last.getFullYear(), last.getMonth() - 1, 1));
+  return { min, max };
+}
+
+// Keep a viewed (year, month) inside viewMonthBounds, so navigating past the
+// ends of the table stops at the last renderable month instead of throwing.
+export function clampViewMonth(mode: CalendarMode, adapter: CalendarAdapter, year: number, month: number): ViewYearMonth {
+  const { min, max } = viewMonthBounds(mode, adapter);
+  const index = year * 12 + (month - 1);
+  if (index < min.year * 12 + (min.month - 1)) return min;
+  if (index > max.year * 12 + (max.month - 1)) return max;
+  return { year, month };
+}
+
 export interface MonthSpan {
   start: ViewYearMonth;
   end: ViewYearMonth;

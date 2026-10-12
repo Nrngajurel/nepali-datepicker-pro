@@ -280,3 +280,31 @@ test('range: choosing another preset leaves month mode', () => {
   c.selectPreset('today');
   assert.equal(c.getState().selectionUnit, 'day', 'back to day selection after a normal preset');
 });
+
+test('navigation stops at the ends of the supported range instead of crashing', () => {
+  for (const mode of ['BS', 'AD'] as const) {
+    const c = createDateTimeController({ mode, value: base() });
+    c.show();
+    const root = render(c, 'datetime');
+    c.navigateYear(200); // far past the end
+    c.navigateMonth(1);
+    const end = { ...c.getState() };
+    c.navigateMonth(1);
+    c.navigateYear(1);
+    assert.deepEqual([c.getState().viewYear, c.getState().viewMonth], [end.viewYear, end.viewMonth], `${mode}: clamped at the last month`);
+    assert.ok(root.querySelectorAll('.ndp-cell:not(.ndp-cell--empty)').length >= 28, `${mode}: last month renders`);
+    c.navigateYear(-400);
+    c.navigateMonth(-1);
+    assert.ok(root.querySelectorAll('.ndp-cell:not(.ndp-cell--empty)').length >= 28, `${mode}: first month renders`);
+    c.navigateYear(-1);
+    c.setView('month');
+    if (mode === 'AD') assert.ok(root.querySelector('.ndp-monthcell.is-disabled'), 'AD: months before the table are disabled');
+    root.querySelector<HTMLButtonElement>('.ndp-monthcell:not(.is-disabled)')!.click();
+    assert.ok(root.querySelector('.ndp-grid'), `${mode}: picking the first available month renders`);
+  }
+  assert.equal(createDateTimeController({ mode: 'BS' }).getState().mode, 'BS');
+  const r = createDateRangeController({ mode: 'AD' });
+  r.navigateYear(200);
+  r.navigateMonth(1);
+  assert.doesNotThrow(() => r.buildMonthCells(r.getState().viewYear, r.getState().viewMonth));
+});

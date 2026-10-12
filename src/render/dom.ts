@@ -2,7 +2,7 @@ import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import type { DateRangeController } from '../application/date-range-controller.js';
 import { previewRange } from '../application/date-range-controller.js';
 import type { DateTimeController } from '../application/date-time-controller.js';
-import { crossCalendarMonthSpan, viewYearBounds, viewYearMonthOf } from '../application/calendar-view.js';
+import { clampViewMonth, crossCalendarMonthSpan, firstOfViewMonth, viewYearBounds, viewYearMonthOf } from '../application/calendar-view.js';
 import type { MonthSpan } from '../application/calendar-view.js';
 import type { MonthPickerController } from '../application/month-picker-controller.js';
 import { GREGORIAN_MONTHS_SHORT, nativeDateMath } from '../date-math/native-date-math.js';
@@ -77,6 +77,19 @@ function navButton(glyph: string, aria: string, onClick: () => void, hidden = fa
 // BS/AD months are offset by roughly half a month), or a single name when it
 // doesn't. BS names render in Devanagari, AD names in English, matching how
 // each calendar is always scripted regardless of primary/secondary position.
+// BS year shown as the hint for an AD year: taken from the year's first month
+// the conversion table covers (1 January can fall before the table's start).
+function bsYearOfAdYear(adapter: CalendarAdapter, year: number): number {
+  const first = clampViewMonth('AD', adapter, year, 1);
+  return adapter.adToBs(firstOfViewMonth('AD', adapter, first.year, first.month)).year;
+}
+
+// Whether (year, month) in `mode` is a month the table fully covers.
+function isViewMonthInRange(mode: CalendarMode, adapter: CalendarAdapter, year: number, month: number): boolean {
+  const clamped = clampViewMonth(mode, adapter, year, month);
+  return clamped.year === year && clamped.month === month;
+}
+
 function monthSpanText(span: MonthSpan, otherMode: CalendarMode, adapter: CalendarAdapter, withYear = true): string {
   const names = otherMode === 'AD' ? GREGORIAN_MONTHS_SHORT : adapter.bsMonthNames('ne');
   const startName = names[span.start.month - 1];
@@ -135,7 +148,7 @@ function renderHeader(controller: ViewControls): HTMLElement {
   } else {
     if (mode === 'AD') {
       primary = String(viewYear);
-      secondary = `${adapter.adToBs(new Date(viewYear, 0, 1)).year} BS`;
+      secondary = `${bsYearOfAdYear(adapter, viewYear)} BS`;
     } else {
       primary = adapter.toLocaleDigits(viewYear, 'ne');
       secondary = `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`;
@@ -165,6 +178,13 @@ function renderMonthGrid(controller: ViewControls): HTMLElement {
     const selected = month === viewMonth;
     const primaryName = mode === 'AD' ? GREGORIAN_MONTHS_SHORT[index] : adapter.bsMonthNames('ne')[index];
     const btn = setText(el('button', `ndp-monthcell${selected ? ' is-selected' : ''}`, { type: 'button', role: 'gridcell', 'aria-selected': selected ? 'true' : 'false' }), primaryName);
+    if (!isViewMonthInRange(mode, adapter, viewYear, month)) {
+      // Outside the supported calendar range (only at its very ends).
+      btn.classList.add('is-disabled');
+      btn.setAttribute('aria-disabled', 'true');
+      grid.appendChild(btn);
+      continue;
+    }
     if (showSecondaryCalendar) {
       // The other calendar's month usually straddles this one (~half-month
       // offset), so show both overlapped months, e.g. "Baisakh/Jestha".
@@ -223,7 +243,7 @@ function renderMonthRangeHeader(controller: DateRangeController): HTMLElement {
   const label = el('div', 'ndp-cal-label ndp-cal-label--static');
   if (mode === 'AD') {
     label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${viewYear} AD`));
-    if (showSecondaryCalendar) label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), `${adapter.adToBs(new Date(viewYear, 0, 1)).year} BS`));
+    if (showSecondaryCalendar) label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), `${bsYearOfAdYear(adapter, viewYear)} BS`));
   } else {
     label.appendChild(setText(el('div', 'ndp-cal-label-primary'), `${adapter.toLocaleDigits(viewYear, 'ne')} BS`));
     if (showSecondaryCalendar) label.appendChild(setText(el('div', 'ndp-cal-label-secondary'), `${adapter.bsToAd(viewYear, 1, 1).getFullYear()} AD`));

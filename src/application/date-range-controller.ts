@@ -1,6 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
-import { buildViewMonthCells, clampViewYear, firstOfViewMonth, lastOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
+import { buildViewMonthCells, clampViewMonth, clampViewYear, firstOfViewMonth, lastOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
 import { isDayDisabled, resolveBound } from './constraints.js';
 import { createDateRange, createDateValue, dateValueFromBs, isSameDateValue } from '../domain/date-value.js';
 import { formatRange, formatMachineValue, stringifyMachineValue } from '../format/index.js';
@@ -294,6 +294,8 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if (options.autoApply) controller.apply();
     },
     isMonthDisabled(year, month) {
+      const inRange = clampViewMonth(state.mode, adapter, year, month);
+      if (inRange.year !== year || inRange.month !== month) return true; // past the calendar table's ends
       const min = resolveBound(options.minDate, dateMath);
       const max = resolveBound(options.maxDate, dateMath);
       if (min && lastOfMonth(year, month).ad.getTime() < min.getTime()) return true;
@@ -306,14 +308,13 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       setState({ activePresetId: 'month', selectionUnit: 'month', pendingStart: null, hoverDate: null, range: null, openSubmenuId: null, view: 'day' });
     },
     navigateMonth(delta) {
-      let year = state.viewYear;
-      let month = state.viewMonth + delta;
-      while (month > 12) { month -= 12; year += 1; }
-      while (month < 1) { month += 12; year -= 1; }
+      const total = state.viewYear * 12 + (state.viewMonth - 1) + delta;
+      const { year, month } = clampViewMonth(state.mode, adapter, Math.floor(total / 12), (total % 12) + 1);
       setState({ viewYear: year, viewMonth: month });
     },
     navigateYear(delta) {
-      setState({ viewYear: clampYear(state.viewYear + delta) });
+      const { year, month } = clampViewMonth(state.mode, adapter, state.viewYear + delta, state.viewMonth);
+      setState({ viewYear: year, viewMonth: month });
     },
     navigateYearGroup(delta) {
       setState({ yearGroupStart: clampYear(state.yearGroupStart + delta * 12) });
@@ -322,10 +323,12 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       setState(view === 'year' ? { view, yearGroupStart: clampYear(state.viewYear - 6) } : { view });
     },
     selectMonthView(month) {
-      setState({ viewMonth: month, view: 'day' });
+      const view = clampViewMonth(state.mode, adapter, state.viewYear, month);
+      setState({ viewYear: view.year, viewMonth: view.month, view: 'day' });
     },
     selectYearView(year) {
-      setState({ viewYear: clampYear(year), view: 'month' });
+      const view = clampViewMonth(state.mode, adapter, clampYear(year), state.viewMonth);
+      setState({ viewYear: view.year, viewMonth: view.month, view: 'month' });
     },
     toggleMode() {
       if (!state.allowModeToggle) return;

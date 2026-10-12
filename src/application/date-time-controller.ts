@@ -1,6 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
-import { buildViewMonthCells, clampViewYear, firstOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
+import { buildViewMonthCells, clampViewMonth, clampViewYear, firstOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
 import { isDayDisabled } from './constraints.js';
 import { createDateValue, dateValueFromBs } from '../domain/date-value.js';
 import { formatDateValue, formatMachineValue } from '../format/index.js';
@@ -372,17 +372,15 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       };
     },
     navigateMonth(delta) {
-      let year = state.viewYear;
-      let month = state.viewMonth + delta;
-      while (month > 12) { month -= 12; year += 1; }
-      while (month < 1) { month += 12; year -= 1; }
+      const total = state.viewYear * 12 + (state.viewMonth - 1) + delta;
+      const { year, month } = clampViewMonth(state.mode, adapter, Math.floor(total / 12), (total % 12) + 1);
       setState({ viewYear: year, viewMonth: month });
       options.onChangeMonthYear?.(year, month);
     },
     navigateYear(delta) {
-      const year = clampYear(state.viewYear + delta);
-      setState({ viewYear: year });
-      options.onChangeMonthYear?.(year, state.viewMonth);
+      const { year, month } = clampViewMonth(state.mode, adapter, state.viewYear + delta, state.viewMonth);
+      setState({ viewYear: year, viewMonth: month });
+      options.onChangeMonthYear?.(year, month);
     },
     navigateYearGroup(delta) {
       setState({ yearGroupStart: clampYear(state.yearGroupStart + delta * 12) });
@@ -391,13 +389,14 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       setState(view === 'year' ? { view, yearGroupStart: clampYear(state.viewYear - 6) } : { view });
     },
     selectMonthView(month) {
-      setState({ viewMonth: month, view: 'day' });
-      options.onChangeMonthYear?.(state.viewYear, month);
+      const view = clampViewMonth(state.mode, adapter, state.viewYear, month);
+      setState({ viewYear: view.year, viewMonth: view.month, view: 'day' });
+      options.onChangeMonthYear?.(view.year, view.month);
     },
     selectYearView(year) {
-      const y = clampYear(year);
-      setState({ viewYear: y, view: 'month' });
-      options.onChangeMonthYear?.(y, state.viewMonth);
+      const view = clampViewMonth(state.mode, adapter, clampYear(year), state.viewMonth);
+      setState({ viewYear: view.year, viewMonth: view.month, view: 'month' });
+      options.onChangeMonthYear?.(view.year, view.month);
     },
     toggleMode() {
       if (!state.allowModeToggle) return;

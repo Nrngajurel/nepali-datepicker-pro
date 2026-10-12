@@ -46,6 +46,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Navigating past the ends of the supported calendar (BS 1970–2100, about AD 1913–2044) no longer
+  crashes the picker. Navigation stops at the first/last month the calendar fully covers, and
+  months beyond it show as disabled in the month grid.
 - Date strings like `minDate: '2025-01-05'` (and `parseDateValue('2025-01-05')`) now mean that day
   everywhere. They were read as UTC midnight, which is the previous day west of UTC (the Americas),
   so bounds landed a day early. Impossible dates like `'2025-02-30'` are rejected.
