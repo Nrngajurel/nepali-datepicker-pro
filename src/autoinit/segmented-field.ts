@@ -55,6 +55,8 @@ export interface SegmentedField {
   isHoldingInvalid: () => boolean;
   /** Re-seed an in-progress edit from the committed value (e.g. after a clear). */
   reset: () => void;
+  /** Re-derive the placeholder mask after options change (unless the page set its own). */
+  refreshPlaceholder: () => void;
   destroy: () => void;
 }
 
@@ -382,7 +384,11 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   // The mask (YYYY, hh, …) isn't a word: no spell-check squiggle under it.
   input.setAttribute('spellcheck', 'false');
   input.setAttribute('autocapitalize', 'off');
-  if (!input.getAttribute('placeholder')) input.setAttribute('placeholder', cfg.placeholder());
+  // Ours only when the page didn't set one; then it tracks the live schema
+  // (withTime / displayFormat can change through update()).
+  const ownPlaceholder = !input.getAttribute('placeholder');
+  const syncPlaceholder = (): void => { if (ownPlaceholder) input.setAttribute('placeholder', cfg.placeholder()); };
+  syncPlaceholder();
   input.addEventListener('keydown', onKeydown);
   input.addEventListener('focus', onFocus);
   input.addEventListener('mouseup', onMouseup);
@@ -397,6 +403,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
       holding = false;
       if (editing) beginEditing();
     },
+    refreshPlaceholder: syncPlaceholder,
     destroy() {
       input.classList.remove('ndp-trigger--segmented');
       input.removeEventListener('keydown', onKeydown);

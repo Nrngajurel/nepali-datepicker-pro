@@ -107,6 +107,13 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **"Now" in the date-time picker picks today's date as well as the current time**, so one
+  click fills in both. Before, it only changed the time and kept whatever day was selected. If
+  today is disabled, the selected day stays and only the time changes. The standalone time picker's
+  Now is unchanged. Also available on the controller as `selectNow()`.
+- The date-time picker's time wheels have more space between them, so the focus ring around
+  the focused wheel no longer touches or hides under the next column. With `withSeconds` the
+  time column and the popup get wider instead of overflowing.
 - **Accessibility (WCAG 2.2 AA), checked by axe-core in CI:**
   - The day grid is a proper ARIA grid. Weekday headers and week rows sit inside it.
   - Every day has a full spoken name, e.g. "Saturday, 01 Baisakh 2081 (13 April 2024)", plus
@@ -199,6 +206,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The field's placeholder mask now follows `withTime` and `displayFormat` changed through
+  `update()`. Turning time on used to leave it showing just `YYYY-MM-DD`. A placeholder you set
+  yourself is still left alone.
 - Options that were typed and documented but did nothing now work, or are clearly deprecated:
   `inline`, `beforeShowDay`, `weekStartsOn`, `showButtonPanel`, `timeInputStyle`,
   `maxRangeSpanDays`, `numberOfMonths`, `linkedCalendars`, `alwaysShowCalendars` and the range

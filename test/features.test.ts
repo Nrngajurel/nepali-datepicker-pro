@@ -270,6 +270,26 @@ test('typing order follows a numeric displayFormat', () => {
   assert.equal(input.placeholder, 'DD/MM/YYYY');
 });
 
+test('the placeholder mask follows withTime / displayFormat changed via update()', () => {
+  const input = field();
+  const p = mountDateTimePicker(input);
+  assert.equal(input.placeholder, 'YYYY-MM-DD');
+  p.update({ withTime: true });
+  assert.match(input.placeholder, /^YYYY-MM-DD [hH]{2}:mm/);
+  p.update({ withTime: false });
+  assert.equal(input.placeholder, 'YYYY-MM-DD');
+  p.update({ displayFormat: 'DD/MM/YYYY' });
+  assert.equal(input.placeholder, 'DD/MM/YYYY');
+});
+
+test('a page-set placeholder is left alone on update()', () => {
+  const input = field();
+  input.placeholder = 'Pick a date';
+  const p = mountDateTimePicker(input);
+  p.update({ withTime: true });
+  assert.equal(input.placeholder, 'Pick a date');
+});
+
 test('validation: a refused value shows a message, sets custom validity and calls onInvalid', () => {
   const input = field();
   const reasons: string[] = [];

@@ -831,6 +831,8 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
     applyTheme();
     applyFormState();
     syncMachine();
+    segmented?.refreshPlaceholder();
+    render();
     if (controller.getState().isOpen && !inline && trigger) loaded('popup')?.positionPopup(inputGroup?.wrapper ?? trigger, portal, merged);
   });
 

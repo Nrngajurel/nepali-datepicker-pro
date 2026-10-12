@@ -104,7 +104,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   // in the day view — month/year views are just for navigating.
   const body = el('div', 'ndp-datetime-body');
   body.appendChild(calCol);
-  const timeControls = time && state.view === 'day' && !stepped ? time.renderTimeControls(controller) : null;
+  const timeControls = time && state.view === 'day' && !stepped ? time.renderTimeControls(controller, false, true) : null;
   if (timeControls) body.appendChild(timeControls);
   panel.appendChild(body);
 

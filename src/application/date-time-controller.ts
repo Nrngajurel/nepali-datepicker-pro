@@ -35,6 +35,8 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   stepSecond(delta: number): void;
   toggleMeridiem(): void;
   setTimeToNow(): void;
+  /** Select today with the current time — the date-time picker's "Now". */
+  selectNow(): void;
   confirm(): void;
   clear(): void;
   navigateMonth(delta: number): void;
@@ -269,6 +271,17 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     setTimeToNow() {
       if (state.time) commitTime(nowTime());
+    },
+    selectNow() {
+      const today = createDateValue(adapter, new Date());
+      const time = state.time ? { time: rules.clamp(nowTime()) } : {};
+      // A disabled today keeps the picked day; the time still jumps to now.
+      if (controller.isDisabled(today)) {
+        if (state.time) setState(time);
+        return;
+      }
+      select(today, { ...time, view: 'day' });
+      pickedDay(today);
     },
     confirm() {
       if (state.selected) emit(state.selected);

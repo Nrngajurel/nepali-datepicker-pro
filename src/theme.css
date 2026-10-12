@@ -456,6 +456,12 @@
   width: min(500px, calc(100vw - 16px));
 }
 
+/* The wider seconds time column (see below) adds to the panel instead of
+   squeezing the calendar: 500 + (212 − 168). */
+.ndp-panel--datetime:not(.ndp-panel--date-only):has(.ndp-time-panel--seconds) {
+  width: min(544px, calc(100vw - 16px));
+}
+
 .ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-cal-col {
   /* Bottom stays tight (matches the separate `.ndp-panel--datetime .ndp-cal-col`
      bottom-padding rule below) — the button row underneath needs less air. */
@@ -488,6 +494,12 @@
   width: 168px;
   gap: 12px;
   padding: 12px 10px;
+}
+
+/* A seconds wheel (and seconds box) doesn't fit the fixed width: grow to fit. */
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-panel--seconds {
+  width: auto;
+  min-width: 168px;
 }
 
 .ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-title {
@@ -529,6 +541,11 @@
 
 .ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-wheel-item.is-selected {
   font-size: 17px;
+}
+
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-wheels {
+  /* Room for each wheel's focus ring between the columns. */
+  gap: 8px;
 }
 
 .ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-time-wheels::before {
@@ -1376,6 +1393,11 @@
   outline: var(--ndp-focus-ring);
   outline-offset: 2px;
   border-radius: var(--ndp-radius);
+}
+
+/* Lift the focused wheel so its ring isn't covered by the next wheel's fade. */
+.ndp-wheel:focus-within {
+  z-index: 1;
 }
 
 .ndp-wheel-item:hover:not(.is-disabled) {

@@ -4,7 +4,7 @@
 // places an interactive time panel on the SAME screen as the calendar and wires
 // its controls back to the controller.
 import assert from 'node:assert/strict';
-import { test } from 'vitest';
+import { test, vi } from 'vitest';
 
 import { createDateTimeController } from '../src/application/date-time-controller';
 import { renderDateTimePanel } from '../src/render/dom';
@@ -81,6 +81,50 @@ test('setTimeToNow sets a valid current time', () => {
   c.setTimeToNow();
   const t = c.getState().time!;
   assert.ok(t.hour >= 0 && t.hour <= 23 && t.minute >= 0 && t.minute <= 59);
+});
+
+test('selectNow picks today and the current time together', () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2025, 5, 29, 14, 45, 0));
+  try {
+    const c = createDateTimeController({ withTime: true, value: base() });
+    c.selectNow();
+    const r = c.getValue()!;
+    assert.equal(r.ad.toDateString(), new Date(2025, 5, 29).toDateString());
+    assert.deepEqual(c.getState().time, { hour: 14, minute: 45, second: 0 });
+    assert.equal(c.getState().viewMonth, c.getState().selected!.bs.month, 'calendar moves to today');
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('selectNow keeps the picked day when today is disabled, but still sets the time', () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2025, 5, 29, 14, 45, 0));
+  try {
+    const c = createDateTimeController({ withTime: true, value: base(), maxDate: new Date(2025, 0, 1) });
+    c.selectNow();
+    assert.equal(c.getValue()!.ad.toDateString(), base().toDateString());
+    assert.deepEqual(c.getState().time, { hour: 14, minute: 45, second: 0 });
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test('the date-time panel\'s Now button sets the date as well as the time', () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2025, 5, 29, 14, 45, 0));
+  try {
+    const c = createDateTimeController({ withTime: true, timeFormat: '24h', value: base() });
+    c.show();
+    const root = document.createElement('div');
+    renderDateTimePanel(root, c);
+    (root.querySelector('.ndp-time-now') as HTMLButtonElement).click();
+    assert.equal(c.getValue()!.ad.toDateString(), new Date(2025, 5, 29).toDateString());
+    assert.equal(c.getState().time!.hour, 14);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test('renders calendar and time panel together on one screen', () => {

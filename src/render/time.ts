@@ -197,7 +197,8 @@ function select(field: string, label: string, options: Array<{ value: number; te
 
 // `touch` is the phone time step: just big wheels (spinning is the touch idiom;
 // typing digits on an on-screen keyboard is not), without the typed entry.
-export function renderTimeControls(controller: DateTimeController, touch = false): HTMLElement | null {
+// `nowSetsDate`: in the date-time picker "Now" picks today too, not just the time.
+export function renderTimeControls(controller: DateTimeController, touch = false, nowSetsDate = false): HTMLElement | null {
   const state = controller.getState();
   if (!state.time) return null;
   const options = controller.getOptions();
@@ -209,7 +210,7 @@ export function renderTimeControls(controller: DateTimeController, touch = false
   const pm = meridiemOf(hour) === 'PM';
   const dropdown = options.timeInputStyle === 'dropdown' && !touch;
 
-  const panel = el('div', touch ? 'ndp-time-panel ndp-time-panel--touch' : `ndp-time-panel${dropdown ? ' ndp-time-panel--dropdown' : ''}`, { role: 'group', 'aria-label': s.time });
+  const panel = el('div', touch ? 'ndp-time-panel ndp-time-panel--touch' : `ndp-time-panel${dropdown ? ' ndp-time-panel--dropdown' : ''}${seconds ? ' ndp-time-panel--seconds' : ''}`, { role: 'group', 'aria-label': s.time });
   if (!touch) panel.appendChild(setText(el('div', 'ndp-time-title', { 'aria-hidden': 'true' }), s.time));
 
   const to24 = (display: number): number => (is12h ? (display % 12) + (pm ? 12 : 0) : display);
@@ -317,7 +318,7 @@ export function renderTimeControls(controller: DateTimeController, touch = false
   }
 
   const now = setText(el('button', 'ndp-time-now', { type: 'button', 'data-ndp-field': 'now' }), s.now);
-  now.addEventListener('click', () => controller.setTimeToNow());
+  now.addEventListener('click', () => (nowSetsDate ? controller.selectNow() : controller.setTimeToNow()));
   panel.appendChild(now);
   return panel;
 }
@@ -349,7 +350,7 @@ export function renderTimeStep(controller: DateTimeController): HTMLElement {
     ? `${pad2(to12h(time.hour))}:${pad2(time.minute)}${sec} ${meridiemOf(time.hour)}`
     : `${pad2(time.hour)}:${pad2(time.minute)}${sec}`;
   wrap.appendChild(setText(el('div', 'ndp-time-readout', { 'aria-live': 'polite' }), readout));
-  wrap.appendChild(renderTimeControls(controller, true)!);
+  wrap.appendChild(renderTimeControls(controller, true, true)!);
   return wrap;
 }
 
