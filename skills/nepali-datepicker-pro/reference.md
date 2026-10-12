@@ -141,7 +141,10 @@ interface PickerInstance<TValue, TOptions> {
 ## jQuery plugin methods
 
 Installed automatically on `$.fn` when the package is imported and `window.jQuery`
-is present (waits for `DOMContentLoaded` if jQuery loads after the bundle).
+is present (waits for `DOMContentLoaded` if jQuery loads after the bundle). The UMD
+`<script>` bundle includes the plugin; with a bundler, `import 'nepali-datepicker-pro/jquery'`,
+or call `install($)` from that entry when jQuery isn't on `window`. TypeScript: the
+three plugins are declared on `JQuery` (merges with `@types/jquery`).
 
 | Method | Returns | Description |
 |---|---|---|
@@ -165,6 +168,9 @@ Same three plugin names as the mount functions, camelCased: `nepaliDateTimePicke
 | `NepaliMonthPicker` | `onChange(result)` | `select.nepaliMonthPicker` |
 
 Every picker also fires `onOpen()` / `onClose()`.
+
+jQuery: listen to the DOM events with `addEventListener`, not `$(el).on(...)` —
+jQuery parses the part after the dot as a namespace, so the handler never fires.
 
 Vue 3 template events (alternative to passing callbacks through `:options`; both fire
 if you do both): `@change`, `@open`, `@close`, and `@changeMonthYear` (datetime only).

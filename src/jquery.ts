@@ -47,6 +47,7 @@ import type {
   DateTimeResult,
   MonthPickerOptions,
   MonthResult,
+  MonthValue,
   PickerInstance,
 } from './index.js';
 
@@ -143,7 +144,14 @@ function makePlugin<TResult, TOptions extends object>(
 
 // ─── install ──────────────────────────────────────────────────────────────────
 
+// jQuery objects the plugins are already registered on, so the import-time
+// auto-install, the DOMContentLoaded retry and the UMD bundle's explicit call
+// don't register them twice.
+const installedOn = new WeakSet<object>();
+
 export function install($: JQueryLike): void {
+  if (installedOn.has($.fn)) return;
+  installedOn.add($.fn);
   // DateRangePicker
   const rangePlugin = makePlugin<DateRangeResult, DateRangePickerOptions>(
     $,
@@ -177,22 +185,40 @@ declare const window: Window & {
 };
 
 /**
- * Try to install against whichever jQuery reference is available now.
- * Also schedules a DOMContentLoaded attempt so scripts that assign
- * window.jQuery after this module is parsed still get the plugins.
+ * Install against whichever jQuery is on `window` now, and again on
+ * DOMContentLoaded for scripts that load jQuery after this module. Runs on
+ * import; the UMD `<script>` bundle also calls it explicitly (see umd.ts).
  */
-function tryAutoInstall(): void {
-  const jq = (typeof window !== 'undefined') && (window.jQuery ?? window.$);
-  if (jq) install(jq);
+export function autoInstall(): void {
+  if (typeof window === 'undefined') return;
+  const tryInstall = (): void => {
+    const jq = window.jQuery ?? window.$;
+    if (jq) install(jq);
+  };
+  tryInstall();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', tryInstall, { once: true });
+  }
 }
 
-if (typeof window !== 'undefined') {
-  // Immediate attempt — works when jQuery loads before this module.
-  tryAutoInstall();
+autoInstall();
 
-  // Deferred attempt — works when jQuery loads after this module but before
-  // DOMContentLoaded (the most common script-tag ordering scenario).
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', tryAutoInstall, { once: true });
+// ─── TypeScript: the plugins on `$(...)` ──────────────────────────────────────
+// Merges into @types/jquery's `JQuery` interface when it is installed.
+
+type PluginCalls<TResult, TOptions, TValue> = {
+  (options?: TOptions): JQuery;
+  (method: 'getValue'): TResult | null | undefined;
+  (method: 'getState'): unknown;
+  (method: 'setValue', unused: undefined, value: TValue | null): JQuery;
+  <K extends keyof TOptions>(method: 'option', name: K, value: TOptions[K]): JQuery;
+  (method: 'show' | 'hide' | 'destroy'): JQuery;
+};
+
+declare global {
+  interface JQuery<TElement = HTMLElement> {
+    nepaliDateTimePicker: PluginCalls<DateTimeResult, DateTimePickerOptions, Date>;
+    nepaliDateRangePicker: PluginCalls<DateRangeResult, DateRangePickerOptions, { start: Date; end: Date }>;
+    nepaliMonthPicker: PluginCalls<MonthResult, MonthPickerOptions, MonthValue>;
   }
 }

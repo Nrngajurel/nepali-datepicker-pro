@@ -37,7 +37,8 @@
     "typescript"
   ],
   "sideEffects": [
-    "*.css"
+    "*.css",
+    "./dist/jquery.js"
   ],
   "main": "./dist/nepali-datepicker-pro.umd.cjs",
   "module": "./dist/index.js",

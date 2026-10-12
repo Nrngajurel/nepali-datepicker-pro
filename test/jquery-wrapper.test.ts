@@ -214,3 +214,38 @@ describe('multi-element sets', () => {
     expect(set.nepaliDateTimePicker('getValue')).toBeTruthy();
   });
 });
+
+describe('installation', () => {
+  test('install() is idempotent: a second call keeps mounted instances working', () => {
+    const el = makeInput('twice');
+    el.nepaliDateTimePicker({ value: new Date(2024, 3, 15) });
+    install($ as unknown as Parameters<typeof install>[0]);
+    expect((el.nepaliDateTimePicker('getValue') as DateTimeResult).value).toBe('2024-04-15');
+  });
+
+  test('the UMD entry registers the plugin on window.jQuery and exposes installJQuery', async () => {
+    const fresh = { fn: {} as Record<string, unknown>, data: $.data } as unknown as Parameters<typeof install>[0];
+    (window as unknown as { jQuery: unknown }).jQuery = fresh;
+    try {
+      const umd = await import('../src/umd');
+      expect(typeof umd.installJQuery).toBe('function');
+      expect(typeof umd.mountDateTimePicker).toBe('function');
+      expect(typeof (fresh.fn as Record<string, unknown>).nepaliDateTimePicker).toBe('function');
+    } finally {
+      delete (window as unknown as { jQuery?: unknown }).jQuery;
+    }
+  });
+
+  test('$(el).on() with the dotted event name does not fire; addEventListener does', () => {
+    const el = makeInput('events');
+    el.nepaliDateTimePicker({ value: new Date(2024, 3, 15) });
+    let viaJQuery = 0;
+    let viaNative: unknown = null;
+    (el as unknown as JQuery).on('select.nepaliDatePicker', () => { viaJQuery += 1; });
+    el[0].addEventListener('select.nepaliDatePicker', (e) => { viaNative = (e as CustomEvent).detail; });
+    el[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    firstDay(document.querySelector('.ndp-panel') as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(viaNative).toBeTruthy();
+    expect(viaJQuery).toBe(0); // documented: jQuery parses ".nepaliDatePicker" as a namespace
+  });
+});

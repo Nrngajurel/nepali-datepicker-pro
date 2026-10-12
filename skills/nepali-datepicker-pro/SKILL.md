@@ -102,7 +102,10 @@ syncs the plain AD `Date` (datetime), `{ start, end }` (range), or full `MonthRe
 <script src="https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs"></script>
 <script>
   $('#picker').nepaliDateTimePicker({ withTime: true, valueFormat: 'iso' });
-  $('#picker').on('select.nepaliDatePicker', (e, result) => console.log(result));
+  // Callback option, or a native listener — NOT $(el).on('select.nepaliDatePicker'):
+  // jQuery parses ".nepaliDatePicker" as a namespace and never fires.
+  $('#picker').nepaliDateTimePicker({ onChange: (result) => console.log(result) });
+  document.getElementById('picker').addEventListener('select.nepaliDatePicker', (e) => console.log(e.detail));
 </script>
 ```
 

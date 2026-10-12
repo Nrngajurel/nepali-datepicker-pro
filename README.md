@@ -274,9 +274,23 @@ The jQuery plugin is installed automatically when this package is imported and `
   $('#picker').nepaliDateTimePicker('hide');
   $('#picker').nepaliDateTimePicker('destroy');
 
-  // DOM event — works without a framework
-  $('#picker').on('select.nepaliDatePicker', (e, result) => console.log(result));
+  // React to a pick: pass a callback in the init options...
+  $('#picker').nepaliDateTimePicker({ onChange: (result) => console.log(result) });
+
+  // ...or listen for the DOM event natively. Not with jQuery's .on(): jQuery reads
+  // ".nepaliDatePicker" as an event namespace, so the handler would never fire.
+  document.getElementById('picker')
+    .addEventListener('select.nepaliDatePicker', (e) => console.log(e.detail));
 </script>
+```
+
+The UMD `<script>` bundle includes the plugin. When you bundle with npm instead, import the jQuery entry once: `import 'nepali-datepicker-pro/jquery'`. That registers the plugin on `window.jQuery`. If your jQuery isn't on `window` (e.g. `import $ from 'jquery'`), register it explicitly:
+
+```ts
+import $ from 'jquery';
+import { install } from 'nepali-datepicker-pro/jquery';
+
+install($);
 ```
 
 **jQuery methods reference**
@@ -439,6 +453,8 @@ document.querySelector('#picker')
     console.log(e.detail); // DateTimeResult
   });
 ```
+
+With jQuery, use `addEventListener` (or the `onChange`/`onApply` options), not `$(el).on('select.nepaliDatePicker', …)`. jQuery treats everything after the dot as a namespace and listens for a plain `select` event instead.
 
 | Picker | JS callback | DOM event |
 |---|---|---|

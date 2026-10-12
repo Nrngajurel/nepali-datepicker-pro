@@ -25,6 +25,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Docs
 
+- jQuery event examples fixed: `$(el).on('select.nepaliDatePicker', …)` never fires, because jQuery
+  reads `.nepaliDatePicker` as a namespace. The docs now use the `onChange` option or
+  `addEventListener`, and show `install($)` for a jQuery that isn't on `window`.
+
 - New "One calendar for the whole app" section in the README and the options guide:
   `setDefaults({ mode: 'AD', allowModeToggle: false })` sets BS or AD for every picker and hides
   the BS/AD switcher. Covers all entry points, per-picker overrides, and switching pickers that
@@ -32,6 +36,15 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- `destroy()` no longer removes your `<input>` from the page. The input is moved back to where it
+  was, its original `name`, classes and attributes are restored, and its listeners are removed, so
+  it can be mounted again (e.g. jQuery's destroy-then-reinit pattern).
+- jQuery: `import 'nepali-datepicker-pro/jquery'` is no longer dropped by bundlers' tree-shaking
+  (it was marked side-effect free, so the plugin never registered).
+- jQuery: the UMD `<script>` bundle now includes the jQuery plugin, as the README's `<script>`
+  example assumed; `NepaliPicker.installJQuery($)` registers it on a specific jQuery.
+- jQuery TypeScript: `nepaliDateTimePicker`, `nepaliDateRangePicker` and `nepaliMonthPicker` are
+  now declared on `JQuery`, so `$('#x').nepaliDateTimePicker(...)` type-checks.
 - On phones, the date-time picker's time panel now spans the full width under the calendar
   instead of staying a narrow 168px strip.
 
