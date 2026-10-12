@@ -278,3 +278,23 @@ test('the × button is out of the Tab order and advertises the shortcut', () => 
   assert.match(btn.title, /Backspace/);
   assert.equal(btn.getAttribute('aria-label'), 'Clear');
 });
+
+test('update({ value }) replaces the value silently on all three pickers', async () => {
+  const { mountDateRangePicker, mountMonthPicker } = await import('../src/index');
+  const changes: unknown[] = [];
+  const a = document.createElement('input');
+  const b = document.createElement('input');
+  const c = document.createElement('input');
+  document.body.append(a, b, c);
+  const date = mountDateTimePicker(a, { onChange: (v) => changes.push(v) });
+  const range = mountDateRangePicker(b, { onApply: (v) => changes.push(v) });
+  const month = mountMonthPicker(c, { onChange: (v) => changes.push(v) });
+  date.update({ value: new Date(2024, 3, 13) });
+  range.update({ value: { start: new Date(2024, 3, 13), end: new Date(2024, 3, 20) } });
+  month.update({ value: { year: 2081, month: 2 } });
+  assert.equal(date.getValue()!.value, '2024-04-13');
+  assert.equal(range.getValue()!.value, '2024-04-13,2024-04-20');
+  assert.equal(month.getValue()!.month, 2);
+  assert.equal(a.value, '2081-01-01', 'input re-renders');
+  assert.equal(changes.length, 0, 'no change events for a controlled value');
+});

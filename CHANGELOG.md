@@ -46,6 +46,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The `value` option is now actually controlled, as documented: passing a new `value` (a React
+  prop, or `update({ value })`) replaces the picker's value instead of only applying at mount. It's
+  applied silently, with no change event. In Vue, `v-model` remains the controlled value.
 - Tapping a time on the wheel could be overridden a moment later by the row the wheel had been
   scrolled to (a leftover scroll timer from before the tap).
 - Date-time picker: the Clear/Done buttons no longer run into the panel's edges.

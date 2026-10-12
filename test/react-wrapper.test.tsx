@@ -188,3 +188,15 @@ describe('NepaliMonthPicker (React)', () => {
     expect(c.children.length).toBe(0);
   });
 });
+
+describe('controlled value', () => {
+  test('re-rendering with a new value updates the picker', () => {
+    const container = render(createElement(NepaliDateTimePicker, { value: new Date(2024, 0, 1) }));
+    const input = container.querySelector('input')!;
+    expect(input.value).toBe('2080-09-16');
+    rerender(roots[roots.length - 1], createElement(NepaliDateTimePicker, { value: new Date(2024, 3, 13) }));
+    expect(input.value).toBe('2081-01-01');
+    rerender(roots[roots.length - 1], createElement(NepaliDateTimePicker, { value: null }));
+    expect(input.value).toBe('');
+  });
+});

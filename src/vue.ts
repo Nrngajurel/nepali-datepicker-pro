@@ -140,12 +140,13 @@ export const NepaliDateTimePicker = defineComponent({
       (next) => instance?.setValue(next as any),
     );
 
-    // Propagate option changes (excluding callbacks — those are baked in above).
+    // Propagate option changes (excluding callbacks — those are baked in above —
+    // and `value`: v-model is the controlled value in Vue, synced by the watcher above).
     watch(
       () => props.options,
       (next) => {
         if (!next) return;
-        const { onChange, onOpen, onClose, onChangeMonthYear, onClear, ...rest } = next;
+        const { onChange, onOpen, onClose, onChangeMonthYear, onClear, value, ...rest } = next;
         instance?.update(rest);
       },
       { deep: true },
@@ -233,7 +234,7 @@ export const NepaliDateRangePicker = defineComponent({
       () => props.options,
       (next) => {
         if (!next) return;
-        const { onApply, onOpen, onClose, onChange, onClear, ...rest } = next;
+        const { onApply, onOpen, onClose, onChange, onClear, value, ...rest } = next;
         instance?.update(rest);
       },
       { deep: true },
@@ -320,7 +321,7 @@ export const NepaliMonthPicker = defineComponent({
       () => props.options,
       (next) => {
         if (!next) return;
-        const { onChange, onOpen, onClose, onClear, ...rest } = next;
+        const { onChange, onOpen, onClose, onClear, value, ...rest } = next;
         instance?.update(rest);
       },
       { deep: true },

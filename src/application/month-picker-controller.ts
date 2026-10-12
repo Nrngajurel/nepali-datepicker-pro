@@ -110,6 +110,9 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     update(patch) {
       options = { ...options, ...patch };
       setState('showSecondaryCalendar' in patch ? { showSecondaryCalendar: options.showSecondaryCalendar !== false } : {});
+      // `value` is controlled: a new value passed through update() (React/Vue
+      // props) replaces the current one, silently — like setValue.
+      if ('value' in patch) controller.setValue((patch.value ?? null) as never);
     },
     destroy() {
       listeners = [];

@@ -277,6 +277,9 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
         }
       }
       setState(next);
+      // `value` is controlled: a new value passed through update() (React/Vue
+      // props) replaces the current one, silently — like setValue.
+      if ('value' in patch) controller.setValue(patch.value ?? null);
     },
     destroy() {
       listeners = [];

@@ -235,6 +235,9 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
       if ('showSecondaryCalendar' in patch) next.showSecondaryCalendar = options.showSecondaryCalendar !== false;
       setState(next);
+      // `value` is controlled: a new value passed through update() (React/Vue
+      // props) replaces the current one, silently — like setValue.
+      if ('value' in patch) controller.setValue((patch.value ?? null) as never);
     },
     destroy() {
       listeners = [];
