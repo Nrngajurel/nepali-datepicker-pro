@@ -122,3 +122,46 @@ test('desktop-width viewports keep the anchored dropdown', () => {
   assert.equal(portal.classList.contains('ndp-sheet'), false);
   assert.notEqual(portal.style.top, '');
 });
+
+test('setDefaults: one global calendar mode with the BS/AD switcher hidden everywhere', async () => {
+  const { setDefaults, mountDateRangePicker } = await import('../src/index');
+  setDefaults({ mode: 'AD', allowModeToggle: false });
+  try {
+    const dateInput = document.createElement('input');
+    const rangeInput = document.createElement('input');
+    document.body.append(dateInput, rangeInput);
+    const date = mountDateTimePicker(dateInput, { value: new Date(2024, 3, 15) });
+    const range = mountDateRangePicker(rangeInput);
+
+    const modeOf = (picker: { getState(): unknown }) => (picker.getState() as { mode: string }).mode;
+    assert.equal(modeOf(date), 'AD');
+    assert.equal(modeOf(range), 'AD');
+    document.querySelectorAll<HTMLElement>('.ndp-mode-toggle').forEach((btn) => {
+      assert.equal(btn.style.display, 'none', 'input-group switcher hidden');
+    });
+    rangeInput.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    assert.ok(document.querySelector('.ndp-panel--range'), 'range popup open');
+    assert.equal(document.querySelector('.ndp-panel--range .ndp-mode-toggle'), null, 'no switcher inside the range popup');
+
+    // A per-picker option still wins over the global default.
+    const bsInput = document.createElement('input');
+    document.body.appendChild(bsInput);
+    assert.equal(modeOf(mountDateTimePicker(bsInput, { mode: 'BS' })), 'BS');
+  } finally {
+    setDefaults({ mode: undefined, allowModeToggle: undefined });
+  }
+});
+
+test('update({ mode }) switches an already-mounted picker', async () => {
+  const { mountDateRangePicker } = await import('../src/index');
+  const a = document.createElement('input');
+  const b = document.createElement('input');
+  document.body.append(a, b);
+  const date = mountDateTimePicker(a, { value: new Date(2024, 3, 15), allowModeToggle: false });
+  const range = mountDateRangePicker(b, { allowModeToggle: false });
+  date.update({ mode: 'AD' });
+  range.update({ mode: 'AD' });
+  assert.equal((date.getState() as { mode: string }).mode, 'AD');
+  assert.equal((range.getState() as { mode: string }).mode, 'AD');
+  assert.equal(a.value, '2024-04-15', 'input re-renders in the new calendar');
+});

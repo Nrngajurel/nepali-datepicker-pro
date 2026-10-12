@@ -175,6 +175,7 @@ if you do both): `@change`, `@open`, `@close`, and `@changeMonthYear` (datetime 
 import { setDefaults, regional, autoInit } from 'nepali-datepicker-pro';
 
 setDefaults({ locale: 'ne', valueFormat: 'iso' }); // set app-wide defaults before mounting
+setDefaults({ mode: 'AD', allowModeToggle: false }); // one calendar app-wide, no BS/AD switcher
 autoInit(); // scan the document (or a given root) for [data-nepali-datepicker]
 ```
 

@@ -26,6 +26,27 @@ interact.
 - `displayFormat` — dayjs-style tokens for what the *input* shows (e.g. `YYYY-MM-DD[ HH:mm]`).
   This is purely cosmetic and independent of `valueFormat`.
 
+## One calendar for the whole app
+
+Every date and range picker shows a BS ⇄ AD swap button by default (`allowModeToggle: true`) and
+opens in BS (`mode: 'BS'`). If your app should use a single calendar everywhere, set it once
+at your entry point, **before any picker mounts**, and hide the switcher:
+
+```ts
+import { setDefaults } from 'nepali-datepicker-pro';
+
+setDefaults({ mode: 'AD', allowModeToggle: false }); // or mode: 'BS'
+```
+
+- It applies to every date/date-time and range picker mounted afterwards, in vanilla JS, React,
+  Vue and jQuery (with the `<script>` tag build, `NepaliPicker.setDefaults(...)`).
+- It hides both switchers: the swap button on the input and the one in the range picker's popup.
+- Options passed to a single picker still win over the global default.
+- Pickers already on screen don't change. To switch them, for example when the user changes a
+  calendar setting in your app, call `picker.update({ mode: 'AD' })` on each one, or pass the new
+  `mode` through your React/Vue options.
+- The month picker always uses BS months, so `mode` doesn't apply to it.
+
 ## Single vs. dual calendar
 
 - `showSecondaryCalendar` (default `true`) — the header, month/year grid, and day cells all show

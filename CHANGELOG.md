@@ -23,6 +23,13 @@ and this project follows [Semantic Versioning](https://semver.org/).
   `npm audit` findings pulled in transitively through `vitepress`'s bundled dev-server deps.
   Dev-tooling only — does not affect the published package.
 
+### Docs
+
+- New "One calendar for the whole app" section in the README and the options guide:
+  `setDefaults({ mode: 'AD', allowModeToggle: false })` sets BS or AD for every picker and hides
+  the BS/AD switcher. Covers all entry points, per-picker overrides, and switching pickers that
+  are already mounted.
+
 ### Fixed
 
 - On phones, the date-time picker's time panel now spans the full width under the calendar

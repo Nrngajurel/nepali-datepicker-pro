@@ -59,6 +59,7 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
   - [`NepaliMonthPicker`](#nepalimonthpicker)
 - [Sending the right value to your backend](#sending-the-right-value-to-your-backend)
 - [Shared options](#shared-options)
+- [One calendar for the whole app](#one-calendar-for-the-whole-app)
 - [Events](#events)
 - [Styling](#styling)
 - [TypeScript](#typescript)
@@ -84,7 +85,7 @@ Most "Nepali date picker" packages on npm are jQuery plugins from 2016, ship no 
 
 ## Features
 
-- 🔁 **BS ⇄ AD mode toggle** — per-instance, with a swap button on the input (`allowModeToggle`)
+- 🔁 **BS ⇄ AD mode** — a swap button on the input, or pick one calendar for the whole app and hide the switcher (`setDefaults({ mode, allowModeToggle: false })`)
 - 🕐 **Same-screen time picker** — 12h/24h, minute-step control, min/max hour clamping, disabled times
 - 📏 **Date range picker** — presets rail (incl. "Pick a Month"), configurable Nepali **fiscal year** start month, auto-apply, max span
 - 🗓️ **Month picker** — returns the full AD `{ start, end }` range for the selected BS month, ideal for payroll/report filters
@@ -406,6 +407,25 @@ Available on every picker, on top of what is listed above:
 | `opens` | `'left' \| 'right' \| 'center' \| 'auto'` | `'auto'` | Horizontal alignment relative to the input |
 | `drops` | `'down' \| 'up' \| 'auto'` | `'auto'` | Whether the popup opens below or above the input |
 | `adapter` | `CalendarAdapter` | built-in | Swap the BS↔AD conversion engine (advanced) |
+
+---
+
+## One calendar for the whole app
+
+By default every date and range picker shows a BS ⇄ AD swap button. If your app should use one calendar everywhere, for example an AD-only or BS-only product, or a calendar the user picks once in your settings page, set it once with `setDefaults` **before mounting any picker** and hide the switcher:
+
+```ts
+import { setDefaults } from 'nepali-datepicker-pro';
+
+setDefaults({ mode: 'AD', allowModeToggle: false }); // or mode: 'BS'
+```
+
+- Applies to every `NepaliDateTimePicker` and `NepaliDateRangePicker` mounted afterwards, in vanilla JS, React, Vue and jQuery alike (the wrappers all mount through the same core). Call it once at your app's entry point, before rendering.
+- Hides both switchers: the swap button on the input and the one inside the range picker's popup.
+- Per-picker options still win, so one picker can opt back in with `{ mode: 'BS', allowModeToggle: true }`.
+- `<script>` tag: `NepaliPicker.setDefaults({ mode: 'AD', allowModeToggle: false })`.
+- `setDefaults` only affects pickers mounted **after** the call. To switch pickers that are already on screen (for example when the user changes your app's calendar setting), call `update` on each one: `picker.update({ mode: 'AD' })`. In React or Vue, pass the new `mode` in the options/props.
+- `NepaliMonthPicker` is always BS, since it picks BS months, so `mode` doesn't apply to it.
 
 ---
 
