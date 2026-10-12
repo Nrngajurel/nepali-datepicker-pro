@@ -126,10 +126,10 @@ type ValueFormat =
 ## `PickerInstance` (return value of every `mount*` function)
 
 ```ts
-interface PickerInstance<TValue, TOptions> {
+interface PickerInstance<TValue, TOptions, TInput = TValue> {
   getState(): unknown;
   getValue(): TValue | null;
-  setValue(value: TValue | null): void;
+  setValue(value: TInput | null): void; // Date (date-time), { start, end } (range), { year, month } (month)
   show(): void;
   hide(): void;
   update(patch: Partial<TOptions>): void;

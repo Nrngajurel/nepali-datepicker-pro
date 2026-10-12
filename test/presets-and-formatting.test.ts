@@ -12,7 +12,7 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
-const days = (start: Date, end: Date) => nativeDateMath.diff(end, start) + 1;
+const days = (start: Date, end: Date) => nativeDateMath.diff(end, start, 'day') + 1;
 
 test('"Last N days" spans exactly N days, ending today', () => {
   const c = createDateRangeController({});
@@ -20,7 +20,7 @@ test('"Last N days" spans exactly N days, ending today', () => {
     c.selectPreset(id);
     const v = c.getValue()!;
     assert.equal(days(v.start, v.end), n, id);
-    assert.equal(nativeDateMath.diff(v.end, new Date()), 0, `${id} ends today`);
+    assert.equal(nativeDateMath.diff(v.end, new Date(), 'day'), 0, `${id} ends today`);
   }
 });
 

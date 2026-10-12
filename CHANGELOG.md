@@ -51,6 +51,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Only one picker popup is open at a time; opening one closes the other. Tabbing out of a field
+  (focus moving to another control) now closes its popup.
+- `autoInit()` can be called again (e.g. after AJAX or Turbo loads new content) without mounting a
+  second picker on fields it already set up.
+- The date-time picker's `altField` now works when the picker is mounted on a non-`<input>`
+  element, as it already did for the range and month pickers.
+- TypeScript: `setValue` on a mounted date-time picker accepts a `Date` (as the docs show), the
+  range picker `{ start, end }`, and the month picker `{ year, month }`.
 - A typed time is now checked like a picked one: times rejected by `disabledTimes`, or outside
   `minTime`/`maxTime`, are marked invalid instead of being accepted or silently clamped.
 - Picking a fiscal year from the range picker's submenu now fires `onChange`, like the other

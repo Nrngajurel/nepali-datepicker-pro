@@ -256,10 +256,12 @@ export interface MonthResult {
   value: string;
 }
 
-export interface PickerInstance<TValue, TOptions> {
+/** `TInput` is what `setValue` accepts — e.g. a plain `Date` for the date-time
+ *  picker, `{ start, end }` for a range, `{ year, month }` for a month. */
+export interface PickerInstance<TValue, TOptions, TInput = TValue> {
   getState(): unknown;
   getValue(): TValue | null;
-  setValue(value: TValue | null): void;
+  setValue(value: TInput | null): void;
   show(): void;
   hide(): void;
   update(patch: Partial<TOptions>): void;

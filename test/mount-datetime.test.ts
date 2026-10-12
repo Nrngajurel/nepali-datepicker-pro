@@ -251,7 +251,7 @@ test('clear shortcut: Ctrl/⌘+Backspace clears a typeable field; plain Backspac
   assert.equal(picker.getValue(), null);
   assert.ok(!/\d/.test(input.value), 'the in-progress edit is reset too (no stale digits)');
 
-  picker.setValue(new Date(2024, 3, 15) as never); // runtime accepts a Date; the public type is narrower
+  picker.setValue(new Date(2024, 3, 15));
   input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', metaKey: true, bubbles: true, cancelable: true }));
   assert.equal(cleared, 2, '⌘+Delete works too');
 });
@@ -297,4 +297,51 @@ test('update({ value }) replaces the value silently on all three pickers', async
   assert.equal(month.getValue()!.month, 2);
   assert.equal(a.value, '2081-01-01', 'input re-renders');
   assert.equal(changes.length, 0, 'no change events for a controlled value');
+});
+
+test('only one popup is open at a time; Tab to another field closes it', () => {
+  const a = document.createElement('input');
+  const b = document.createElement('input');
+  const after = document.createElement('button');
+  document.body.append(a, b, after);
+  const pa = mountDateTimePicker(a);
+  const pb = mountDateTimePicker(b);
+  pa.show();
+  pb.show();
+  const isOpen = (p: { getState(): unknown }) => (p.getState() as { isOpen: boolean }).isOpen;
+  assert.equal(isOpen(pa), false, 'opening b closed a');
+  assert.equal(isOpen(pb), true);
+  assert.equal(document.querySelectorAll('.ndp-panel').length, 1);
+
+  // Focus moving into the popup keeps it open; moving to another control closes it.
+  const inPanel = document.querySelector<HTMLElement>('.ndp-panel button')!;
+  b.dispatchEvent(new FocusEvent('focusout', { relatedTarget: inPanel }));
+  assert.equal(isOpen(pb), true);
+  b.dispatchEvent(new FocusEvent('focusout', { relatedTarget: after }));
+  assert.equal(isOpen(pb), false, 'Tab to the next control closes the popup');
+
+  pb.show();
+  b.dispatchEvent(new FocusEvent('focusout', { relatedTarget: null }));
+  assert.equal(isOpen(pb), true, 'focus lost to nowhere (e.g. window blur) leaves it to the click handler');
+});
+
+test('date-time altField works when mounted on a non-input element', () => {
+  const host = document.createElement('div');
+  const alt = document.createElement('input');
+  document.body.append(host, alt);
+  const p = mountDateTimePicker(host, { altField: alt, value: new Date(2024, 3, 13) });
+  assert.equal(alt.value, '2024-04-13');
+  p.setValue(new Date(2024, 3, 20));
+  assert.equal(alt.value, '2024-04-20');
+});
+
+test('autoInit() can run again without double-mounting fields it already set up', () => {
+  document.body.innerHTML = '<input data-nepali-datepicker><input data-nepali-daterange><input data-nepali-monthpicker>';
+  autoInit();
+  autoInit();
+  assert.equal(document.querySelectorAll('.ndp-trigger-wrap').length, 3, 'one wrapper per field');
+  assert.equal(document.querySelectorAll('.ndp-panel-root').length, 3, 'one portal per field');
+  document.body.insertAdjacentHTML('beforeend', '<input data-nepali-datepicker>'); // e.g. AJAX-loaded content
+  autoInit();
+  assert.equal(document.querySelectorAll('.ndp-trigger-wrap').length, 4, 'new field mounted');
 });

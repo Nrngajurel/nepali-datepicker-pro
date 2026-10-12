@@ -8,7 +8,7 @@ import type { SegmentedField } from './segmented-field.js';
 import { dateSchema, monthSchema, rangeSchema } from './segment-schemas.js';
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { playSheetEnter, positionPopup, renderDateTimePanel, renderMonthPickerPanel, renderRangePanel } from '../render/dom.js';
-import type { DateRangePickerOptions, DateRangeResult, DateTimePickerOptions, DateTimeResult, MonthPickerOptions, MonthResult, PickerInstance } from '../types.js';
+import type { DateRangePickerOptions, DateRangeResult, DateTimePickerOptions, DateTimeResult, MonthPickerOptions, MonthResult, MonthValue, PickerInstance } from '../types.js';
 
 export const regional = {
   ne: { locale: { separator: ' – ', applyLabel: 'लागू गर्नुहोस्', cancelLabel: 'रद्द गर्नुहोस्', firstDay: 0 } },
@@ -27,6 +27,10 @@ export function setDefaults(options: Partial<DateTimePickerOptions & DateRangePi
  *  attributes are restored, and every listener the mount added to it — passed
  *  `{ signal }` — is dropped. A non-input target gets a generated button
  *  trigger, which `release` removes. */
+// Elements a picker is currently mounted on, so autoInit() can be called again
+// (after AJAX/Turbo swaps in new content) without double-mounting old fields.
+const mountedTargets = new WeakSet<HTMLElement>();
+
 function claimTrigger(target: HTMLInputElement | HTMLElement): {
   trigger: HTMLInputElement | HTMLButtonElement;
   signal: AbortSignal;
@@ -44,11 +48,13 @@ function claimTrigger(target: HTMLInputElement | HTMLElement): {
   trigger.setAttribute('role', 'combobox');
   trigger.setAttribute('aria-haspopup', 'dialog');
   const listeners = new AbortController();
+  mountedTargets.add(target);
   return {
     trigger,
     signal: listeners.signal,
     release(wrapper) {
       listeners.abort();
+      mountedTargets.delete(target);
       if (wrapper?.contains(trigger)) wrapper.replaceWith(trigger);
       else wrapper?.remove();
       if (created) {
@@ -58,6 +64,29 @@ function claimTrigger(target: HTMLInputElement | HTMLElement): {
       saved.forEach(([name, value]) => (value === null ? trigger.removeAttribute(name) : trigger.setAttribute(name, value)));
     },
   };
+}
+
+// Only one picker popup is open at a time: opening one closes the previous.
+let openPicker: { hide(): void } | null = null;
+
+function noteOpen(picker: { hide(): void }, open: boolean): void {
+  if (open) {
+    if (openPicker && openPicker !== picker) openPicker.hide();
+    openPicker = picker;
+  } else if (openPicker === picker) {
+    openPicker = null;
+  }
+}
+
+// Close when keyboard focus moves somewhere outside the picker (e.g. Tab to
+// the next field). Focus moving with no new target (a click on empty space,
+// the window losing focus) is left to the outside-click handler.
+function closeWhenFocusLeaves(sources: HTMLElement[], inside: HTMLElement[], signal: AbortSignal, hide: () => void): void {
+  const onFocusOut = (event: Event): void => {
+    const next = (event as FocusEvent).relatedTarget;
+    if (next instanceof Node && !inside.some((el) => el.contains(next))) hide();
+  };
+  sources.forEach((el) => el.addEventListener('focusout', onFocusOut, { signal }));
 }
 
 function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): HTMLElement {
@@ -202,7 +231,7 @@ function trackPosition(trigger: HTMLElement, portal: HTMLElement, options: { ope
   };
 }
 
-export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, options: DateRangePickerOptions = {}): PickerInstance<DateRangeResult, DateRangePickerOptions> {
+export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, options: DateRangePickerOptions = {}): PickerInstance<DateRangeResult, DateRangePickerOptions, { start: Date; end: Date }> {
   const merged = { ...defaults, ...options } as DateRangePickerOptions;
   const controller = createDateRangeController(merged);
   const { trigger, signal, release } = claimTrigger(target);
@@ -284,9 +313,10 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderRangePanel(portal, controller);
-      if (!wasOpen) { positionPopup(trigger, portal, merged); playSheetEnter(portal); }
+      if (!wasOpen) { noteOpen(controller, true); positionPopup(trigger, portal, merged); playSheetEnter(portal); }
     } else {
       portal.innerHTML = '';
+      if (wasOpen) noteOpen(controller, false);
     }
     wasOpen = state.isOpen;
   }
@@ -315,6 +345,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     trigger.addEventListener('focus', () => controller.show(), { signal });
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
+  closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());
   document.addEventListener('mousedown', outside, true);
   controller.onClear(() => {
     segmented?.reset();
@@ -339,6 +370,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     unsubscribe();
     stopTracking();
     segmented?.destroy();
+    noteOpen(controller, false);
     release(igWrapper);
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
@@ -347,7 +379,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   return controller;
 }
 
-export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, options: DateTimePickerOptions = {}): PickerInstance<DateTimeResult, DateTimePickerOptions> {
+export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, options: DateTimePickerOptions = {}): PickerInstance<DateTimeResult, DateTimePickerOptions, Date | DateTimeResult> {
   const merged = { ...defaults, ...options } as DateTimePickerOptions;
   const controller = createDateTimeController(merged);
   const { trigger, signal, release } = claimTrigger(target);
@@ -382,11 +414,12 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   const dtAdapter = merged.adapter ?? defaultCalendarAdapter;
   const machineFormat: ValueFormat = merged.altFormat ?? merged.valueFormat ?? 'iso';
   const machineTargets: HTMLElement[] = [];
-  if (trigger instanceof HTMLInputElement) {
-    if (typeof merged.submitName === 'string' && inputGroup) machineTargets.push(createHiddenSubmit(merged.submitName, inputGroup.wrapper, trigger));
-    const alt = resolveTarget(merged.altField);
-    if (alt) machineTargets.push(alt);
+  if (trigger instanceof HTMLInputElement && typeof merged.submitName === 'string' && inputGroup) {
+    machineTargets.push(createHiddenSubmit(merged.submitName, inputGroup.wrapper, trigger));
   }
+  // altField works for any target (like the range and month pickers), not just <input>.
+  const alt = resolveTarget(merged.altField);
+  if (alt) machineTargets.push(alt);
   function syncMachine(): void {
     if (!machineTargets.length) return;
     const r = controller.getValue();
@@ -413,9 +446,10 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderDateTimePanel(portal, controller);
-      if (!wasOpen) { positionPopup(trigger, portal, merged); playSheetEnter(portal); }
+      if (!wasOpen) { noteOpen(controller, true); positionPopup(trigger, portal, merged); playSheetEnter(portal); }
     } else {
       portal.innerHTML = '';
+      if (wasOpen) noteOpen(controller, false);
     }
     wasOpen = state.isOpen;
   }
@@ -461,6 +495,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
 
   if (!allowInput) trigger.addEventListener('focus', () => controller.show(), { signal });
   trigger.addEventListener('click', () => controller.show(), { signal });
+  closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());
   document.addEventListener('mousedown', outside, true);
   controller.onClear(() => {
     segmented?.reset();
@@ -485,6 +520,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     unsubscribe();
     stopTracking();
     segmented?.destroy();
+    noteOpen(controller, false);
     release(igWrapper);
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
@@ -493,7 +529,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   return controller;
 }
 
-export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options: MonthPickerOptions = {}): PickerInstance<MonthResult, MonthPickerOptions> {
+export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options: MonthPickerOptions = {}): PickerInstance<MonthResult, MonthPickerOptions, MonthValue> {
   const merged = { ...defaults, ...options } as MonthPickerOptions;
   const controller = createMonthPickerController(merged);
   const { trigger, signal, release } = claimTrigger(target);
@@ -566,9 +602,10 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     portal.style.display = state.isOpen ? 'block' : 'none';
     if (state.isOpen) {
       renderMonthPickerPanel(portal, controller);
-      if (!wasOpen) { positionPopup(trigger, portal, merged); playSheetEnter(portal); }
+      if (!wasOpen) { noteOpen(controller, true); positionPopup(trigger, portal, merged); playSheetEnter(portal); }
     } else {
       portal.innerHTML = '';
+      if (wasOpen) noteOpen(controller, false);
     }
     wasOpen = state.isOpen;
   }
@@ -597,6 +634,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     trigger.addEventListener('focus', () => controller.show(), { signal });
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
+  closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());
   document.addEventListener('mousedown', outside, true);
   controller.onClear(() => {
     segmented?.reset();
@@ -620,6 +658,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     unsubscribe();
     stopTracking();
     segmented?.destroy();
+    noteOpen(controller, false);
     release(igWrapper);
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
@@ -639,17 +678,17 @@ function machineDataOptions(ds: DOMStringMap): { valueFormat?: ValueFormat; subm
 }
 
 export function autoInit(root: ParentNode = document): void {
-  root.querySelectorAll<HTMLInputElement>('[data-nepali-datepicker]').forEach((input) => mountDateTimePicker(input, {
+  root.querySelectorAll<HTMLInputElement>('[data-nepali-datepicker]').forEach((input) => mountedTargets.has(input) || mountDateTimePicker(input, {
     withTime: input.dataset.withTime === 'true',
     timeFormat: input.dataset.timeFormat === '12h' ? '12h' : input.dataset.timeFormat === '24h' ? '24h' : undefined,
     minuteStep: input.dataset.minuteStep ? Number(input.dataset.minuteStep) : undefined,
     ...machineDataOptions(input.dataset),
   }));
-  root.querySelectorAll<HTMLInputElement>('[data-nepali-daterange]').forEach((input) => mountDateRangePicker(input, {
+  root.querySelectorAll<HTMLInputElement>('[data-nepali-daterange]').forEach((input) => mountedTargets.has(input) || mountDateRangePicker(input, {
     fiscalStartMonth: input.dataset.fiscalStartMonth ? Number(input.dataset.fiscalStartMonth) : undefined,
     ...machineDataOptions(input.dataset),
   }));
-  root.querySelectorAll<HTMLInputElement>('[data-nepali-monthpicker]').forEach((input) => mountMonthPicker(input, {
+  root.querySelectorAll<HTMLInputElement>('[data-nepali-monthpicker]').forEach((input) => mountedTargets.has(input) || mountMonthPicker(input, {
     ...machineDataOptions(input.dataset),
   }));
 }
