@@ -165,6 +165,12 @@ No build step required — good for a legacy Blade/PHP page or a CMS.
 <script>NepaliPicker.autoInit()</script>
 ```
 
+**Only need the date / date-time and range pickers?** Load the core build instead. It's about 35 KB gzipped instead of 39 KB, with the same global and API minus the month, year, time-only and multi-date pickers:
+
+```html
+<script src="https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.core.umd.cjs"></script>
+```
+
 > `data-*` auto-init covers the date-time (`data-nepali-datepicker`), range (`data-nepali-daterange`) and month (`data-nepali-monthpicker`) pickers, and only the options listed in each picker's "HTML attrs" line below. Anything else (callbacks, `disabledDates`, etc.) needs the JS API. For the year, time and multi-date pickers without a build step, call `NepaliPicker.mountYearPicker(el, options)` (and friends), or use the [custom elements](#custom-elements). `autoInit()` can be called again after AJAX/Turbo swaps in new content; fields it already set up are skipped.
 
 ### React
@@ -936,7 +942,27 @@ On viewports ≤ 560px wide the popup is shown as a bottom sheet: the portal get
 
 ## Bundle size
 
-Zero runtime dependencies, but not tiny: about **27 KB gzipped** for the date picker alone and about **39 KB** for every picker together, plus **6 KB** gzipped for `style.css`. Bundlers drop the pickers you don't import (each one lives in its own module), and the repo's `npm run size` check enforces a budget. The holidays data and custom elements are separate opt-in subpaths.
+Zero runtime dependencies. A page with one date field downloads about **18 KB gzipped** of JavaScript, plus **6 KB** for `style.css`. That covers the field itself: the typed mask, validation and the BS/AD label. The popup's code (calendar, time wheels, positioning) is a separate chunk of about 7 KB. It's fetched when someone hovers, focuses or taps the field, so it's usually there before the click.
+
+| Picker | First load | Once opened |
+|---|---|---|
+| Date | ~18 KB | ~25 KB |
+| Date + time | ~18 KB | ~29 KB |
+| Range | ~21 KB | ~29 KB |
+| **Date-time + range together** | **~23 KB** | **~36 KB** |
+| Month / Year | ~15 KB | ~22 KB |
+| Time | ~19 KB | ~29 KB |
+
+All sizes are gzipped. The date-time and range pickers share their calendar logic, so using both costs far less than the two added up. Bundlers drop the pickers you don't import, and the repo's `npm run size` check enforces these numbers as budgets. The holidays data and custom elements are separate opt-in subpaths.
+
+For `<script>` tags there are two single-file builds: `nepali-datepicker-pro.umd.cjs` with everything (about 39 KB), and `nepali-datepicker-pro.core.umd.cjs` with the date / date-time and range pickers only (about 35 KB).
+
+Because the popup's code arrives on first use, `show()` draws it a moment later on the very first open. In tests that open a picker and inspect the popup right away, or to load everything at startup, await `preloadPickers()` first:
+
+```js
+import { preloadPickers } from 'nepali-datepicker-pro';
+await preloadPickers(); // e.g. in a test setup file
+```
 
 ---
 

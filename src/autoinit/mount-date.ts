@@ -4,8 +4,7 @@ import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { formatMachineValue, stringifyMachineValue } from '../format/index.js';
 import { createDateTimeController } from '../application/date-time-controller.js';
 import type { DateTimeController } from '../application/date-time-controller.js';
-import { looseToAd, parseLooseDate } from '../format/loose.js';
-import { renderDateTimePanel } from '../render/datetime-panel.js';
+import { lazyPanel, withModule } from '../render/lazy.js';
 import { dateSchema, typingOrder } from './segment-schemas.js';
 import type { DateTimePickerOptions, DateTimeResult, PickerInstance, ValueFormat } from '../types.js';
 
@@ -16,7 +15,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   const order = () => typingOrder(merged.displayFormat);
   return mountShell(target, merged as ShellOptions, controller, {
     events: { change: 'select.nepaliDatePicker', clear: 'clear.nepaliDatePicker' },
-    renderPanel: (root) => renderDateTimePanel(root, controller),
+    ...lazyPanel('datetime', (m, root) => m.renderDateTimePanel(root, controller), () => !!controller.getState().time),
     schema: () => dateSchema({
       yearBounds: () => controller.yearBounds(),
       withTime: () => !!merged.withTime,
@@ -34,7 +33,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
       const value = stringifyMachineValue(formatMachineValue({ ad: r.ad, bs: r.bs, time: r.time }, format, adapter, !!merged.withTime, !!merged.withTime && !!merged.withSeconds));
       return { combined: value, start: value, end: value };
     },
-    paste(text) {
+    paste: (text) => withModule('loose', ({ looseToAd, parseLooseDate }) => {
       const mode = controller.getState().mode;
       const first = order().order[0];
       const loose = parseLooseDate(text, { mode, adapter, dayFirst: first === 'day', monthFirst: first === 'month' });
@@ -46,7 +45,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
         ascii += ` ${asciiTime(loose!.hour != null ? { hour: loose!.hour, minute: loose!.minute ?? 0, second: loose!.second ?? 0 } : current, !!merged.withSeconds)}`;
       }
       return controller.commitTyped(ascii) === 'valid';
-    },
+    }),
     page: (delta) => {
       if (controller.getState().view === 'day') controller.navigateMonth(delta);
       else if (controller.getState().view === 'month') controller.navigateYear(delta);

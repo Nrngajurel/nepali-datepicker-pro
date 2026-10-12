@@ -4,6 +4,7 @@
 import { createDateTimeController } from './date-time-controller.js';
 import type { DateTimeController } from './date-time-controller.js';
 import { normalizeDigits } from '../format/parse.js';
+import { pad2 } from '../date-math/native-date-math.js';
 import type { InvalidReason, PickerInstance, TimePickerOptions, TimeResult, TimeValue } from '../types.js';
 import type { UiConfig } from './ui.js';
 
@@ -28,7 +29,6 @@ export interface TimePickerController extends PickerInstance<TimeResult, TimePic
   yearBounds(): { min: number; max: number };
 }
 
-const pad2 = (n: number): string => String(n).padStart(2, '0');
 
 function innerOptions(options: TimePickerOptions, time: TimeValue | null | undefined) {
   const now = new Date();

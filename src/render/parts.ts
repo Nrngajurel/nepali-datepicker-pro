@@ -12,6 +12,11 @@ import { formatDateValue } from '../format/index.js';
 import { mapGridKey } from '../a11y/index.js';
 import type { GridKeyAction } from '../a11y/index.js';
 import type { CalendarAdapter, CalendarMode, DateRange, DateValue } from '../types.js';
+import { lastAnnounced, lastMotion } from './panel-state.js';
+import { paintModeToggle } from './mode-toggle.js';
+
+export { paintModeToggle } from './mode-toggle.js';
+export { resetAnnouncements } from './panel-state.js';
 
 export type CalendarView = 'day' | 'month' | 'year';
 
@@ -40,9 +45,7 @@ export function uid(prefix = 'ndp'): string {
   return `${prefix}-${idCounter}`;
 }
 
-export function pad2(value: number): string {
-  return String(value).padStart(2, '0');
-}
+export { pad2 } from '../date-math/native-date-math.js';
 
 export function isSameDay(a: DateValue | null | undefined, b: DateValue | null | undefined): boolean {
   return !!a && !!b && a.ad.getTime() === b.ad.getTime();
@@ -50,7 +53,6 @@ export function isSameDay(a: DateValue | null | undefined, b: DateValue | null |
 
 // ---- root lifecycle: live region + focus kept across rebuilds ---------------
 
-const lastAnnounced = new WeakMap<HTMLElement, Record<string, string>>();
 
 /**
  * Empty a panel root for a rebuild, keeping its live region (a live region
@@ -87,8 +89,6 @@ export function announce(root: HTMLElement, parts: Record<string, string>): void
 // the view cross-fades, and a newly picked day pops — so every action has a
 // visible response. Reduced-motion users get none of it (theme.css).
 
-const lastMotion = new WeakMap<HTMLElement, { index: number; mode: string; view: string; selection: string }>();
-
 export interface MotionState {
   /** Months since year 0 of the first shown month, in the active calendar. */
   index: number;
@@ -113,14 +113,6 @@ export function motionFor(root: HTMLElement, next: MotionState): { body: string;
 /** Mark freshly selected day cells so they pop once. */
 export function popSelection(container: HTMLElement, keys: string[]): void {
   keys.forEach((key) => container.querySelector(`[data-ndp-day="${key}"]`)?.classList.add('is-just-selected'));
-}
-
-/** Forget the announcement baseline (the popup closed). */
-export function resetAnnouncements(root: HTMLElement): void {
-  lastMotion.delete(root);
-  lastAnnounced.delete(root);
-  const live = root.querySelector<HTMLElement>(':scope > .ndp-live');
-  if (live) live.textContent = '';
 }
 
 // Focus is remembered by a stable key: a day cell by its date, anything else
@@ -248,20 +240,6 @@ export function navButton(glyph: string, label: string, field: string, onClick: 
     button.addEventListener('click', onClick);
   }
   return button;
-}
-
-const MODE_TOGGLE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>';
-
-/** Paint the BS/AD switch: a single swap-icon button. Shared by the field's
- *  switch and the range panel's. Which calendar is active is shown next to
- *  the value in the field (the "BS"/"AD" suffix) and in the panel header. */
-export function paintModeToggle(btn: HTMLElement, mode: CalendarMode, ui: UiConfig): void {
-  const s = ui.strings;
-  btn.classList.add('ndp-mode-toggle');
-  btn.setAttribute('data-mode', mode);
-  btn.setAttribute('aria-label', mode === 'BS' ? s.switchToAd : s.switchToBs);
-  btn.title = mode === 'BS' ? s.switchToAd : s.switchToBs;
-  if (!btn.firstElementChild) btn.innerHTML = MODE_TOGGLE_SVG;
 }
 
 // The BS/AD switch inside the range panel.

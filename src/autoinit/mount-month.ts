@@ -4,8 +4,7 @@ import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { formatMachineValue, stringifyMachineValue } from '../format/index.js';
 import { createMonthPickerController } from '../application/month-picker-controller.js';
 import type { MonthPickerController } from '../application/month-picker-controller.js';
-import { parseLooseMonth } from '../format/loose.js';
-import { renderMonthPickerPanel } from '../render/month-panel.js';
+import { lazyPanel, withModule } from '../render/lazy.js';
 import { monthSchema } from './segment-schemas.js';
 import type { MonthPickerOptions, MonthResult, MonthValue, PickerInstance, ValueFormat } from '../types.js';
 
@@ -15,7 +14,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   const adapter = merged.adapter ?? defaultCalendarAdapter;
   return mountShell(target, merged as ShellOptions, controller, {
     events: { change: 'select.nepaliMonthPicker', clear: 'clear.nepaliMonthPicker' },
-    renderPanel: (root) => renderMonthPickerPanel(root, controller),
+    ...lazyPanel('month', (m, root) => m.renderMonthPickerPanel(root, controller)),
     schema: () => monthSchema({ yearBounds: () => controller.yearBounds(), displayFormat: () => merged.displayFormat }),
     emptyLabel: () => controller.getUi().strings.selectMonthPlaceholder,
     modeSwitch: false,
@@ -31,10 +30,10 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
       const end = stringifyMachineValue(formatMachineValue({ ad: r.end, bs: { year: r.year, month: r.month, day: days } }, format, adapter));
       return { combined: `${start},${end}`, start, end };
     },
-    paste(text) {
+    paste: (text) => withModule('loose', ({ parseLooseMonth }) => {
       const month = parseLooseMonth(text, adapter);
       return !!month && controller.commitTyped(`${month.year}-${pad2(month.month)}`) === 'valid';
-    },
+    }),
     page: (delta) => controller.navigateYear(delta),
   });
 }

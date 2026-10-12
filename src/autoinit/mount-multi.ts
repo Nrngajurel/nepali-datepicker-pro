@@ -1,7 +1,7 @@
 import { getDefaults, mountShell } from './shell.js';
 import type { ShellOptions } from './shell.js';
 import { createMultiDateController } from '../application/multi-date-controller.js';
-import { renderMultiDatePanel } from '../render/multi-panel.js';
+import { lazyPanel } from '../render/lazy.js';
 import type { MultiDatePickerOptions, MultiDateResult, PickerInstance } from '../types.js';
 
 export function mountMultiDatePicker(target: HTMLInputElement | HTMLElement, options: MultiDatePickerOptions = {}): PickerInstance<MultiDateResult, MultiDatePickerOptions, Date[]> {
@@ -9,7 +9,7 @@ export function mountMultiDatePicker(target: HTMLInputElement | HTMLElement, opt
   const controller = createMultiDateController(merged);
   return mountShell(target, merged as ShellOptions, controller, {
     events: { change: 'select.nepaliMultiDatePicker', clear: 'clear.nepaliMultiDatePicker' },
-    renderPanel: (root) => renderMultiDatePanel(root, controller),
+    ...lazyPanel('multi', (m, root) => m.renderMultiDatePanel(root, controller)),
     schema: () => ({ schema: () => [], placeholder: () => '', seed: () => ({}), toAscii: () => '' }),
     emptyLabel: () => controller.getUi().strings.selectDatePlaceholder,
     modeSwitch: true,

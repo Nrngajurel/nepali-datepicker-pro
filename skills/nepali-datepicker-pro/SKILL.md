@@ -36,7 +36,7 @@ import 'nepali-datepicker-pro/style.css';
 | Situation | Import from |
 |---|---|
 | Plain TS/JS, no framework | `nepali-datepicker-pro` (`mountDateTimePicker`, `mountDateRangePicker`, `mountMonthPicker`, `mountYearPicker`, `mountTimePicker`, `mountMultiDatePicker`) |
-| No build step, `<script>` tag / legacy page | UMD bundle at `dist/nepali-datepicker-pro.umd.cjs`, global `NepaliPicker`, plus `data-nepali-datepicker` + `NepaliPicker.autoInit()` |
+| No build step, `<script>` tag / legacy page | UMD bundle at `dist/nepali-datepicker-pro.umd.cjs`, global `NepaliPicker`, plus `data-nepali-datepicker` + `NepaliPicker.autoInit()`. Date / date-time and range only: the smaller `dist/nepali-datepicker-pro.core.umd.cjs` |
 | React ≥18 | `nepali-datepicker-pro/react` — components take options **as props directly**, no options object |
 | Vue ≥3 | `nepali-datepicker-pro/vue` — components take options via a single `:options` prop, plus `v-model` and `@event` |
 | jQuery ≥3 | `nepali-datepicker-pro/jquery` (or the UMD bundle) with `window.jQuery` present — the plugin self-registers; `install($)` otherwise |

@@ -10,7 +10,7 @@ time, range, month, year and multi-date pickers — framework-agnostic, and read
 a plain `<script>` tag, jQuery, Vue, React and custom elements.
 
 - **BS 1970–2100** of validated calendar data
-- **About 27 KB gzip** for the date picker alone (about 39 KB for every picker), tree-shakeable
+- **About 18 KB gzip** to put a date field on a page; the popup's code (about 7 KB) loads when the field is first reached for. Tree-shakeable
 - **Zero runtime dependencies**
 - **WCAG 2.2 AA**, checked with axe-core in CI
 

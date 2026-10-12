@@ -77,7 +77,27 @@ function readAttribute(el: HTMLElement, kind: Kind, name: string): [string, unkn
 
 const Base: typeof HTMLElement = typeof HTMLElement === 'undefined' ? (class {} as unknown as typeof HTMLElement) : HTMLElement;
 
-function makeElement(kind: Kind) {
+/** A picker element: a plain HTMLElement plus the picker's API. */
+export interface NepaliPickerElement extends HTMLElement {
+  /** The picker instance (null while disconnected). */
+  readonly instance: AnyInstance | null;
+  /** Rich options (functions, events, presets…) on top of the attributes. */
+  options: Record<string, unknown>;
+  /** The current result (see the picker's result type), or null. */
+  value: unknown;
+  show(): void;
+  hide(): void;
+  clear(): void;
+}
+
+// Declared rather than inferred: the inferred class type spells out every
+// HTMLElement member in the published .d.ts (over 100 KB).
+export interface NepaliPickerElementConstructor {
+  new (): NepaliPickerElement;
+  readonly observedAttributes: string[];
+}
+
+function makeElement(kind: Kind): NepaliPickerElementConstructor {
   return class NepaliPickerElement extends Base {
     static get observedAttributes(): string[] {
       return OBSERVED;

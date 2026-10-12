@@ -15,6 +15,7 @@ Companion to `SKILL.md`. Everything here mirrors the package's own `README.md` a
 | `nepali-datepicker-pro/holidays` | `nepalFixedHolidays()`, `mergeEvents()` for the `events` option |
 | `nepali-datepicker-pro/style.css` | The one stylesheet — always import it |
 | UMD `dist/nepali-datepicker-pro.umd.cjs` | Global `NepaliPicker` (everything from the main entry, plus the jQuery plugin and `NepaliPicker.installJQuery($)`) |
+| UMD `dist/nepali-datepicker-pro.core.umd.cjs` | The same global for the date / date-time and range pickers only (`mountDateTimePicker`, `mountDateRangePicker`, their controllers, `autoInit` for `data-nepali-datepicker` / `data-nepali-daterange`, the two jQuery plugins). About 35 KB gz vs 39 KB |
 
 Every subpath has ESM and CommonJS builds (`require('nepali-datepicker-pro/react')` works).
 
@@ -533,8 +534,12 @@ calendar: `inline: true`.
 
 ## Bundle size
 
-About 27 KB gzipped for the date picker alone, about 39 KB for all pickers, plus 6 KB gzipped CSS.
-Unused pickers are tree-shaken.
+A page with one date field loads about 18 KB gzipped of JS, plus 6 KB of CSS. The popup's code (about
+7 KB more) is a separate chunk, fetched when the user hovers, focuses or taps the field. Unused pickers
+are tree-shaken. The UMD `<script>` build is one file of about 40 KB.
+
+Gotcha: on the very first open, the popup draws a moment after `show()` while its chunk loads. In tests
+(or to load everything at startup), `await preloadPickers()` first; it's exported from the main entry.
 
 ## Browser / version support
 

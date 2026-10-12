@@ -653,7 +653,6 @@
 .ndp-preset,
 .ndp-submenu-item,
 .ndp-nav,
-.ndp-mode-button,
 .ndp-apply,
 .ndp-secondary,
 .ndp-cell {
@@ -1680,7 +1679,7 @@
   transform: none;
 }
 
-/* Bottom sheet (phone widths — see isSheetViewport in render/dom.ts). The
+/* Bottom sheet (phone widths — see isSheetViewport in render/viewport.ts). The
    portal itself is the dimmed backdrop; tapping it closes the picker. */
 .ndp-panel-root.ndp-sheet {
   top: auto;

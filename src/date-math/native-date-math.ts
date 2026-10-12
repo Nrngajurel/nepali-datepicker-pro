@@ -12,7 +12,8 @@ function clone(date: Date): Date {
   return new Date(date.getTime());
 }
 
-function pad2(value: number): string {
+/** Two digits: 7 → "07". The one copy every layer imports. */
+export function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
 

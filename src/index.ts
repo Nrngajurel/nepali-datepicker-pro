@@ -10,6 +10,9 @@ export { BsAdCalendarAdapter, defaultCalendarAdapter } from './adapters/bs-ad-ca
 export { nepaliFunctions, makeNepaliFunctions } from './functions/index.js';
 export { formatDateValue, parseDateValue, formatRange } from './format/index.js';
 export { nativeDateMath } from './date-math/native-date-math.js';
+// The popup's code loads on first use; await this to load it up front (tests,
+// or a page that would rather pay at startup than on first open).
+export { preloadAll as preloadPickers } from './render/lazy.js';
 export type {
   DateTimePickerOptions,
   DateTimeResult,

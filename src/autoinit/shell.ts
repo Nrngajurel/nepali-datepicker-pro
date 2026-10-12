@@ -5,10 +5,13 @@
 // its controller, panel renderer, typing schema and machine values.
 import type { UiConfig } from '../application/ui.js';
 import type { CalendarAdapter, CalendarMode, CommonPickerOptions, DateRangePickerOptions, DateTimePickerOptions, InvalidReason, PickerTheme } from '../types.js';
+import { dayAscii } from '../application/calendar-core.js';
+import { createDateValue } from '../domain/date-value.js';
 import { attachSegmentedField } from './segmented-field.js';
 import type { SegmentedField, SegmentedFieldConfig } from './segmented-field.js';
-import { playSheetEnter, positionPopup } from '../render/popup.js';
-import { paintModeToggle, resetAnnouncements } from '../render/parts.js';
+import { load, loaded } from '../render/lazy.js';
+import { paintModeToggle } from '../render/mode-toggle.js';
+import { resetAnnouncements } from '../render/panel-state.js';
 
 /** Ready-made defaults for `setDefaults(regional.ne)`: Nepali or English UI text
  *  (and, for the range picker, its daterangepicker-style locale block). */
@@ -128,8 +131,15 @@ function popupKeyboard(
   controller: { show(): void; hide(): void; getState(): { isOpen: boolean } },
   signal: AbortSignal,
   inline: boolean,
-): { showOnFocus: () => void; beforeClose: () => void; focusTrigger: () => void } {
+): { showOnFocus: () => void; beforeClose: () => void; focusTrigger: () => void; afterPaint: () => void } {
   let quiet = false;
+  // Alt+↓ before the popup's code has loaded: focus the grid once it's drawn.
+  let wantEntry = false;
+  const focusEntry = (): void => {
+    const entry = portal.querySelector<HTMLElement>('[data-ndp-entry]');
+    wantEntry = !entry;
+    entry?.focus();
+  };
   const focusTrigger = (): void => {
     if (!trigger) return;
     quiet = true;
@@ -151,7 +161,7 @@ function popupKeyboard(
     if (!enter) return;
     e.preventDefault();
     controller.show();
-    portal.querySelector<HTMLElement>('[data-ndp-entry]')?.focus();
+    focusEntry();
   }, { signal });
   return {
     showOnFocus: () => {
@@ -161,6 +171,9 @@ function popupKeyboard(
       if (portal.contains(document.activeElement)) focusTrigger();
     },
     focusTrigger,
+    afterPaint: () => {
+      if (wantEntry && controller.getState().isOpen) focusEntry();
+    },
   };
 }
 
@@ -338,60 +351,6 @@ function trackPosition(reposition: (event?: Event) => void): () => void {
   };
 }
 
-// While the popup is a bottom sheet it is modal: the page behind is inert
-// (when the popup is a direct child of <body>, the common case) and Tab
-// cycles inside the sheet.
-function makeModal(portal: HTMLElement): { enter: () => void; leave: () => void } {
-  let inerted: HTMLElement[] = [];
-  return {
-    enter() {
-      if (!portal.classList.contains('ndp-sheet')) return;
-      if (portal.parentElement === document.body) {
-        inerted = Array.from(document.body.children).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== portal && !node.hasAttribute('inert') && node.tagName !== 'SCRIPT');
-        inerted.forEach((node) => node.setAttribute('inert', ''));
-      }
-      const entry = portal.querySelector<HTMLElement>('[data-ndp-entry]') ?? portal.querySelector<HTMLElement>('button:not([disabled]), [tabindex="0"]');
-      entry?.focus({ preventScroll: true });
-    },
-    leave() {
-      inerted.forEach((node) => node.removeAttribute('inert'));
-      inerted = [];
-    },
-  };
-}
-
-function trapTab(portal: HTMLElement, signal: AbortSignal): void {
-  portal.addEventListener('keydown', (event) => {
-    const e = event as KeyboardEvent;
-    if (e.key !== 'Tab' || !portal.classList.contains('ndp-sheet')) return;
-    const focusables = Array.from(portal.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex="0"]'))
-      .filter((node) => node.tabIndex >= 0 && node.offsetParent !== null);
-    if (!focusables.length) return;
-    const first = focusables[0];
-    const last = focusables[focusables.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  }, { signal });
-}
-
-// Horizontal swipe on the day / month grid pages the calendar on touch screens.
-function wireSwipe(portal: HTMLElement, signal: AbortSignal, page: (delta: number) => void): void {
-  let start: { x: number; y: number } | null = null;
-  portal.addEventListener('touchstart', (event) => {
-    const e = event as TouchEvent;
-    const target = e.target as HTMLElement;
-    start = e.touches.length === 1 && target.closest('.ndp-grid, .ndp-monthgrid') ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
-  }, { passive: true, signal });
-  portal.addEventListener('touchend', (event) => {
-    const e = event as TouchEvent;
-    if (!start || !e.changedTouches.length) return;
-    const dx = e.changedTouches[0].clientX - start.x;
-    const dy = e.changedTouches[0].clientY - start.y;
-    start = null;
-    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 2) page(dx < 0 ? 1 : -1);
-  }, { passive: true, signal });
-}
-
 // ---- the shared mount ---------------------------------------------------------
 
 interface ShellController {
@@ -432,7 +391,11 @@ export type ShellOptions = CommonPickerOptions & {
 
 interface ShellSpec {
   events: { change: string; clear: string };
+  /** Draw the popup; only called once `panelReady()`. */
   renderPanel(root: HTMLElement): void;
+  /** Whether the popup's code has loaded (it's split off — see render/lazy). */
+  panelReady(): boolean;
+  loadPanel(): Promise<unknown>;
   schema(): Pick<SegmentedFieldConfig, 'schema' | 'seed' | 'toAscii' | 'placeholder'>;
   emptyLabel(): string;
   /** Machine values for the submit/alt fields, or null when empty. */
@@ -440,7 +403,7 @@ interface ShellSpec {
   modeSwitch: boolean;
   /** Show " BS" / " AD" after the field's value (pickers with a calendar mode). */
   calendarSuffix: boolean;
-  paste(text: string): boolean;
+  paste(text: string): boolean | Promise<boolean>;
   /** Page the calendar by one (swipe). */
   page(delta: number): void;
 }
@@ -472,9 +435,21 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
   if (!inline) resolveAppendTo(merged.appendTo ?? merged.container).appendChild(portal);
   trigger?.setAttribute('aria-controls', portal.id);
   const keys = popupKeyboard(trigger, portal, controller, signal, inline);
-  const modal = makeModal(portal);
-  if (!inline) trapTab(portal, signal);
-  wireSwipe(portal, signal, spec.page);
+  // Sheet, Tab trap and swipe arrive with the popup's code (render/popup).
+  let modal = { enter: () => {}, leave: () => {} };
+  let wired = false;
+  const popupReady = (): boolean => {
+    const popup = loaded('popup');
+    if (!popup) return false;
+    if (!wired) {
+      wired = true;
+      modal = popup.makeModal(portal);
+      if (!inline) popup.trapTab(portal, signal);
+      popup.wireSwipe(portal, signal, spec.page);
+    }
+    return true;
+  };
+  const loadPopup = (): Promise<unknown> => Promise.all([spec.loadPanel(), load('popup')]);
 
   const unsubscribe = (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange(render);
   const outside = (event: MouseEvent) => {
@@ -629,17 +604,37 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
     // doesn't move it relative to the trigger.
     if (event?.type === 'scroll' && event.target instanceof Node && portal.contains(event.target)) return;
     cancelAnimationFrame(raf);
-    raf = requestAnimationFrame(() => positionPopup(inputGroup?.wrapper ?? trigger, portal, merged));
+    raf = requestAnimationFrame(() => loaded('popup')?.positionPopup(inputGroup?.wrapper ?? trigger, portal, merged));
   }
   const stopTracking = inline ? () => {} : trackPosition(reposition);
   // Content changing height (another view, a hint appearing) re-places it.
   const resizeObserver = !inline && typeof ResizeObserver === 'function' ? new ResizeObserver(() => reposition()) : null;
   resizeObserver?.observe(portal);
 
+  // The popup's code arrives on first use. Until it has, the popup stays
+  // hidden; it opens (and takes Alt+↓ focus) as soon as the code is in.
+  let loading = false;
+  function loadThenRender(): void {
+    if (loading) return;
+    loading = true;
+    loadPopup().then(() => {
+      loading = false;
+      if (signal.aborted) return;
+      render();
+      keys.afterPaint();
+    }, (error: unknown) => {
+      loading = false;
+      console.error('[nepali-datepicker-pro] could not load the picker popup', error);
+      if (!inline && !signal.aborted) controller.hide();
+    });
+  }
+
   let wasOpen = false;
   function render(): void {
     const state = controller.getState();
     const open = inline || state.isOpen;
+    const ready = !open || (spec.panelReady() && popupReady());
+    if (!ready) loadThenRender();
     if (!open && wasOpen) {
       modal.leave();
       keys.beforeClose();
@@ -653,17 +648,20 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
     inputGroup?.updateClear();
     inputGroup?.updateMode();
     if (inline) {
+      if (!ready) return;
       spec.renderPanel(portal);
       wasOpen = true;
       return;
     }
-    portal.style.display = open ? 'block' : 'none';
+    portal.style.display = open && ready ? 'block' : 'none';
+    if (open && !ready) return;
     if (open) {
       spec.renderPanel(portal);
       if (!wasOpen) {
         noteOpen(controller, true);
-        positionPopup(inputGroup?.wrapper ?? trigger!, portal, merged);
-        playSheetEnter(portal);
+        const popup = loaded('popup')!;
+        popup.positionPopup(inputGroup?.wrapper ?? trigger!, portal, merged);
+        popup.playSheetEnter(portal);
         modal.enter();
       }
     } else {
@@ -749,9 +747,12 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
         open: keys.showOnFocus,
         close: () => controller.hide(),
         paste: (text) => {
-          const ok = spec.paste(text);
-          if (ok) showError(null);
-          return ok;
+          const settle = (ok: boolean): boolean => {
+            if (ok) showError(null);
+            return ok;
+          };
+          const result = spec.paste(text);
+          return typeof result === 'boolean' ? settle(result) : result.then(settle);
         },
         onReject: (ascii) => {
           const reason: InvalidReason = ascii ? controller.typedError(ascii) ?? 'invalid' : 'incomplete';
@@ -777,6 +778,14 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
     trigger.addEventListener('focus', keys.showOnFocus, { signal });
   }
   trigger?.addEventListener('click', () => controller.show(), { signal });
+  // Fetch the popup's code as soon as someone reaches for the field, so it's
+  // usually there by the time the click lands.
+  const prefetch = (): void => {
+    if (!spec.panelReady() || !loaded('popup')) loadPopup().catch(() => {});
+  };
+  [trigger, inputGroup?.wrapper].forEach((node) => {
+    ['pointerenter', 'focusin', 'touchstart'].forEach((type) => node?.addEventListener(type, prefetch, { signal, passive: true }));
+  });
   if (!inline && trigger) {
     closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());
     document.addEventListener('mousedown', outside, true);
@@ -822,7 +831,7 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
     applyTheme();
     applyFormState();
     syncMachine();
-    if (controller.getState().isOpen && !inline && trigger) positionPopup(inputGroup?.wrapper ?? trigger, portal, merged);
+    if (controller.getState().isOpen && !inline && trigger) loaded('popup')?.positionPopup(inputGroup?.wrapper ?? trigger, portal, merged);
   });
 
   const igWrapper = inputGroup?.wrapper ?? null;
@@ -848,17 +857,8 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
 
 // ---- helpers for the specs ------------------------------------------------------
 
-export const pad2 = (n: number): string => String(n).padStart(2, '0');
+export { pad2 } from '../date-math/native-date-math.js';
+export { timeAscii as asciiTime } from '../application/calendar-core.js';
 
 /** Canonical ASCII `YYYY-MM-DD` of an AD date in the given calendar. */
-export function asciiDay(ad: Date, mode: CalendarMode, adapter: CalendarAdapter): string {
-  if (mode === 'BS') {
-    const bs = adapter.adToBs(ad);
-    return `${bs.year}-${pad2(bs.month)}-${pad2(bs.day)}`;
-  }
-  return `${ad.getFullYear()}-${pad2(ad.getMonth() + 1)}-${pad2(ad.getDate())}`;
-}
-
-export function asciiTime(time: { hour: number; minute: number; second?: number }, seconds = false): string {
-  return `${pad2(time.hour)}:${pad2(time.minute)}${seconds ? `:${pad2(time.second ?? 0)}` : ''}`;
-}
+export const asciiDay = (ad: Date, mode: CalendarMode, adapter: CalendarAdapter): string => dayAscii(createDateValue(adapter, ad), mode);

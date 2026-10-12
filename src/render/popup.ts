@@ -1,18 +1,12 @@
 // The popup's placement: a dropdown beside the field, or a bottom sheet on
 // phone-width screens.
 import { computePopupPosition } from '../position/index.js';
+import { isSheetViewport } from './viewport.js';
+
+export { isSheetViewport } from './viewport.js';
 
 // ---- sheet + positioning ------------------------------------------------------
 
-// Phone-width viewports get the popup as a bottom sheet (full width, docked to
-// the bottom, scrollable, over a dimmed backdrop) instead of a dropdown pinned
-// under the input — a dropdown taller than the screen gets cut off on a phone.
-// Matches the `max-width: 560px` breakpoint in theme.css.
-export function isSheetViewport(): boolean {
-  if (typeof window === 'undefined') return false;
-  if (typeof window.matchMedia === 'function') return window.matchMedia('(max-width: 560px)').matches;
-  return window.innerWidth <= 560;
-}
 
 // Slide the bottom sheet up once per open. The panel element is rebuilt on
 // every state change, so a plain CSS animation on it would replay on each tap
@@ -80,4 +74,60 @@ export function positionPopup(trigger: HTMLElement, popup: HTMLElement, options:
   popup.setAttribute('data-placement', pos.placementY);
   // The field scrolled out of view: hide the popup rather than float it over unrelated content.
   popup.style.visibility = pos.anchorHidden ? 'hidden' : '';
+}
+
+// ---- behaviour while open ---------------------------------------------------
+
+// While the popup is a bottom sheet it is modal: the page behind is inert
+// (when the popup is a direct child of <body>, the common case) and Tab
+// cycles inside the sheet.
+export function makeModal(portal: HTMLElement): { enter: () => void; leave: () => void } {
+  let inerted: HTMLElement[] = [];
+  return {
+    enter() {
+      if (!portal.classList.contains('ndp-sheet')) return;
+      if (portal.parentElement === document.body) {
+        inerted = Array.from(document.body.children).filter((node): node is HTMLElement => node instanceof HTMLElement && node !== portal && !node.hasAttribute('inert') && node.tagName !== 'SCRIPT');
+        inerted.forEach((node) => node.setAttribute('inert', ''));
+      }
+      const entry = portal.querySelector<HTMLElement>('[data-ndp-entry]') ?? portal.querySelector<HTMLElement>('button:not([disabled]), [tabindex="0"]');
+      entry?.focus({ preventScroll: true });
+    },
+    leave() {
+      inerted.forEach((node) => node.removeAttribute('inert'));
+      inerted = [];
+    },
+  };
+}
+
+export function trapTab(portal: HTMLElement, signal: AbortSignal): void {
+  portal.addEventListener('keydown', (event) => {
+    const e = event as KeyboardEvent;
+    if (e.key !== 'Tab' || !portal.classList.contains('ndp-sheet')) return;
+    const focusables = Array.from(portal.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex="0"]'))
+      .filter((node) => node.tabIndex >= 0 && node.offsetParent !== null);
+    if (!focusables.length) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  }, { signal });
+}
+
+// Horizontal swipe on the day / month grid pages the calendar on touch screens.
+export function wireSwipe(portal: HTMLElement, signal: AbortSignal, page: (delta: number) => void): void {
+  let start: { x: number; y: number } | null = null;
+  portal.addEventListener('touchstart', (event) => {
+    const e = event as TouchEvent;
+    const target = e.target as HTMLElement;
+    start = e.touches.length === 1 && target.closest('.ndp-grid, .ndp-monthgrid') ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null;
+  }, { passive: true, signal });
+  portal.addEventListener('touchend', (event) => {
+    const e = event as TouchEvent;
+    if (!start || !e.changedTouches.length) return;
+    const dx = e.changedTouches[0].clientX - start.x;
+    const dy = e.changedTouches[0].clientY - start.y;
+    start = null;
+    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 2) page(dx < 0 ? 1 : -1);
+  }, { passive: true, signal });
 }

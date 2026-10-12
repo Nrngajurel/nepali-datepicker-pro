@@ -145,9 +145,27 @@ and this project follows [Semantic Versioning](https://semver.org/).
   - Keyboard focus previews the range like the mouse does.
   - Apply is disabled until there's a range.
 - **Range output:** the `formatted` string follows `language: 'ne'`.
-- **Bundle size grows** with the new features: about 27 KB gzipped for the date picker alone
-  (was about 15 KB), and about 39 KB for everything. Unused pickers are dropped by bundlers.
-  `npm run size` enforces a budget. `style.css` now ships minified, at 6 KB gzipped (was 7.4 KB).
+- **Lighter first load:** the popup's code (calendar, time wheels, positioning, the phone sheet) is
+  now a separate chunk. It's fetched when someone hovers, focuses or taps the field, so a page with
+  a date field loads about 18 KB gzipped of JavaScript, plus about 7 KB on first use. The time
+  wheels load only for pickers with a time, and the paste parser only on paste. The `<script>` UMD
+  build stays one synchronous file (about 40 KB). Before this release the date picker was about
+  15 KB, with far fewer features. `npm run size` enforces per-picker budgets for both the first
+  load and the opened picker. `style.css` now ships minified, at 6 KB gzipped (was 7.4 KB).
+- **The popup draws a moment after `show()` on its very first open**, while its chunk loads. Tests
+  that open a picker and inspect the popup right away should `await preloadPickers()` first (new
+  export). It's also an option for loading everything at startup.
+- **Date-time + range share one calendar core:** navigation, BS/AD switching, disabled days,
+  typed-date parsing, validation messages and time stepping are now one implementation instead of
+  two. An app with both pickers loads about 23 KB gzipped up front (it was about 34 KB before this
+  release's size work). Behaviour is unchanged; new tests pin it against the previous
+  implementation.
+- **Core `<script>` build:** `dist/nepali-datepicker-pro.core.umd.cjs` has the date / date-time
+  and range pickers only, with the same global `NepaliPicker`, `autoInit` and jQuery plugins. It's
+  about 35 KB gzipped, against 39 KB for the full `nepali-datepicker-pro.umd.cjs`.
+- **Smaller package:** `npm install` is about 1.2 MB unpacked (was 2.5 MB). The ES/CJS builds no
+  longer ship source maps, since they're unminified and readable as is; the minified UMD keeps its
+  map. The custom elements' type declarations went from 134 KB to about 1 KB.
 - `images/` is no longer in the npm package; the README loads its images from the docs site.
 
 - On phone widths, tapping a typeable field no longer raises the on-screen keyboard over the bottom
@@ -189,6 +207,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - Vue: passing a `Date` to `v-model` no longer logs a prop-type warning.
 - Hovering the selected day no longer washes it out to the hover tint, which hid its number.
 - Opening a picker no longer scrolls the page to the bottom before the popup is placed.
+- Date-time picker: a custom `dateMath` option is now used for `minDate` / `maxDate` /
+  disabled-day checks, as the range picker already did. It was ignored there.
 - The browser's spell-checker no longer underlines the empty field mask (`YYYY`, `hh`). In 12-hour
   mode the empty AM/PM slot now reads `aa` instead of `--`.
 - The year list opens with the selected year centred, not tucked under the bottom fade.

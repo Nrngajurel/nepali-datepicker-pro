@@ -36,13 +36,25 @@ The package ships one entry point per stack, so bundlers only pull in what you a
 
 Every subpath ships both ESM and CommonJS (`require('nepali-datepicker-pro/react')` works). The
 UMD build (`dist/nepali-datepicker-pro.umd.cjs`) exposes everything on a global `NepaliPicker`
-for `<script>`-tag pages, including the jQuery plugin.
+for `<script>`-tag pages, including the jQuery plugin. If a page only needs the date / date-time
+and range pickers, `dist/nepali-datepicker-pro.core.umd.cjs` is the same global and API without
+the month, year, time-only and multi-date pickers (about 35 KB gzipped instead of 39 KB).
 
 ## Bundle size
 
-Zero runtime dependencies, but the pickers do a lot: about **27 KB gzipped** for the date picker
-alone and about **39 KB** for every picker together, plus **6 KB** gzipped for `style.css`.
-Each picker lives in its own module, so bundlers drop the ones you don't import.
+Zero runtime dependencies. A page with one date field loads about **18 KB gzipped** of JavaScript,
+plus **6 KB** for `style.css`. The popup's code (about 7 KB more) is a separate chunk. It's fetched
+when someone hovers, focuses or taps the field, so it's normally there before the click. Each
+picker lives in its own module, so bundlers drop the ones you don't import.
+
+On the very first open, the popup draws a moment after `show()` while its chunk arrives. In tests
+that inspect the popup right after opening it, or to load everything at startup, await
+`preloadPickers()`:
+
+```js
+import { preloadPickers } from 'nepali-datepicker-pro';
+await preloadPickers();
+```
 
 ## Custom elements
 

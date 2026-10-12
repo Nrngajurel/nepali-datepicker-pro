@@ -4,8 +4,7 @@ import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { formatMachineValue, stringifyMachineValue } from '../format/index.js';
 import { createDateRangeController } from '../application/date-range-controller.js';
 import type { DateRangeController } from '../application/date-range-controller.js';
-import { looseToAd, parseLooseDate, splitLooseRange } from '../format/loose.js';
-import { renderRangePanel } from '../render/range-panel.js';
+import { lazyPanel, withModule } from '../render/lazy.js';
 import { rangeSchema, typingOrder } from './segment-schemas.js';
 import type { DateRangePickerOptions, DateRangeResult, PickerInstance, TimeValue, ValueFormat } from '../types.js';
 
@@ -16,7 +15,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   const order = () => typingOrder(merged.displayFormat ?? merged.locale?.format);
   return mountShell(target, merged as ShellOptions, controller, {
     events: { change: 'apply.nepaliDateRangePicker', clear: 'clear.nepaliDateRangePicker' },
-    renderPanel: (root) => renderRangePanel(root, controller),
+    ...lazyPanel('range', (m, root) => m.renderRangePanel(root, controller), () => !!merged.withTime),
     schema: () => rangeSchema({ yearBounds: () => controller.yearBounds(), order, withTime: () => !!merged.withTime }),
     emptyLabel: () => controller.getUi().strings.selectRangePlaceholder,
     modeSwitch: true,
@@ -31,7 +30,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
       const end = stringifyMachineValue(formatMachineValue({ ad: r.end, bs: r.endBs, time: state.endTime ?? undefined }, format, adapter, withTime));
       return { combined: `${start},${end}`, start, end };
     },
-    paste(text) {
+    paste: (text) => withModule('loose', ({ looseToAd, parseLooseDate, splitLooseRange }) => {
       const ends = splitLooseRange(text);
       if (!ends) return false;
       const mode = controller.getState().mode;
@@ -44,7 +43,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
       const state = controller.getState();
       const time = (loose: typeof a, fallback: Required<TimeValue> | null) => (merged.withTime ? ` ${asciiTime(loose?.hour != null ? { hour: loose.hour, minute: loose.minute ?? 0 } : fallback ?? { hour: 0, minute: 0 })}` : '');
       return controller.commitTyped(`${asciiDay(adA, mode, adapter)}${time(a, state.startTime)} – ${asciiDay(adB, mode, adapter)}${time(b, state.endTime)}`) === 'valid';
-    },
+    }),
     page: (delta) => controller.navigateMonth(delta),
   });
 }

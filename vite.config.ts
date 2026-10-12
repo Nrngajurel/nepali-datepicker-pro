@@ -28,7 +28,9 @@ export default defineConfig(() => ({
   ],
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    // The ES / CJS output isn't minified, so it reads fine in a debugger as
+    // is; maps would double the package for nothing. (The minified UMD keeps one.)
+    sourcemap: false,
     lib: {
       entry: {
         index: resolve(here, 'src/index.ts'),

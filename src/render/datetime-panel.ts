@@ -21,8 +21,8 @@ import {
   viewAnnouncement,
   wireDayKeyboard,
 } from './parts.js';
-import { isSheetViewport } from './popup.js';
-import { renderTimeControls, renderTimeStep } from './time.js';
+import { isSheetViewport } from './viewport.js';
+import { loaded } from './lazy.js';
 
 // ---- date / date-time ---------------------------------------------------------
 
@@ -44,9 +44,11 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   // On a phone (bottom sheet) a date-time pick is two steps — calendar, then
   // time — instead of one long scroll. Wider screens keep both side by side.
   const stepped = !dateOnly && !options.inline && isSheetViewport();
-  if (stepped && state.panelStep === 'time' && state.selected) {
+  // The time module is loaded alongside this one when the picker has a time.
+  const time = loaded('timeControls');
+  if (time && stepped && state.panelStep === 'time' && state.selected) {
     panel.classList.add('ndp-panel--time-step');
-    panel.appendChild(renderTimeStep(controller));
+    panel.appendChild(time.renderTimeStep(controller));
     panel.appendChild(footerRow(
       ...(showClear ? [button('ndp-secondary', s.clear, 'clear', () => controller.clear())] : []),
       button('ndp-apply', s.done, 'done', () => controller.confirm()),
@@ -102,7 +104,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   // in the day view — month/year views are just for navigating.
   const body = el('div', 'ndp-datetime-body');
   body.appendChild(calCol);
-  const timeControls = state.view === 'day' && !stepped ? renderTimeControls(controller) : null;
+  const timeControls = time && state.view === 'day' && !stepped ? time.renderTimeControls(controller) : null;
   if (timeControls) body.appendChild(timeControls);
   panel.appendChild(body);
 

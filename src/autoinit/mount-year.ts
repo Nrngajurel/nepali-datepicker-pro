@@ -3,7 +3,7 @@ import type { ShellOptions } from './shell.js';
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { formatMachineValue, stringifyMachineValue } from '../format/index.js';
 import { createYearPickerController } from '../application/year-picker-controller.js';
-import { renderYearPickerPanel } from '../render/year-panel.js';
+import { lazyPanel } from '../render/lazy.js';
 import type { PickerInstance, ValueFormat, YearPickerOptions, YearResult } from '../types.js';
 
 export function mountYearPicker(target: HTMLInputElement | HTMLElement, options: YearPickerOptions = {}): PickerInstance<YearResult, YearPickerOptions, number> {
@@ -12,7 +12,7 @@ export function mountYearPicker(target: HTMLInputElement | HTMLElement, options:
   const adapter = merged.adapter ?? defaultCalendarAdapter;
   return mountShell(target, merged as ShellOptions, controller, {
     events: { change: 'select.nepaliYearPicker', clear: 'clear.nepaliYearPicker' },
-    renderPanel: (root) => renderYearPickerPanel(root, controller),
+    ...lazyPanel('year', (m, root) => m.renderYearPickerPanel(root, controller)),
     schema: () => ({
       schema: () => [{ key: 'year', len: 4, min: controller.yearBounds().min, max: controller.yearBounds().max, placeholder: 'YYYY' }],
       placeholder: () => 'YYYY',

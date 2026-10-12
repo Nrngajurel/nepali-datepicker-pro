@@ -1,26 +1,19 @@
-import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
-import { nativeDateMath } from '../date-math/native-date-math.js';
-import { buildViewMonthCells, clampViewMonth, clampViewYear, firstOfViewMonth, lastOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
+import { clampViewMonth, firstOfViewMonth, lastOfViewMonth, viewYearMonthOf } from './calendar-view.js';
 import type { ViewYearMonth } from './calendar-view.js';
-import { isDayDisabled, resolveBound } from './constraints.js';
-import { createDayDecorator, resolveUi } from './ui.js';
+import { createCalendarCore, dayAscii, flipMeridiem, initialViewState, stepTime, timeAscii } from './calendar-core.js';
+import type { CalendarViewState } from './calendar-core.js';
+import { resolveBound } from './constraints.js';
 import type { DayInfo, UiConfig } from './ui.js';
-import { createDateRange, createDateValue, dateValueFromBs, isSameDateValue, startOfLocalDay } from '../domain/date-value.js';
+import { createDateRange, createDateValue, isSameDateValue, startOfLocalDay } from '../domain/date-value.js';
 import { formatRange, formatMachineValue, stringifyMachineValue } from '../format/index.js';
-import { normalizeDigits } from '../format/parse.js';
+import { normalizeDigits, tokenizeTyped } from '../format/parse.js';
 import { fill } from '../i18n/strings.js';
 import type { CalendarAdapter, CalendarMode, DateRange, DateRangePickerOptions, DateRangeResult, DateValue, InvalidReason, PickerInstance, PresetContext, PresetDefinition, TimeValue } from '../types.js';
 import { normalizePresets } from './presets.js';
 
 export type RangeEnd = 'start' | 'end';
 
-export interface DateRangeControllerState {
-  isOpen: boolean;
-  mode: CalendarMode;
-  allowModeToggle: boolean;
-  showSecondaryCalendar: boolean;
-  viewYear: number;
-  viewMonth: number;
+export interface DateRangeControllerState extends CalendarViewState {
   /** The second month when `numberOfMonths: 2` and `linkedCalendars: false`;
    *  null when it simply follows the first. */
   secondView: ViewYearMonth | null;
@@ -29,16 +22,12 @@ export interface DateRangeControllerState {
   hoverDate: DateValue | null;
   activePresetId: string | null;
   openSubmenuId: string | null;
-  view: 'day' | 'month' | 'year';
-  yearGroupStart: number;
   // Internal: 'month' while the "Pick a Month" preset is active (whole-month
   // selection). Driven by the preset rail, not a public option.
   selectionUnit: 'day' | 'month';
   /** Times of day for the two ends, when `withTime` is on. */
   startTime: Required<TimeValue> | null;
   endTime: Required<TimeValue> | null;
-  timeFormat: '12h' | '24h';
-  minuteStep: number;
 }
 
 export interface DateRangeController extends PickerInstance<DateRangeResult, DateRangePickerOptions> {
@@ -107,14 +96,19 @@ function addDays(date: Date, days: number): Date {
 
 export function createDateRangeController(initialOptions: DateRangePickerOptions = {}): DateRangeController {
   let options = { ...initialOptions };
-  const adapter = options.adapter ?? defaultCalendarAdapter;
-  const dateMath = options.dateMath ?? nativeDateMath;
+  // eslint-disable-next-line prefer-const -- assigned once the core exists (it needs the adapter)
+  let state: DateRangeControllerState;
+  const core = createCalendarCore<DateRangeControllerState, DateRangePickerOptions, DateRangeResult>({
+    options: () => options,
+    state: () => state,
+    setState,
+    // The unlinked second month follows the calendar switch too.
+    reanchor: (nextMode: CalendarMode, previous: DateRangeControllerState): Partial<DateRangeControllerState> => ({
+      secondView: previous.secondView ? viewYearMonthOf(nextMode, adapter, firstOfViewMonth(previous.mode, adapter, previous.secondView.year, previous.secondView.month)) : null,
+    }),
+  });
+  const { adapter, dateMath } = core;
   let presets = normalizePresets(options, adapter, dateMath);
-  let ui = resolveUi(options);
-  let listeners: Array<(value: DateRangeResult) => void> = [];
-  let stateListeners: Array<() => void> = [];
-  let clearListeners: Array<() => void> = [];
-  const decorator = createDayDecorator(() => options, adapter, () => setState({}));
   const today = createDateValue(adapter, new Date());
   // The active calendar, readable before `state` exists (presets resolve
   // while the initial state is being built).
@@ -125,33 +119,22 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   const providedRange = options.value !== undefined ? options.value : options.defaultValue;
   const initialRange = providedRange ?? (options.defaultPresetId ? resolvePresetRange(options.defaultPresetId) : null);
   const viewAnchor = initialRange ?? resolveInitialRange();
-  const initialMode: CalendarMode = options.mode ?? 'BS';
-  const initialView = anchorView(initialMode, viewAnchor);
 
   const timeOf = (date: Date | undefined, fallback: Required<TimeValue>): Required<TimeValue> => (
     date ? { hour: date.getHours(), minute: date.getMinutes(), second: 0 } : fallback
   );
 
-  let state: DateRangeControllerState = {
-    isOpen: false,
-    mode: initialMode,
-    allowModeToggle: options.allowModeToggle !== false,
-    showSecondaryCalendar: options.showSecondaryCalendar !== false,
-    viewYear: initialView.year,
-    viewMonth: initialView.month,
+  state = {
+    ...initialViewState(options, anchorView(options.mode ?? 'BS', viewAnchor)),
     secondView: null,
     range: initialRange ? createDateRange(createDateValue(adapter, initialRange.start), createDateValue(adapter, initialRange.end)) : null,
     pendingStart: null,
     hoverDate: null,
     activePresetId: providedRange ? null : (options.defaultPresetId ?? null),
     openSubmenuId: null,
-    view: 'day',
-    yearGroupStart: initialView.year - 6,
     selectionUnit: 'day',
     startTime: options.withTime ? timeOf(providedRange?.start, { hour: 0, minute: 0, second: 0 }) : null,
     endTime: options.withTime ? timeOf(providedRange?.end, { hour: 23, minute: 59, second: 0 }) : null,
-    timeFormat: options.timeFormat ?? '12h',
-    minuteStep: options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1,
   };
 
   // What the popup showed when it opened — Cancel goes back to it.
@@ -177,42 +160,10 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   const firstOfMonth = (year: number, month: number): DateValue => createDateValue(adapter, firstOfViewMonth(state.mode, adapter, year, month));
   const lastOfMonth = (year: number, month: number): DateValue => createDateValue(adapter, lastOfViewMonth(state.mode, adapter, dateMath, year, month));
 
-  const pad2 = (n: number): string => String(n).padStart(2, '0');
-
   // Mode-aware ASCII `YYYY-MM-DD[ HH:mm]` for one endpoint.
-  function dvToAscii(value: DateValue, time: Required<TimeValue> | null): string {
-    const date = state.mode === 'BS'
-      ? `${value.bs.year}-${pad2(value.bs.month)}-${pad2(value.bs.day)}`
-      : `${value.ad.getFullYear()}-${pad2(value.ad.getMonth() + 1)}-${pad2(value.ad.getDate())}`;
-    return options.withTime && time ? `${date} ${pad2(time.hour)}:${pad2(time.minute)}` : date;
-  }
-
-  // Build one endpoint from typed parts (mode-aware), or null if impossible.
-  function parseTypedDay(year: number, month: number, day: number): DateValue | null {
-    try {
-      if (state.mode === 'BS') {
-        if (year < adapter.minSupportedYear || year > adapter.maxSupportedYear) return null;
-        if (month < 1 || month > 12) return null;
-        if (day < 1 || day > adapter.daysInBsMonth(year, month)) return null;
-        return dateValueFromBs(adapter, { year, month, day });
-      }
-      if (month < 1 || month > 12 || day < 1 || day > 31) return null;
-      const ad = new Date(year, month - 1, day);
-      if (ad.getFullYear() !== year || ad.getMonth() !== month - 1 || ad.getDate() !== day) return null;
-      return createDateValue(adapter, ad);
-    } catch {
-      return null;
-    }
-  }
-
-  // Which constraint a disabled endpoint breaks.
-  function disabledReason(value: DateValue): InvalidReason {
-    const min = resolveBound(options.minDate, dateMath);
-    if (min && value.ad.getTime() < min.getTime()) return 'before-min';
-    const max = resolveBound(options.maxDate, dateMath);
-    if (max && value.ad.getTime() > max.getTime()) return 'after-max';
-    return 'unavailable';
-  }
+  const dvToAscii = (value: DateValue, time: Required<TimeValue> | null): string => (
+    options.withTime && time ? `${dayAscii(value, state.mode)} ${timeAscii(time)}` : dayAscii(value, state.mode)
+  );
 
   // Span and in-between rules for a start → end pair (either order).
   function spanError(a: DateValue, b: DateValue): InvalidReason | null {
@@ -230,25 +181,28 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
 
   // Parse `YYYY-MM-DD[ HH:mm] – YYYY-MM-DD[ HH:mm]` into an ordered, allowed range.
   function parseTypedRange(text: string): { range: DateRange; startTime: Required<TimeValue> | null; endTime: Required<TimeValue> | null } | { error: InvalidReason } {
-    const day = '(\\d{1,4})-(\\d{1,2})-(\\d{1,2})';
-    const time = options.withTime ? '\\s+(\\d{1,2}):(\\d{1,2})' : '';
-    const m = new RegExp(`^\\s*${day}${time}\\s+–\\s+${day}${time}\\s*$`).exec(normalizeDigits(text));
-    if (!m) return { error: 'invalid' };
-    const n = m.slice(1).map(Number);
-    const step = options.withTime ? 5 : 3;
-    const start = parseTypedDay(n[0], n[1], n[2]);
-    const end = parseTypedDay(n[step], n[step + 1], n[step + 2]);
-    if (!start || !end) return { error: 'invalid' };
-    if (controller.isDisabled(start)) return { error: disabledReason(start) };
-    if (controller.isDisabled(end)) return { error: disabledReason(end) };
+    const invalid = { error: 'invalid' as InvalidReason };
+    const ends = normalizeDigits(text).trim().split(/\s+–\s+/);
+    if (ends.length !== 2) return invalid;
+    const [a, b] = ends.map(tokenizeTyped);
+    // Each end is a date, with a time exactly when the picker has times.
+    const shaped = (t: typeof a) => t && t !== 'empty' && (t.hour != null) === !!options.withTime && t.second == null ? t : null;
+    const ta = shaped(a);
+    const tb = shaped(b);
+    if (!ta || !tb) return invalid;
+    const start = core.parseDay(ta);
+    const end = core.parseDay(tb);
+    if (!start || !end) return invalid;
+    if (controller.isDisabled(start)) return { error: core.disabledReason(start) };
+    if (controller.isDisabled(end)) return { error: core.disabledReason(end) };
     const span = spanError(start, end);
     if (span) return { error: span };
     let startTime: Required<TimeValue> | null = null;
     let endTime: Required<TimeValue> | null = null;
     if (options.withTime) {
-      if (n[3] > 23 || n[4] > 59 || n[8] > 23 || n[9] > 59) return { error: 'invalid' };
-      startTime = { hour: n[3], minute: n[4], second: 0 };
-      endTime = { hour: n[8], minute: n[9], second: 0 };
+      if (ta.hour! > 23 || ta.minute! > 59 || tb.hour! > 23 || tb.minute! > 59) return invalid;
+      startTime = { hour: ta.hour!, minute: ta.minute!, second: 0 };
+      endTime = { hour: tb.hour!, minute: tb.minute!, second: 0 };
     }
     const range = createDateRange(start, end);
     // createDateRange orders the ends; keep each time with its own end.
@@ -256,21 +210,8 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     return { range, startTime, endTime };
   }
 
-  function clampYear(year: number): number {
-    return clampViewYear(state.mode, adapter, year);
-  }
-
-  // Re-express the currently viewed month in a new mode, anchored on the same
-  // real month so toggling BS/AD doesn't jump the calendar to an unrelated page.
-  function reviewInMode(nextMode: CalendarMode): Pick<DateRangeControllerState, 'mode' | 'viewYear' | 'viewMonth' | 'yearGroupStart' | 'secondView'> {
-    const anchor = firstOfViewMonth(state.mode, adapter, state.viewYear, state.viewMonth);
-    const view = viewYearMonthOf(nextMode, adapter, anchor);
-    const second = state.secondView ? viewYearMonthOf(nextMode, adapter, firstOfViewMonth(state.mode, adapter, state.secondView.year, state.secondView.month)) : null;
-    return { mode: nextMode, viewYear: view.year, viewMonth: view.month, yearGroupStart: clampViewYear(nextMode, adapter, view.year - 6), secondView: second };
-  }
-
   function presetContext(): PresetContext {
-    return { today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath, mode: currentMode, weekStartsOn: ui.weekStartsOn };
+    return { today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath, mode: currentMode, weekStartsOn: core.ui().weekStartsOn };
   }
 
   function resolveInitialRange(): { start: Date; end: Date } {
@@ -297,7 +238,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   function setState(patch: Partial<DateRangeControllerState>): void {
     state = { ...state, ...patch };
     currentMode = state.mode;
-    stateListeners.forEach((listener) => listener());
+    core.notifyState();
   }
 
   function withTimeOf(date: Date, time: Required<TimeValue> | null): Date {
@@ -334,7 +275,14 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
   function emit(range: DateRange): void {
     const result = toResult(range);
     options.onApply?.(result);
-    listeners.forEach((listener) => listener(result));
+    core.emitChange(result);
+  }
+
+  // A new range from the calendar, a preset or the field: select it, drop any
+  // half-picked one, and report the change.
+  function setRange(range: DateRange, extra: Partial<DateRangeControllerState> = {}): void {
+    setState({ ...extra, range, pendingStart: null, hoverDate: null });
+    options.onChange?.({ start: range.start.ad, end: range.end.ad });
   }
 
   // Shared by quick presets and submenu items (fiscal years): resolve against
@@ -350,8 +298,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     if (start.getTime() > end.getTime()) return;
     const range = createDateRange(createDateValue(adapter, start), createDateValue(adapter, end));
     const view = anchorView(state.mode, { start: range.start.ad, end: range.end.ad });
-    setState({ range, activePresetId: activeId, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: view.year, viewMonth: view.month, secondView: null, openSubmenuId: null });
-    options.onChange?.({ start: range.start.ad, end: range.end.ad });
+    setRange(range, { activePresetId: activeId, selectionUnit: 'day', viewYear: view.year, viewMonth: view.month, secondView: null, openSubmenuId: null });
   }
 
   // While the end is being picked: the first and last day it can be, from
@@ -386,18 +333,12 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     return boundsCache;
   }
 
-  function clampRangeTime(time: Required<TimeValue>): Required<TimeValue> {
-    return { hour: ((time.hour % 24) + 24) % 24, minute: ((time.minute % 60) + 60) % 60, second: 0 };
-  }
-
   const timeKey = (which: RangeEnd): 'startTime' | 'endTime' => (which === 'start' ? 'startTime' : 'endTime');
+  const setTimeOf = (which: RangeEnd, time: Required<TimeValue>): void => setState({ [timeKey(which)]: time } as Partial<DateRangeControllerState>);
 
   const controller: DateRangeController = {
+    ...core.methods,
     getState: () => state,
-    getAdapter: () => adapter,
-    getUi: () => ui,
-    getOptions: () => options,
-    dayInfo: (value) => decorator.info(value),
     getPresets: () => presets,
     getToday: () => today,
     getValue: () => (state.range ? toResult(state.range) : null),
@@ -430,18 +371,9 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     },
     update(patch) {
       options = { ...options, ...patch };
-      ui = resolveUi(options);
       boundsCache = null;
       presets = normalizePresets(options, adapter, dateMath);
-      const next: Partial<DateRangeControllerState> = {};
-      if ('mode' in patch) {
-        const nextMode = options.mode ?? 'BS';
-        if (nextMode !== state.mode) Object.assign(next, reviewInMode(nextMode));
-      }
-      if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
-      if ('showSecondaryCalendar' in patch) next.showSecondaryCalendar = options.showSecondaryCalendar !== false;
-      if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '12h';
-      if ('minuteStep' in patch) next.minuteStep = options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1;
+      const next = core.updatePatch(patch);
       if ('linkedCalendars' in patch || 'numberOfMonths' in patch) next.secondView = null;
       if ('withTime' in patch) {
         next.startTime = options.withTime ? state.startTime ?? { hour: 0, minute: 0, second: 0 } : null;
@@ -452,28 +384,11 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       // props) replaces the current one, silently — like setValue.
       if ('value' in patch) controller.setValue((patch.value ?? null) as never);
     },
-    destroy() {
-      listeners = [];
-      stateListeners = [];
-      clearListeners = [];
-    },
-    onChange(cb) {
-      listeners.push(cb);
-      return () => {
-        listeners = listeners.filter((listener) => listener !== cb);
-      };
-    },
     clear() {
       if (!state.range && !state.pendingStart) return;
       setState({ range: null, pendingStart: null, hoverDate: null });
       options.onClear?.();
-      clearListeners.forEach((listener) => listener());
-    },
-    onClear(cb) {
-      clearListeners.push(cb);
-      return () => {
-        clearListeners = clearListeners.filter((listener) => listener !== cb);
-      };
+      core.emitClear();
     },
     selectDay(value) {
       if (!controller.isSelectable(value)) return;
@@ -482,9 +397,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
         options.onChange?.({ start: value.ad });
         return;
       }
-      const range = createDateRange(state.pendingStart, value);
-      setState({ range, pendingStart: null, hoverDate: null, activePresetId: null });
-      options.onChange?.({ start: range.start.ad, end: range.end.ad });
+      setRange(createDateRange(state.pendingStart, value), { activePresetId: null });
       if (options.autoApply && !options.withTime) controller.apply();
     },
     hoverDay(value) {
@@ -497,13 +410,11 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if (next && state.hoverDate && isSameDateValue(next, state.hoverDate)) return;
       setState({ hoverDate: next });
     },
-    // A single click selects the whole BS month: the range spans its first day
+    // A single click selects the whole month: the range spans its first day
     // to its last day. This is the "quickly pick a month" shortcut.
     selectMonth(year, month) {
       if (controller.isMonthDisabled(year, month)) return;
-      const range = createDateRange(firstOfMonth(year, month), lastOfMonth(year, month));
-      setState({ range, pendingStart: null, hoverDate: null, viewYear: year, viewMonth: month });
-      options.onChange?.({ start: range.start.ad, end: range.end.ad });
+      setRange(createDateRange(firstOfMonth(year, month), lastOfMonth(year, month)), { viewYear: year, viewMonth: month });
       if (options.autoApply && !options.withTime) controller.apply();
     },
     isMonthDisabled(year, month) {
@@ -520,10 +431,6 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     startMonthSelect() {
       setState({ activePresetId: 'month', selectionUnit: 'month', pendingStart: null, hoverDate: null, range: null, openSubmenuId: null, view: 'day' });
     },
-    navigateMonth(delta) {
-      const { year, month } = shiftMonth(state.mode, { year: state.viewYear, month: state.viewMonth }, delta);
-      setState({ viewYear: year, viewMonth: month });
-    },
     navigateMonthAt(index, delta) {
       if (index === 0 || (options.linkedCalendars ?? true)) {
         controller.navigateMonth(delta);
@@ -531,28 +438,6 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       }
       const [, second] = controller.visibleMonths();
       setState({ secondView: shiftMonth(state.mode, second, delta) });
-    },
-    navigateYear(delta) {
-      const { year, month } = clampViewMonth(state.mode, adapter, state.viewYear + delta, state.viewMonth);
-      setState({ viewYear: year, viewMonth: month });
-    },
-    navigateYearGroup(delta) {
-      setState({ yearGroupStart: clampYear(state.yearGroupStart + delta * 12) });
-    },
-    setView(view) {
-      setState(view === 'year' ? { view, yearGroupStart: clampYear(state.viewYear - 6) } : { view });
-    },
-    selectMonthView(month) {
-      const view = clampViewMonth(state.mode, adapter, state.viewYear, month);
-      setState({ viewYear: view.year, viewMonth: view.month, view: 'day' });
-    },
-    selectYearView(year) {
-      const view = clampViewMonth(state.mode, adapter, clampYear(year), state.viewMonth);
-      setState({ viewYear: view.year, viewMonth: view.month, view: 'month' });
-    },
-    toggleMode() {
-      if (!state.allowModeToggle) return;
-      setState(reviewInMode(state.mode === 'BS' ? 'AD' : 'BS'));
     },
     selectPreset(id) {
       applyPreset(presets.find((item) => item.id === id), id);
@@ -580,9 +465,6 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       emit(state.range);
       controller.hide();
     },
-    isDisabled(value) {
-      return isDayDisabled(value.ad, options, dateMath) || decorator.isDisabled(value);
-    },
     isSelectable(value) {
       if (controller.isDisabled(value)) return false;
       const start = state.pendingStart;
@@ -591,11 +473,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       const { lo, hi } = pendingBounds(start);
       if (t < lo || t > hi) return false;
       const minSpan = options.minRangeSpanDays;
-      if (minSpan && Math.abs(dayDiff(start.ad, value.ad)) + 1 < minSpan) return false;
-      return true;
-    },
-    yearBounds() {
-      return viewYearBounds(state.mode, adapter);
+      return !(minSpan && Math.abs(dayDiff(start.ad, value.ad)) + 1 < minSpan);
     },
     visibleMonths() {
       const first = { year: state.viewYear, month: state.viewMonth };
@@ -608,19 +486,16 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     },
     setRangeTime(which, hour, minute) {
       if (!state[timeKey(which)] || !Number.isInteger(hour) || !Number.isInteger(minute) || hour < 0 || hour > 23 || minute < 0 || minute > 59) return false;
-      setState({ [timeKey(which)]: { hour, minute, second: 0 } } as Partial<DateRangeControllerState>);
+      setTimeOf(which, { hour, minute, second: 0 });
       return true;
     },
     stepRangeTime(which, unit, delta) {
       const time = state[timeKey(which)];
-      if (!time) return;
-      const next = unit === 'hour' ? { ...time, hour: time.hour + delta } : { ...time, minute: time.minute + delta * state.minuteStep };
-      setState({ [timeKey(which)]: clampRangeTime(next) } as Partial<DateRangeControllerState>);
+      if (time) setTimeOf(which, stepTime(time, unit, delta, state.minuteStep));
     },
     toggleRangeMeridiem(which) {
       const time = state[timeKey(which)];
-      if (!time) return;
-      setState({ [timeKey(which)]: { ...time, hour: (time.hour + 12) % 24 } } as Partial<DateRangeControllerState>);
+      if (time) setTimeOf(which, flipMeridiem(time));
     },
     typedString: () => (state.range ? `${dvToAscii(state.range.start, state.startTime)} – ${dvToAscii(state.range.end, state.endTime)}` : ''),
     typedReference() {
@@ -639,22 +514,14 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       return 'error' in parsed ? parsed.error : null;
     },
     invalidMessage(reason) {
-      const fmt = (bound: Date | string | null | undefined): string => {
-        const date = resolveBound(bound, dateMath);
-        return date ? formatRange(date, date, adapter, { mode: state.mode, format: 'YYYY-MM-DD', locale: options.language === 'ne' ? 'ne' : 'en' }).split(' – ')[0] : '';
-      };
-      switch (reason) {
-        case 'before-min': return fill(ui.strings.beforeMin, { date: fmt(options.minDate) });
-        case 'after-max': return fill(ui.strings.afterMax, { date: fmt(options.maxDate) });
-        case 'unavailable': return ui.strings.rangeHasDisabled;
-        case 'span':
-          return options.maxRangeSpanDays
-            ? fill(ui.strings.maxSpan, { n: options.maxRangeSpanDays })
-            : fill(ui.strings.minSpan, { n: options.minRangeSpanDays ?? 1 });
-        case 'incomplete': return ui.strings.incomplete;
-        case 'required': return ui.strings.required;
-        default: return ui.strings.invalidDate;
+      const s = core.ui().strings;
+      if (reason === 'unavailable') return s.rangeHasDisabled;
+      if (reason === 'span') {
+        return options.maxRangeSpanDays
+          ? fill(s.maxSpan, { n: options.maxRangeSpanDays })
+          : fill(s.minSpan, { n: options.minRangeSpanDays ?? 1 });
       }
+      return core.invalidMessage(reason);
     },
     commitTyped(text) {
       if (text.trim() === '') {
@@ -665,36 +532,16 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       if ('error' in parsed) return 'invalid';
       const { range } = parsed;
       const view = anchorView(state.mode, { start: range.start.ad, end: range.end.ad });
-      setState({
-        range,
-        pendingStart: null,
-        hoverDate: null,
+      setRange(range, {
         activePresetId: null,
         selectionUnit: 'day',
         viewYear: view.year,
         viewMonth: view.month,
         ...(options.withTime ? { startTime: parsed.startTime, endTime: parsed.endTime } : {}),
       });
-      options.onChange?.({ start: range.start.ad, end: range.end.ad });
       emit(range);
       return 'valid';
     },
-    cellForBs(year, month, day) {
-      return dateValueFromBs(adapter, { year, month, day });
-    },
-    buildMonthCells(year, month) {
-      const cells = buildViewMonthCells(state.mode, adapter, dateMath, year, month, ui.weekStartsOn);
-      const days = cells.filter((cell): cell is DateValue => !!cell);
-      if (days.length) decorator.load(days[0].ad, days[days.length - 1].ad);
-      return cells;
-    },
-  };
-
-  (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange = (cb: () => void) => {
-    stateListeners.push(cb);
-    return () => {
-      stateListeners = stateListeners.filter((listener) => listener !== cb);
-    };
   };
 
   return controller;

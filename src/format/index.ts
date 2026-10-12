@@ -1,4 +1,4 @@
-import { GREGORIAN_MONTHS, GREGORIAN_MONTHS_NE, parseLocalDateString } from '../date-math/native-date-math.js';
+import { GREGORIAN_MONTHS, GREGORIAN_MONTHS_NE, pad2, parseLocalDateString } from '../date-math/native-date-math.js';
 import type { BsDate, CalendarAdapter, CalendarMode, PickerLocale, ValueFormat } from '../types.js';
 
 const WEEKDAYS_NE = ['आइतबार', 'सोमबार', 'मङ्गलबार', 'बुधबार', 'बिहिबार', 'शुक्रबार', 'शनिबार'];
@@ -11,10 +11,6 @@ const WEEKDAYS_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fr
 // chained `.replace(token, value)` calls, which corrupted "Ashwin 2083" into
 // "AMshwin 2083" once the "A" replace ran over the already-substituted string.
 const TOKEN_PATTERN = /YYYY|MMMM|MM|DD|dddd|HH|hh|mm|ss|A/g;
-
-function pad2(value: number): string {
-  return String(value).padStart(2, '0');
-}
 
 export function formatDateValue(date: Date, adapter: CalendarAdapter, options: {
   mode?: CalendarMode;

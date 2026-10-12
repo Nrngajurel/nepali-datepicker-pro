@@ -34,7 +34,7 @@ import {
   wireDayKeyboard,
   wireRovingGrid,
 } from './parts.js';
-import { renderRangeTimeRow } from './time.js';
+import { loaded } from './lazy.js';
 
 const DAY_MS = 86_400_000;
 
@@ -252,7 +252,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
     calCol.appendChild(grid);
   }
 
-  const times = renderRangeTimeRow(controller);
+  const times = loaded('timeControls')?.renderRangeTimeRow(controller) ?? null;
   if (times && showCalendars) calCol.appendChild(times);
 
   calCol.appendChild(footerRow(

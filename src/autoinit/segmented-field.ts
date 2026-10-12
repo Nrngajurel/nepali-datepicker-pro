@@ -5,7 +5,7 @@
 // field. The set of sections is described by a schema, so the same widget
 // backs the date, datetime (incl. AM/PM), month and range pickers.
 import { normalizeDigits } from '../format/parse.js';
-import { isSheetViewport } from '../render/popup.js';
+import { isSheetViewport } from '../render/viewport.js';
 
 export interface SegmentSpec {
   key: string;
@@ -39,7 +39,7 @@ export interface SegmentedFieldConfig {
   open: () => void;
   close: () => void;
   /** Pasted text: parse and commit it; return whether it was accepted. */
-  paste?: (text: string) => boolean;
+  paste?: (text: string) => boolean | Promise<boolean>;
   /** A commit was refused on leaving the field: the canonical ASCII that
    *  failed validation, or null for a partly filled field. */
   onReject?: (ascii: string | null) => void;
@@ -356,13 +356,19 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     const text = e.clipboardData?.getData('text') ?? '';
     e.preventDefault();
     if (!text.trim() || !cfg.paste) return;
-    if (cfg.paste(text)) {
-      dirty = false;
-      if (document.activeElement === input) beginEditing();
-      else { editing = false; input.value = cfg.formatted(); }
-    } else {
-      cfg.onReject?.(null);
-    }
+    const finish = (ok: boolean): void => {
+      if (ok) {
+        dirty = false;
+        if (document.activeElement === input) beginEditing();
+        else { editing = false; input.value = cfg.formatted(); }
+      } else {
+        cfg.onReject?.(null);
+      }
+    };
+    // The parser may still be loading (it's split off); then this settles later.
+    const result = cfg.paste(text);
+    if (typeof result === 'boolean') finish(result);
+    else result.then(finish, () => finish(false));
   }
 
   input.classList.add('ndp-trigger--segmented');

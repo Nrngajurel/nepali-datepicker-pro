@@ -1,7 +1,7 @@
 import { getDefaults, mountShell, pad2 } from './shell.js';
 import type { ShellOptions } from './shell.js';
 import { createTimePickerController } from '../application/time-picker-controller.js';
-import { renderTimePickerPanel } from '../render/time-panel.js';
+import { lazyPanel } from '../render/lazy.js';
 import { dateSchema } from './segment-schemas.js';
 import type { PickerInstance, TimePickerOptions, TimeResult, TimeValue } from '../types.js';
 
@@ -11,7 +11,7 @@ export function mountTimePicker(target: HTMLInputElement | HTMLElement, options:
   const hour12 = () => controller.inner().getState().timeFormat === '12h';
   return mountShell(target, merged as ShellOptions, controller, {
     events: { change: 'select.nepaliTimePicker', clear: 'clear.nepaliTimePicker' },
-    renderPanel: (root) => renderTimePickerPanel(root, controller),
+    ...lazyPanel('time', (m, root) => m.renderTimePickerPanel(root, controller)),
     schema: () => {
       // The date schema's time half: hh:mm[:ss] [AM/PM].
       const full = dateSchema({ yearBounds: () => ({ min: 0, max: 0 }), withTime: () => true, hour12, withSeconds: () => !!merged.withSeconds });
