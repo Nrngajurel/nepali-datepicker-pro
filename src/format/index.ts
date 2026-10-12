@@ -1,4 +1,4 @@
-import { parseLocalDateString } from '../date-math/native-date-math.js';
+import { GREGORIAN_MONTHS, GREGORIAN_MONTHS_NE, parseLocalDateString } from '../date-math/native-date-math.js';
 import type { BsDate, CalendarAdapter, CalendarMode, PickerLocale, ValueFormat } from '../types.js';
 
 const WEEKDAYS_NE = ['आइतबार', 'सोमबार', 'मङ्गलबार', 'बुधबार', 'बिहिबार', 'शुक्रबार', 'शनिबार'];
@@ -27,7 +27,9 @@ export function formatDateValue(date: Date, adapter: CalendarAdapter, options: {
   const hour12 = date.getHours() % 12 || 12;
   const bs = mode === 'BS' ? adapter.adToBs(date) : null;
   const bsMonths = mode === 'BS' ? adapter.bsMonthNames(locale) : null;
-  const adMonths = locale === 'ne' ? adapter.bsMonthNames('ne') : ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  // AD mode shows Gregorian months — in Nepali script for locale 'ne' (it
+  // used to show BS month names, e.g. Jan 15 as "१५ बैशाख").
+  const adMonths = locale === 'ne' ? GREGORIAN_MONTHS_NE : GREGORIAN_MONTHS;
   const weekdays = locale === 'ne' ? WEEKDAYS_NE : WEEKDAYS_EN;
   const raw = format.replace(TOKEN_PATTERN, (token) => {
     switch (token) {

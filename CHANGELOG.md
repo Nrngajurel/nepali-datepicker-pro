@@ -20,6 +20,11 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- "Last 7/15/30/45/60 days" presets now span exactly that many days including today (they spanned
+  one day more). Presets now use the date they're clicked on, so a page left open past midnight
+  doesn't select yesterday's ranges.
+- Presets and fiscal-year items are trimmed to `minDate`/`maxDate`; one entirely outside them does
+  nothing.
 - **The time picker defaults to 12-hour (AM/PM)** instead of 24-hour. Pass `timeFormat: '24h'` to
   keep the old behavior. The display and typed input follow `timeFormat`; the submitted `value`
   (e.g. `2024-04-13T14:05`) is unchanged and always 24-hour.
@@ -46,6 +51,12 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Picking a fiscal year from the range picker's submenu now fires `onChange`, like the other
+  presets.
+- AD mode with `locale: 'ne'` showed BS month names (15 January as "१५ बैशाख"); it now shows
+  Gregorian months in Nepali (`१५ जनवरी`).
+- Relative bounds like `minDate: '-1m'` on the 31st no longer overshoot (Jan 31 − 1 month was
+  Dec 31 + overflow; adding months now clamps to the month's last day).
 - A half-typed year (e.g. `205`, then moving on) is no longer clamped into a real year and saved as
   a 1970 date. The entry is rejected and the field goes back to its previous value.
 - Navigating past the ends of the supported calendar (BS 1970–2100, about AD 1913–2044) no longer

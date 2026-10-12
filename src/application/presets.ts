@@ -28,6 +28,9 @@ export function buildDefaultPresets(options: DateRangePickerOptions, adapter: Ca
     resolve,
   });
 
+  // "Last N days" spans N days including today (today − (N − 1) … today).
+  const lastDays = (n: number) => ({ today, dateMath }: PresetContext) => ({ start: dateMath.add(today, -(n - 1), 'day'), end: today });
+
   const fyItems = Array.from({ length: lookback }, (_, index) => {
     const year = fyStart - index;
     return range(`fy-${year}`, `${year}/${String((year + 1) % 100).padStart(2, '0')} BS`, () => fiscalYearRange(adapter, year, fiscalStartMonth));
@@ -35,21 +38,26 @@ export function buildDefaultPresets(options: DateRangePickerOptions, adapter: Ca
 
   const items: PresetDefinition[] = [
     range('today', 'Today', ({ today }) => ({ start: today, end: today })),
-    range('last7', 'Last 7 days', ({ today, dateMath }) => ({ start: dateMath.add(today, -7, 'day'), end: today })),
-    range('last15', 'Last 15 days', ({ today, dateMath }) => ({ start: dateMath.add(today, -15, 'day'), end: today })),
-    range('last30', 'Last 30 days', ({ today, dateMath }) => ({ start: dateMath.add(today, -30, 'day'), end: today })),
-    range('last45', 'Last 45 days', ({ today, dateMath }) => ({ start: dateMath.add(today, -45, 'day'), end: today })),
-    range('last60', 'Last 60 days', ({ today, dateMath }) => ({ start: dateMath.add(today, -60, 'day'), end: today })),
-    range('fytd', 'This Fiscal Year to Date', () => ({ start: adapter.bsToAd(fyStart, fiscalStartMonth, 1), end: today })),
+    range('last7', 'Last 7 days', lastDays(7)),
+    range('last15', 'Last 15 days', lastDays(15)),
+    range('last30', 'Last 30 days', lastDays(30)),
+    range('last45', 'Last 45 days', lastDays(45)),
+    range('last60', 'Last 60 days', lastDays(60)),
+    range('fytd', 'This Fiscal Year to Date', ({ today }) => {
+      const now = adapter.adToBs(today);
+      return { start: adapter.bsToAd(fiscalYearStartFor(now.year, now.month, fiscalStartMonth), fiscalStartMonth, 1), end: today };
+    }),
     { id: 'fiscalYear', label: 'Fiscal Year', kind: 'submenu', items: fyItems },
     { id: 'month', label: 'Pick a Month', kind: 'submenu', items: [] },
     { id: 'custom', label: 'Custom Range', kind: 'submenu', items: [] },
   ];
 
+  // Resolve against the context passed at click time (fresh `today`), so a
+  // page left open past midnight doesn't pick yesterday's ranges.
   return items.map((preset) => {
     if (preset.kind !== 'range' || !preset.resolve) return preset;
     const resolve = preset.resolve;
-    return { ...preset, resolve: () => resolve(ctx) };
+    return { ...preset, resolve: (fresh?: PresetContext) => resolve(fresh ?? ctx) };
   });
 }
 

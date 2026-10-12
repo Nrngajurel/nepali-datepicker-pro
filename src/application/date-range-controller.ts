@@ -200,6 +200,23 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
     listeners.forEach((listener) => listener(result));
   }
 
+  // Shared by quick presets and submenu items (fiscal years): resolve against
+  // today, trim to minDate/maxDate (a preset reaching past a bound is cut to
+  // it; one entirely outside is ignored), select it and report the change.
+  function applyPreset(preset: PresetDefinition | undefined, activeId: string): void {
+    if (!preset?.resolve) return;
+    const resolved = preset.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
+    const min = resolveBound(options.minDate, dateMath);
+    const max = resolveBound(options.maxDate, dateMath);
+    const start = min && resolved.start.getTime() < min.getTime() ? min : resolved.start;
+    const end = max && resolved.end.getTime() > max.getTime() ? max : resolved.end;
+    if (start.getTime() > end.getTime()) return;
+    const range = createDateRange(createDateValue(adapter, start), createDateValue(adapter, end));
+    const view = viewYearMonthOf(state.mode, adapter, range.end.ad);
+    setState({ range, activePresetId: activeId, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: view.year, viewMonth: view.month, openSubmenuId: null });
+    options.onChange?.({ start: range.start.ad, end: range.end.ad });
+  }
+
   const controller: DateRangeController = {
     getState: () => state,
     getPresets: () => presets,
@@ -335,21 +352,10 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
       setState(reviewInMode(state.mode === 'BS' ? 'AD' : 'BS'));
     },
     selectPreset(id) {
-      const preset = presets.find((item) => item.id === id);
-      if (!preset?.resolve) return;
-      const resolved = preset.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
-      const range = createDateRange(createDateValue(adapter, resolved.start), createDateValue(adapter, resolved.end));
-      const view = viewYearMonthOf(state.mode, adapter, range.end.ad);
-      setState({ range, activePresetId: id, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: view.year, viewMonth: view.month, openSubmenuId: null });
-      options.onChange?.({ start: range.start.ad, end: range.end.ad });
+      applyPreset(presets.find((item) => item.id === id), id);
     },
     selectSubmenuItem(submenuId, itemId) {
-      const item = presets.find((preset) => preset.id === submenuId)?.items?.find((preset) => preset.id === itemId);
-      if (!item?.resolve) return;
-      const resolved = item.resolve({ today: new Date(), fiscalStartMonth: options.fiscalStartMonth ?? 4, adapter, dateMath });
-      const range = createDateRange(createDateValue(adapter, resolved.start), createDateValue(adapter, resolved.end));
-      const view = viewYearMonthOf(state.mode, adapter, range.end.ad);
-      setState({ range, activePresetId: itemId, selectionUnit: 'day', pendingStart: null, hoverDate: null, viewYear: view.year, viewMonth: view.month, openSubmenuId: null });
+      applyPreset(presets.find((preset) => preset.id === submenuId)?.items?.find((preset) => preset.id === itemId), itemId);
     },
     toggleSubmenu(id) {
       setState({ openSubmenuId: state.openSubmenuId === id ? null : id });

@@ -3,6 +3,8 @@ import type { DateMath, DateMathUnit } from '../types.js';
 const TOKEN_PATTERN = /YYYY|MMMM|MM|DD|HH|hh|mm|ss|A|dddd/g;
 export const GREGORIAN_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 export const GREGORIAN_MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+/** Gregorian month names as written in Nepali. */
+export const GREGORIAN_MONTHS_NE = ['जनवरी', 'फेब्रुअरी', 'मार्च', 'अप्रिल', 'मे', 'जुन', 'जुलाई', 'अगस्ट', 'सेप्टेम्बर', 'अक्टोबर', 'नोभेम्बर', 'डिसेम्बर'];
 const MONTHS = GREGORIAN_MONTHS;
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -32,8 +34,15 @@ export const nativeDateMath: DateMath = {
   add(date: Date, amount: number, unit: DateMathUnit): Date {
     const next = clone(date);
     if (unit === 'day') next.setDate(next.getDate() + amount);
-    if (unit === 'month') next.setMonth(next.getMonth() + amount);
-    if (unit === 'year') next.setFullYear(next.getFullYear() + amount);
+    if (unit === 'month' || unit === 'year') {
+      // Clamp to the target month's last day: Jan 31 + 1 month is Feb 28/29,
+      // not Mar 3 (setMonth overflows) — which also broke endOf('month').
+      const day = next.getDate();
+      next.setDate(1);
+      if (unit === 'month') next.setMonth(next.getMonth() + amount);
+      else next.setFullYear(next.getFullYear() + amount);
+      next.setDate(Math.min(day, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate()));
+    }
     return next;
   },
   diff(a: Date, b: Date): number {
