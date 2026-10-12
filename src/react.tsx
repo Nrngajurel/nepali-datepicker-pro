@@ -58,16 +58,54 @@ function useLatest<T>(value: T) {
   return ref;
 }
 
-/**
- * Cheap structural fingerprint for "did the non-function config change?"
- * Functions are intentionally excluded — they are handled via useLatest refs.
- */
-function configFingerprint(obj: Record<string, unknown>): string {
-  const stable: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(obj)) {
-    if (typeof v !== 'function') stable[k] = v;
+// Identity tokens for values JSON can't compare: functions (disabledDates,
+// disabledTimes, preset resolvers) and class instances (a custom adapter).
+// A new function or instance counts as a change; the same one doesn't.
+const identities = new WeakMap<object, number>();
+let nextIdentity = 0;
+function identityOf(value: object): string {
+  let id = identities.get(value);
+  if (id === undefined) {
+    id = ++nextIdentity;
+    identities.set(value, id);
   }
-  return JSON.stringify(stable);
+  return `#${id}`;
+}
+
+function fingerprintOf(value: unknown): string {
+  return JSON.stringify(value, (_key, v: unknown) => {
+    if (typeof v === 'function') return identityOf(v);
+    if (v && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) !== Object.prototype) return identityOf(v);
+    return v;
+  }) ?? 'undefined';
+}
+
+/**
+ * Pushes option changes to the picker — only the options that actually
+ * changed, compared per key (Dates by value, functions/instances by
+ * identity). Sending just the changed keys matters: re-sending an unchanged
+ * controlled `value` on every render would reset a half-picked range.
+ * Pass function options through `useCallback` to avoid an update per render.
+ */
+function useLiveOptions<TOptions>(
+  instanceRef: { current: { update(patch: Partial<TOptions>): void } | null },
+  config: Record<string, unknown>,
+): void {
+  const previous = useRef<Record<string, string> | null>(null);
+  const prints: Record<string, string> = {};
+  for (const [key, value] of Object.entries(config)) prints[key] = fingerprintOf(value);
+  const combined = JSON.stringify(prints);
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = prints;
+    if (!before) return; // first render: the picker was mounted with these options
+    const patch: Record<string, unknown> = {};
+    for (const key of new Set([...Object.keys(before), ...Object.keys(prints)])) {
+      if (before[key] !== prints[key]) patch[key] = config[key];
+    }
+    if (Object.keys(patch).length) instanceRef.current?.update(patch as Partial<TOptions>);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [combined]);
 }
 
 /**
@@ -137,11 +175,7 @@ export function NepaliDateTimePicker({
 
   // Propagate structural config changes (never callbacks).
   const { onChange, onOpen, onClose, onChangeMonthYear, onClear, ...config } = options;
-  const fingerprint = configFingerprint(config as Record<string, unknown>);
-  useEffect(() => {
-    instanceRef.current?.update(config as Partial<DateTimePickerOptions>);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fingerprint]);
+  useLiveOptions<DateTimePickerOptions>(instanceRef, config as Record<string, unknown>);
 
   return <div ref={hostRef} className={className} />;
 }
@@ -177,11 +211,7 @@ export function NepaliDateRangePicker({
   );
 
   const { onApply, onChange, onOpen, onClose, onClear, ...config } = options;
-  const fingerprint = configFingerprint(config as Record<string, unknown>);
-  useEffect(() => {
-    instanceRef.current?.update(config as Partial<DateRangePickerOptions>);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fingerprint]);
+  useLiveOptions<DateRangePickerOptions>(instanceRef, config as Record<string, unknown>);
 
   return <div ref={hostRef} className={className} />;
 }
@@ -215,11 +245,7 @@ export function NepaliMonthPicker({
   );
 
   const { onChange, onOpen, onClose, onClear, ...config } = options;
-  const fingerprint = configFingerprint(config as Record<string, unknown>);
-  useEffect(() => {
-    instanceRef.current?.update(config as Partial<MonthPickerOptions>);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fingerprint]);
+  useLiveOptions<MonthPickerOptions>(instanceRef, config as Record<string, unknown>);
 
   return <div ref={hostRef} className={className} />;
 }

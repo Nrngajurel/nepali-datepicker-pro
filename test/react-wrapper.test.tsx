@@ -200,3 +200,26 @@ describe('controlled value', () => {
     expect(input.value).toBe('');
   });
 });
+
+describe('option updates', () => {
+  test('a new disabledDates function takes effect after mount', () => {
+    const container = render(createElement(NepaliDateTimePicker, { value: new Date(2024, 3, 13), disabledDates: () => false }));
+    const panel = open(container);
+    expect(panel.querySelectorAll('.ndp-cell.is-disabled').length).toBe(0);
+    rerender(roots[roots.length - 1], createElement(NepaliDateTimePicker, { value: new Date(2024, 3, 13), disabledDates: () => true }));
+    expect(document.querySelectorAll('.ndp-panel .ndp-cell.is-disabled').length).toBeGreaterThan(27);
+  });
+
+  test('re-rendering with inline functions does not reset a half-picked range', () => {
+    const value = { start: new Date(2024, 3, 1), end: new Date(2024, 3, 5) };
+    const el = (n: number) => createElement(NepaliDateRangePicker, { value, disabledDates: () => n < 0 });
+    const container = render(el(1));
+    const panel = open(container);
+    act(() => {
+      panel.querySelector<HTMLElement>('.ndp-cell:not(.ndp-cell--empty)')!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    rerender(roots[roots.length - 1], el(2)); // new inline function, same controlled value
+    const range = document.querySelector('.ndp-panel .ndp-range-hint');
+    expect(range?.textContent).toMatch(/end date/); // still waiting for the end date
+  });
+});

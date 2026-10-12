@@ -152,7 +152,7 @@ No build step required — good for a legacy Blade/PHP page or a CMS.
 
 ### React
 
-All three React components accept every picker option as a **prop** — no options wrapper object needed. Callbacks like `onChange` are stable across renders and never go stale, so you can pass an inline arrow function without triggering unnecessary updates.
+All three React components accept every picker option as a **prop** — no options wrapper object needed. Event callbacks (`onChange`, `onApply`, `onClear`, `onOpen`, `onClose`) never go stale, so inline arrow functions are fine there. Other options are compared per prop when you re-render, and only the ones that changed are applied. Function-valued options such as `disabledDates` count as changed when you pass a new function, so wrap them in `useCallback` to avoid a refresh on every render.
 
 ```tsx
 import { NepaliDateTimePicker, NepaliDateRangePicker, NepaliMonthPicker } from 'nepali-datepicker-pro/react';

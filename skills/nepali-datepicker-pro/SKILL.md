@@ -133,6 +133,7 @@ needed on your end:
 
 - Forgetting `import 'nepali-datepicker-pro/style.css'` — nothing looks broken in code, but the popup renders unstyled.
 - `data-nepali-datepicker` HTML attribute auto-init only covers a small subset of options (`data-with-time`, `data-value-format`, `data-submit-name`, `data-fiscal-start-month`, etc. — see reference.md). Anything else (callbacks, `disabledDates`, `presets`) needs the JS API, not attributes.
+- React: event callbacks can be inline, but wrap function *options* (`disabledDates`, `disabledTimes`) in `useCallback` — a new function each render re-applies that option.
 - Vue: passing options as top-level component props (React-style) instead of `:options="{...}"` silently does nothing.
 - jQuery: methods return the plugin (chainable) except `'getValue'`/`'getState'`, which return a value/`undefined` for the *first* matched element only.
 - Range picker's `onChange` fires on every click/preset selection *before* Apply; `onApply` is the commit event — don't treat `onChange` as "range is final."

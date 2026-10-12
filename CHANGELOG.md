@@ -51,6 +51,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- React: changing a function option such as `disabledDates` after mount now takes effect (functions
+  were ignored when checking for changes). Only the props that changed are applied, so re-rendering
+  doesn't reset a half-picked range.
 - A custom `adapter` is now used for everything the popup shows (month names, digits, weekday
   labels, cross-calendar hints), not just for the value. The panel used to draw with the built-in
   adapter regardless.
