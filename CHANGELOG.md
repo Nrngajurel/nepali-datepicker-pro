@@ -17,6 +17,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Clearing is keyboard-first: **Ctrl/⌘ + Backspace** (or Delete) clears the field, and a read-only
+  field also clears with plain Backspace/Delete. The × button is now a small, quiet control that
+  appears on hover or focus (always visible on touch screens) and is skipped when tabbing through a
+  form. `clearable: false` still turns clearing off.
 - The year view is now one scrollable list of every supported year, opened centered on the current
   year, instead of pages of 12 years stepped with ‹ › buttons. Scroll or swipe to any year directly.
 - Pinned `esbuild`/`vite` (via `overrides` in `package.json`) to patched versions to close the

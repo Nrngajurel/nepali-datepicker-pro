@@ -41,6 +41,8 @@ export interface SegmentedFieldConfig {
 
 export interface SegmentedField {
   isEditing: () => boolean;
+  /** Re-seed an in-progress edit from the committed value (e.g. after a clear). */
+  reset: () => void;
   destroy: () => void;
 }
 
@@ -302,6 +304,9 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
 
   return {
     isEditing: () => editing,
+    reset() {
+      if (editing) beginEditing();
+    },
     destroy() {
       input.classList.remove('ndp-trigger--segmented');
       input.removeEventListener('keydown', onKeydown);

@@ -153,27 +153,49 @@
   top: 50%;
   right: 7px;
   transform: translateY(-50%);
-  width: 22px;
-  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
   border: 0;
   border-radius: 50%;
-  background: var(--ndp-color-text-faint);
-  color: var(--ndp-color-surface);
-  font-size: 12px;
-  line-height: 22px;
-  text-align: center;
+  background: transparent;
+  color: var(--ndp-color-text-faint);
   cursor: pointer;
   padding: 0;
-  transition: var(--ndp-transition);
+  opacity: 0.7;
+  transition: var(--ndp-transition), opacity 0.12s ease;
 }
 
 .ndp-clear:hover {
-  background: var(--ndp-color-text-muted);
+  background: var(--ndp-color-surface-hover);
+  color: var(--ndp-color-text);
+  opacity: 1;
 }
 
 .ndp-clear:focus-visible {
   outline: 2px solid var(--ndp-color-focus);
-  outline-offset: 2px;
+  outline-offset: 1px;
+  opacity: 1;
+}
+
+/* Where the pointer can hover, the × stays out of the way until the field is
+   hovered or focused — clearing is mainly a keyboard shortcut (Ctrl/⌘ +
+   Backspace). Touch screens can't hover, so it stays (faintly) visible there. */
+@media (hover: hover) {
+  .ndp-trigger-wrap .ndp-clear {
+    opacity: 0;
+  }
+
+  .ndp-trigger-wrap:hover .ndp-clear,
+  .ndp-trigger-wrap:focus-within .ndp-clear {
+    opacity: 0.7;
+  }
+
+  .ndp-trigger-wrap .ndp-clear:hover {
+    opacity: 1;
+  }
 }
 
 .ndp-panel-root {

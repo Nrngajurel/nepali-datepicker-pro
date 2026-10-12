@@ -235,3 +235,46 @@ test('clearing notifies: × button fires onClear, the clear.* DOM event and onCl
     assert.equal(calls.length, 3, 'setValue(null) is silent');
   }
 });
+
+test('clear shortcut: Ctrl/⌘+Backspace clears a typeable field; plain Backspace only edits a section', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  let cleared = 0;
+  const picker = mountDateTimePicker(input, { value: new Date(2024, 3, 15), onClear: () => { cleared += 1; } });
+  input.focus();
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true }));
+  assert.equal(cleared, 0, 'plain Backspace does not clear the whole value');
+  assert.ok(picker.getValue(), 'value still set');
+
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', ctrlKey: true, bubbles: true, cancelable: true }));
+  assert.equal(cleared, 1);
+  assert.equal(picker.getValue(), null);
+  assert.ok(!/\d/.test(input.value), 'the in-progress edit is reset too (no stale digits)');
+
+  picker.setValue(new Date(2024, 3, 15) as never); // runtime accepts a Date; the public type is narrower
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', metaKey: true, bubbles: true, cancelable: true }));
+  assert.equal(cleared, 2, '⌘+Delete works too');
+});
+
+test('clear shortcut: plain Backspace/Delete clears a read-only trigger; clearable:false disables clearing', () => {
+  const a = document.createElement('input');
+  const b = document.createElement('input');
+  document.body.append(a, b);
+  const ro = mountDateTimePicker(a, { value: new Date(2024, 3, 15), allowInput: false });
+  a.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true }));
+  assert.equal(ro.getValue(), null);
+
+  const fixed = mountDateTimePicker(b, { value: new Date(2024, 3, 15), clearable: false });
+  b.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', ctrlKey: true, bubbles: true, cancelable: true }));
+  assert.ok(fixed.getValue(), 'not clearable → shortcut does nothing');
+});
+
+test('the × button is out of the Tab order and advertises the shortcut', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  mountDateTimePicker(input, { value: new Date(2024, 3, 15) });
+  const btn = document.querySelector<HTMLButtonElement>('.ndp-clear')!;
+  assert.equal(btn.getAttribute('tabindex'), '-1');
+  assert.match(btn.title, /Backspace/);
+  assert.equal(btn.getAttribute('aria-label'), 'Clear');
+});

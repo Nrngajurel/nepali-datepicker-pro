@@ -103,7 +103,7 @@ Pick one BS month, get back the AD `{ start, end }` range it covers.
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `clearable` | `boolean` | `true` | Show a × button to clear the current value |
+| `clearable` | `boolean` | `true` | Let the user clear the value: **Ctrl/⌘ + Backspace** (or Delete) in the field, plain Backspace/Delete on a read-only field, or a small × that appears on hover (always visible on touch screens, never in the Tab order). `false` turns all of these off |
 | `appendTo` | `string \| HTMLElement` | `document.body` | Where the popup portal is mounted |
 | `opens` | `'left' \| 'right' \| 'center' \| 'auto'` | `'auto'` | Horizontal alignment relative to the input |
 | `drops` | `'down' \| 'up' \| 'auto'` | `'auto'` | Whether the popup opens below or above the input |

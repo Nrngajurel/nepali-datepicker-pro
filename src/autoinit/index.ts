@@ -95,6 +95,7 @@ function createHiddenSubmit(name: string, wrapper: HTMLElement, visible: HTMLInp
  *  and `allowModeToggle` can be toggled at runtime via `update()`. */
 function withInputGroup(
   trigger: HTMLElement,
+  signal: AbortSignal,
   shouldShowClear: () => boolean,
   onClear: () => void,
   modeSwitch?: { mode: () => 'BS' | 'AD'; toggle: () => void; enabled: () => boolean },
@@ -104,13 +105,34 @@ function withInputGroup(
   trigger.parentNode?.insertBefore(wrapper, trigger);
   wrapper.appendChild(trigger);
 
-  // ---- clear button ----
+  // ---- clear: keyboard shortcut first, a quiet × button as the fallback ----
+  // Ctrl/⌘ + Backspace/Delete clears from the keyboard (a typeable field keeps
+  // plain Backspace for editing one section); a read-only trigger also takes
+  // plain Backspace/Delete. The × stays out of the Tab order so tabbing through
+  // a form never stops on it, and only shows on hover/focus where there's a
+  // pointer that can hover (see theme.css).
+  trigger.addEventListener('keydown', (event: Event) => {
+    const e = event as KeyboardEvent;
+    if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+    const readOnly = !(trigger instanceof HTMLInputElement) || trigger.readOnly;
+    const shortcut = (e.ctrlKey || e.metaKey) && !e.altKey;
+    const plain = readOnly && !e.ctrlKey && !e.metaKey && !e.altKey;
+    if ((shortcut || plain) && shouldShowClear()) {
+      e.preventDefault();
+      onClear();
+    }
+  }, { signal });
+
   const clearBtn = document.createElement('button');
   clearBtn.className = 'ndp-clear';
   clearBtn.setAttribute('type', 'button');
+  clearBtn.setAttribute('tabindex', '-1');
   clearBtn.setAttribute('aria-label', 'Clear');
-  clearBtn.innerHTML = '&#215;';
+  clearBtn.setAttribute('aria-keyshortcuts', 'Control+Backspace Meta+Backspace');
+  clearBtn.title = 'Clear (Ctrl/⌘ + Backspace)';
+  clearBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
   clearBtn.style.display = 'none';
+  clearBtn.addEventListener('mousedown', (e) => e.preventDefault()); // keep focus where it is
   clearBtn.addEventListener('click', (e) => {
     e.stopPropagation();
     onClear();
@@ -202,6 +224,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   const inputGroup = trigger instanceof HTMLInputElement
     ? withInputGroup(
       trigger,
+      signal,
       () => merged.clearable !== false && controller.getValue() !== null,
       () => controller.clear(),
       { mode: () => controller.getState().mode, toggle: () => controller.toggleMode(), enabled: () => merged.allowModeToggle !== false },
@@ -293,7 +316,10 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
-  controller.onClear(() => target.dispatchEvent(new CustomEvent('clear.nepaliDateRangePicker', { bubbles: true })));
+  controller.onClear(() => {
+    segmented?.reset();
+    target.dispatchEvent(new CustomEvent('clear.nepaliDateRangePicker', { bubbles: true }));
+  });
   controller.onChange((value) => {
     updateInput(value);
     inputGroup?.updateClear();
@@ -340,6 +366,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   const inputGroup = trigger instanceof HTMLInputElement
     ? withInputGroup(
       trigger,
+      signal,
       () => merged.clearable !== false && controller.getValue() !== null,
       () => controller.clear(),
       { mode: () => controller.getState().mode, toggle: () => controller.toggleMode(), enabled: () => merged.allowModeToggle !== false },
@@ -435,7 +462,10 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   if (!allowInput) trigger.addEventListener('focus', () => controller.show(), { signal });
   trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
-  controller.onClear(() => target.dispatchEvent(new CustomEvent('clear.nepaliDatePicker', { bubbles: true })));
+  controller.onClear(() => {
+    segmented?.reset();
+    target.dispatchEvent(new CustomEvent('clear.nepaliDatePicker', { bubbles: true }));
+  });
   controller.onChange((value) => {
     updateInput(value);
     inputGroup?.updateClear();
@@ -482,7 +512,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   const stopTracking = trackPosition(trigger, portal, merged, () => controller.getState().isOpen);
 
   const inputGroup = trigger instanceof HTMLInputElement
-    ? withInputGroup(trigger, () => merged.clearable !== false && controller.getValue() !== null, () => controller.clear())
+    ? withInputGroup(trigger, signal, () => merged.clearable !== false && controller.getValue() !== null, () => controller.clear())
     : null;
 
   // A month is a from→to date range, so it delivers start/end machine values
@@ -568,7 +598,10 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
-  controller.onClear(() => target.dispatchEvent(new CustomEvent('clear.nepaliMonthPicker', { bubbles: true })));
+  controller.onClear(() => {
+    segmented?.reset();
+    target.dispatchEvent(new CustomEvent('clear.nepaliMonthPicker', { bubbles: true }));
+  });
   controller.onChange((value) => {
     updateInput(value);
     inputGroup?.updateClear();
