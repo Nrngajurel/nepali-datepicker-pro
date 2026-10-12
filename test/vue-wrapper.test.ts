@@ -7,6 +7,7 @@
 import { describe, test, expect, afterEach } from 'vitest';
 import { createApp, h, ref, nextTick, type App } from 'vue';
 import {
+  NepaliYearPicker,
   NepaliDateTimePicker,
   NepaliDateRangePicker,
   NepaliMonthPicker,
@@ -229,5 +230,25 @@ describe('clearing', () => {
     expect(model.value).toBeNull();
     expect(cleared).toBe(1);
     expect(host.querySelector('input')!.value).toBe('');
+  });
+});
+
+describe('template ref API and new pickers', () => {
+  test('expose(): getValue / setValue / show through a template ref', async () => {
+    const picker = ref<{ getValue(): DateTimeResult | null; setValue(v: Date | null): void; show(): void } | null>(null);
+    mountApp(() => h(NepaliDateTimePicker, { ref: picker, modelValue: new Date(2024, 3, 15) }));
+    await nextTick();
+    expect(picker.value!.getValue()!.ad.getDate()).toBe(15);
+    picker.value!.setValue(new Date(2024, 3, 20));
+    expect(picker.value!.getValue()!.ad.getDate()).toBe(20);
+    picker.value!.show();
+    expect(document.querySelector('.ndp-panel')).toBeTruthy();
+  });
+
+  test('NepaliYearPicker: v-model is the year number', async () => {
+    const model = ref<number | null>(2081);
+    const host = mountApp(() => h(NepaliYearPicker, { modelValue: model.value, 'onUpdate:modelValue': (v: number | null) => { model.value = v; } }));
+    await nextTick();
+    expect(host.querySelector('input')!.value).toBe('2081');
   });
 });

@@ -1,30 +1,110 @@
+/* Design tokens. Override any of these on :root (or on a wrapper element) to
+   theme the pickers. Colors meet WCAG 2.2 AA: text ≥ 4.5:1, controls and focus
+   indicators ≥ 3:1 against the surfaces they sit on. */
 :root {
-  --ndp-color-primary: #2f8f4e;
-  --ndp-color-primary-hover: #267942;
+  --ndp-color-primary: #257a41;
+  --ndp-color-primary-hover: #1f6837;
   --ndp-color-primary-bg: #e8f5ed;
+  /* Text/icons drawn on the primary color (selected days, header, Apply). */
+  --ndp-color-on-primary: #ffffff;
   --ndp-color-accent: #245c7a;
   --ndp-color-surface: #ffffff;
   --ndp-color-surface-subtle: #f3f6f7;
   --ndp-color-surface-hover: #e8ecef;
   --ndp-color-page: #f6f7f8;
   --ndp-color-text: #262b30;
-  --ndp-color-text-muted: #717982;
-  --ndp-color-text-faint: #727a83;
+  --ndp-color-text-muted: #5f6670;
+  --ndp-color-text-faint: #636b74;
   --ndp-color-border: #dfe4e8;
-  --ndp-color-danger: #d64545;
+  --ndp-color-danger: #c53030;
+  /* Weekend days and holidays (Saturday, by Nepali calendar convention). */
+  --ndp-color-weekend: var(--ndp-color-danger);
+  --ndp-color-holiday: var(--ndp-color-danger);
+  --ndp-color-event: var(--ndp-color-accent);
+  --ndp-color-range-bg: var(--ndp-color-primary-bg);
   --ndp-color-focus: var(--ndp-color-accent);
+  --ndp-color-backdrop: rgba(15, 23, 32, 0.45);
   --ndp-radius: 8px;
   --ndp-radius-lg: 14px;
   --ndp-shadow: 0 12px 30px rgba(18, 28, 38, 0.16);
   --ndp-z-index: 1000;
   --ndp-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans Devanagari", Arial, sans-serif;
+  --ndp-font-size: 14px;
+  --ndp-font-size-sm: 12px;
+  --ndp-font-size-xs: 11px;
+  /* Day cell height; each panel sets its own default, `density` overrides it. */
+  --ndp-cell-height: 44px;
+  --ndp-gap: 2px;
+  --ndp-focus-ring: 2px solid var(--ndp-color-focus);
   --ndp-transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+}
+
+/* Dark theme: `theme: 'dark'` (or data-ndp-theme="dark" on any ancestor, e.g.
+   <html>), or `theme: 'auto'` / data-ndp-theme="auto" to follow the OS. */
+[data-ndp-theme="dark"] {
+  --ndp-color-primary: #4cc47a;
+  --ndp-color-primary-hover: #63d18d;
+  --ndp-color-primary-bg: #1f3a2a;
+  --ndp-color-on-primary: #0d1f14;
+  --ndp-color-accent: #7cc4f0;
+  --ndp-color-surface: #1d2227;
+  --ndp-color-surface-subtle: #252b31;
+  --ndp-color-surface-hover: #2d343b;
+  --ndp-color-page: #16191d;
+  --ndp-color-text: #e6e9ec;
+  --ndp-color-text-muted: #9aa3ad;
+  --ndp-color-text-faint: #8f98a2;
+  --ndp-color-border: #353d45;
+  --ndp-color-danger: #ff7b7b;
+  --ndp-color-backdrop: rgba(0, 0, 0, 0.6);
+  --ndp-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-ndp-theme="auto"] {
+    --ndp-color-primary: #4cc47a;
+    --ndp-color-primary-hover: #63d18d;
+    --ndp-color-primary-bg: #1f3a2a;
+    --ndp-color-on-primary: #0d1f14;
+    --ndp-color-accent: #7cc4f0;
+    --ndp-color-surface: #1d2227;
+    --ndp-color-surface-subtle: #252b31;
+    --ndp-color-surface-hover: #2d343b;
+    --ndp-color-page: #16191d;
+    --ndp-color-text: #e6e9ec;
+    --ndp-color-text-muted: #9aa3ad;
+    --ndp-color-text-faint: #8f98a2;
+    --ndp-color-border: #353d45;
+    --ndp-color-danger: #ff7b7b;
+    --ndp-color-backdrop: rgba(0, 0, 0, 0.6);
+    --ndp-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+    color-scheme: dark;
+  }
+}
+
+[data-ndp-theme="light"] {
+  color-scheme: light;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root {
     --ndp-transition: none;
   }
+}
+
+/* Visually hidden, still read by screen readers. */
+.ndp-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 .ndp-trigger {
@@ -56,13 +136,18 @@
 }
 
 .ndp-trigger--segmented::selection {
-  background: var(--ndp-color-primary-bg);
-  color: var(--ndp-color-primary);
+  background: var(--ndp-color-primary);
+  color: var(--ndp-color-on-primary);
 }
 
 .ndp-trigger--segmented::-moz-selection {
-  background: var(--ndp-color-primary-bg);
-  color: var(--ndp-color-primary);
+  background: var(--ndp-color-primary);
+  color: var(--ndp-color-on-primary);
+}
+
+/* Editing an empty field: the YYYY-MM-DD mask is a faint hint. */
+.ndp-trigger--segmented.is-mask {
+  color: var(--ndp-color-text-faint);
 }
 
 .ndp-trigger--segmented::placeholder {
@@ -102,6 +187,7 @@
 .ndp-trigger-wrap .ndp-trigger {
   flex: 1;
   min-width: 0;
+  text-overflow: ellipsis;
   border: 0;
   border-radius: 0;
 }
@@ -114,9 +200,38 @@
   outline: none;
 }
 
-.ndp-trigger-wrap:focus-within {
+.ndp-trigger-wrap {
+  transition: var(--ndp-transition);
+}
+
+.ndp-trigger-wrap:hover:not(.is-disabled) {
+  border-color: color-mix(in srgb, var(--ndp-color-text-faint) 60%, var(--ndp-color-border));
+}
+
+.ndp-trigger-wrap:focus-within,
+.ndp-trigger-wrap.is-open {
   border-color: var(--ndp-color-focus);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--ndp-color-focus) 18%, transparent);
+}
+
+/* Confirm: a value just landed in the field. */
+.ndp-trigger-wrap.is-updated {
+  animation: ndp-field-confirm 0.6s ease-out;
+}
+
+/* Refused input: a short shake next to the message. */
+.ndp-trigger-wrap.is-rejected {
+  animation: ndp-shake 0.36s ease-in-out;
+}
+
+@keyframes ndp-field-confirm {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--ndp-color-primary) 50%, transparent); }
+  100% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--ndp-color-primary) 0%, transparent); }
+}
+
+@keyframes ndp-shake {
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
 }
 
 .ndp-trigger-wrap:has(.ndp-input-invalid):focus-within {
@@ -163,6 +278,71 @@
 
 .ndp-mode-toggle[data-mode="BS"] {
   color: var(--ndp-color-primary);
+}
+
+.ndp-mode-toggle[data-mode="AD"] {
+  color: var(--ndp-color-accent);
+}
+
+/* Switching calendars: the swap icon turns once. */
+.ndp-mode-toggle.is-switched svg {
+  animation: ndp-swap 0.32s ease-out;
+}
+
+@keyframes ndp-swap {
+  from { transform: rotate(-180deg); }
+  to { transform: none; }
+}
+
+/* "BS" / "AD" right after the field's date: which calendar it's in. Plain
+   text in the field's own font and the mask's faint color — part of the
+   field, not a badge. Placed by the script a few spaces after the visible
+   text; never covered by it. */
+.ndp-cal-suffix {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ndp-color-text-faint);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.ndp-cal-suffix-mirror {
+  position: absolute;
+  top: 0;
+  left: -9999px;
+  visibility: hidden;
+  white-space: pre;
+}
+
+/* Leading calendar icon: the field reads as a date field before it's touched,
+   and lights up while it's active. */
+.ndp-field-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding-left: 11px;
+  color: var(--ndp-color-text-faint);
+  cursor: pointer;
+  transition: var(--ndp-transition);
+}
+
+.ndp-trigger-wrap.has-icon .ndp-trigger {
+  padding-left: 8px;
+}
+
+.ndp-trigger-wrap.is-filled .ndp-field-icon {
+  color: var(--ndp-color-text-muted);
+}
+
+.ndp-trigger-wrap:focus-within .ndp-field-icon,
+.ndp-trigger-wrap.is-open .ndp-field-icon {
+  color: var(--ndp-color-primary);
+}
+
+.ndp-trigger-wrap[data-mode="AD"]:focus-within .ndp-field-icon,
+.ndp-trigger-wrap[data-mode="AD"].is-open .ndp-field-icon {
+  color: var(--ndp-color-accent);
 }
 
 .ndp-clear {
@@ -248,15 +428,15 @@
   width: min(340px, calc(100vw - 16px));
 }
 
-.ndp-panel--date-only .ndp-cell {
-  height: 38px;
+.ndp-panel--date-only {
+  --ndp-cell-height: 38px;
 }
 
 .ndp-panel--date-only .ndp-cal-col {
   padding: 10px;
 }
 
-.ndp-panel--date-only .ndp-weekdays {
+.ndp-panel--date-only .ndp-grid {
   margin-top: 6px;
 }
 
@@ -282,15 +462,15 @@
   padding: 12px 12px 4px;
 }
 
-.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-cell {
-  height: 40px;
+.ndp-panel--datetime:not(.ndp-panel--date-only) {
+  --ndp-cell-height: 40px;
 }
 
 .ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-cal-header {
   padding: 6px;
 }
 
-.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-weekdays {
+.ndp-panel--datetime:not(.ndp-panel--date-only) .ndp-grid {
   margin-top: 8px;
 }
 
@@ -365,15 +545,15 @@
   width: min(520px, calc(100vw - 16px));
 }
 
-.ndp-panel--compact .ndp-cell {
-  height: 36px;
+.ndp-panel--compact {
+  --ndp-cell-height: 36px;
 }
 
 .ndp-panel--compact .ndp-cal-col {
   padding: 10px;
 }
 
-.ndp-panel--compact .ndp-weekdays {
+.ndp-panel--compact .ndp-grid {
   margin-top: 5px;
 }
 
@@ -397,7 +577,7 @@
 }
 
 .ndp-panel--compact .ndp-cal-label-secondary {
-  font-size: 10px;
+  font-size: var(--ndp-font-size-xs);
 }
 
 .ndp-panel--compact .ndp-preset,
@@ -410,8 +590,8 @@
   width: 155px;
 }
 
-.ndp-panel--compact .ndp-grid {
-  gap: 1px;
+.ndp-panel--compact {
+  --ndp-gap: 1px;
 }
 
 .ndp-panel--compact .ndp-cell-primary {
@@ -419,7 +599,7 @@
 }
 
 .ndp-panel--compact .ndp-cell-secondary {
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .ndp-panel--compact .ndp-input-group {
@@ -431,7 +611,7 @@
 }
 
 .ndp-panel--compact .ndp-ig-label {
-  font-size: 9px;
+  font-size: var(--ndp-font-size-xs);
 }
 
 .ndp-panel--compact .ndp-ig-value {
@@ -596,7 +776,7 @@
   gap: 2px;
   border-radius: var(--ndp-radius);
   background: var(--ndp-color-primary);
-  color: #fff;
+  color: var(--ndp-color-on-primary);
   padding: 7px;
 }
 
@@ -605,17 +785,20 @@
   min-height: 34px;
   border-radius: 4px;
   background: transparent;
-  color: #fff;
+  color: var(--ndp-color-on-primary);
+  font-size: 16px;
   cursor: pointer;
   transition: var(--ndp-transition);
 }
 
+/* Hover deepens the header color (primary-hover) rather than washing it
+   out, so the label keeps its contrast. */
 .ndp-nav:hover {
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--ndp-color-primary-hover);
 }
 
 .ndp-nav:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--ndp-color-on-primary);
   outline-offset: -2px;
 }
 
@@ -636,12 +819,12 @@
   transition: var(--ndp-transition);
 }
 
-.ndp-cal-label:hover {
-  background: rgba(255, 255, 255, 0.18);
+.ndp-cal-label:not(.ndp-cal-label--static):hover {
+  background: var(--ndp-color-primary-hover);
 }
 
 .ndp-cal-label:focus-visible {
-  outline: 2px solid #fff;
+  outline: 2px solid var(--ndp-color-on-primary);
   outline-offset: -2px;
 }
 
@@ -651,48 +834,55 @@
   letter-spacing: -0.01em;
 }
 
-.ndp-cal-label-secondary {
+.ndp-cal-caret {
+  margin-left: 4px;
   font-size: 11px;
+}
+
+.ndp-cal-label-secondary {
+  font-size: var(--ndp-font-size-xs);
   font-weight: 600;
-  opacity: 0.86;
+}
+
+.ndp-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ndp-gap);
+  margin-top: 10px;
 }
 
 .ndp-weekdays,
-.ndp-grid {
+.ndp-week {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: var(--ndp-gap);
 }
 
 .ndp-weekdays {
-  margin-top: 10px;
   color: var(--ndp-color-text-muted);
   text-align: center;
 }
 
 .ndp-weekday {
   padding: 4px 0;
-  font-size: 10px;
+  font-size: var(--ndp-font-size-xs);
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.8;
 }
 
 /* Saturday is Nepal's weekly holiday — the calendar convention (matching
-   printed BS calendars) is to mark that whole column in red. The grid always
-   lays out Sunday-first regardless of mode, so column 7 is always Saturday. */
-.ndp-weekday:nth-child(7n) {
-  color: var(--ndp-color-danger);
-}
-
-.ndp-grid {
-  gap: 2px;
+   printed BS calendars) is to mark that whole column in red. Which column that
+   is follows weekStartsOn; weekendDays picks the days. */
+.ndp-weekday.is-weekend {
+  color: var(--ndp-color-weekend);
 }
 
 .ndp-cell {
+  position: relative;
   display: flex;
   min-width: 0;
-  height: 44px;
+  height: var(--ndp-cell-height);
   flex-direction: column;
   align-items: center;
   justify-content: center;
@@ -721,14 +911,24 @@
   background: transparent;
 }
 
-.ndp-cell:not(.ndp-cell--empty):not(.is-disabled):hover {
+.ndp-cell:not(.ndp-cell--empty):not(.is-disabled):not(.is-range-start):not(.is-range-end):hover {
   background: var(--ndp-color-primary-bg);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ndp-color-primary) 30%, transparent);
 }
 
+/* Hovering the selected day keeps it selected-looking (it used to wash out
+   to the hover tint, hiding its on-primary text). */
+.ndp-cell.is-range-start:not(.is-disabled):hover,
+.ndp-cell.is-range-end:not(.is-disabled):hover {
+  background: var(--ndp-color-primary-hover);
+}
+
+/* An outline, not a box-shadow, so it never fights the today ring, the hover
+   tint or a selected day's lift — the focused day always shows a full ring. */
 .ndp-cell:not(.ndp-cell--empty):focus-visible {
-  box-shadow: inset 0 0 0 2px var(--ndp-color-focus);
-  outline: none;
+  outline: var(--ndp-focus-ring);
+  outline-offset: 1px;
+  z-index: 1;
 }
 
 .ndp-cell-primary {
@@ -738,11 +938,11 @@
 
 .ndp-cell-secondary {
   color: var(--ndp-color-text-faint);
-  font-size: 10px;
+  font-size: var(--ndp-font-size-xs);
 }
 
 .ndp-cell.is-in-range {
-  background: var(--ndp-color-primary-bg);
+  background: var(--ndp-color-range-bg);
   border-radius: 0;
 }
 
@@ -778,7 +978,7 @@
 .ndp-cell.is-range-start,
 .ndp-cell.is-range-end {
   background: var(--ndp-color-primary);
-  color: #fff;
+  color: var(--ndp-color-on-primary);
   /* Selected caps get a colored "lift" so they read as raised/tactile, not
      just a flat color swap. */
   box-shadow: 0 4px 10px color-mix(in srgb, var(--ndp-color-primary) 40%, transparent);
@@ -786,14 +986,19 @@
 
 .ndp-cell.is-range-start .ndp-cell-secondary,
 .ndp-cell.is-range-end .ndp-cell-secondary {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--ndp-color-on-primary);
 }
 
-/* Saturday column reads in red, like a printed BS calendar — unless the cell
-   is disabled (muted takes over) or selected/in-range (white takes over). */
-.ndp-cell:nth-child(7n):not(.is-disabled) .ndp-cell-primary,
-.ndp-cell:nth-child(7n):not(.is-disabled) .ndp-cell-secondary {
-  color: var(--ndp-color-danger);
+/* Weekend days and holidays read in red, like a printed BS calendar — unless
+   the cell is disabled (muted takes over) or selected (on-primary takes over). */
+.ndp-cell.is-weekend:not(.is-disabled) .ndp-cell-primary,
+.ndp-cell.is-weekend:not(.is-disabled) .ndp-cell-secondary {
+  color: var(--ndp-color-weekend);
+}
+
+.ndp-cell.is-holiday:not(.is-disabled) .ndp-cell-primary,
+.ndp-cell.is-holiday:not(.is-disabled) .ndp-cell-secondary {
+  color: var(--ndp-color-holiday);
 }
 
 /* "Today" gets a ring instead of relying on color alone, so it stays
@@ -808,20 +1013,65 @@
   color: var(--ndp-color-primary);
 }
 
-.ndp-cell.is-range-start:nth-child(7n) .ndp-cell-primary,
-.ndp-cell.is-range-end:nth-child(7n) .ndp-cell-primary,
-.ndp-cell.is-range-start:nth-child(7n) .ndp-cell-secondary,
-.ndp-cell.is-range-end:nth-child(7n) .ndp-cell-secondary {
-  color: #fff;
+.ndp-cell.is-range-start .ndp-cell-primary,
+.ndp-cell.is-range-end .ndp-cell-primary,
+.ndp-cell.is-range-start.is-weekend .ndp-cell-secondary,
+.ndp-cell.is-range-end.is-weekend .ndp-cell-secondary,
+.ndp-cell.is-range-start.is-holiday .ndp-cell-secondary,
+.ndp-cell.is-range-end.is-holiday .ndp-cell-secondary {
+  color: var(--ndp-color-on-primary);
+}
+
+/* Event dots and badges (events / dayCellProps). */
+.ndp-cell-dots {
+  position: absolute;
+  bottom: 3px;
+  left: 50%;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+
+.ndp-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--ndp-color-event);
+}
+
+.ndp-cell.is-range-start .ndp-dot,
+.ndp-cell.is-range-end .ndp-dot {
+  background: var(--ndp-color-on-primary);
+}
+
+.ndp-cell-badge {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ndp-color-text-muted);
+  font-size: 9px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ndp-cell.is-range-start .ndp-cell-badge,
+.ndp-cell.is-range-end .ndp-cell-badge {
+  color: var(--ndp-color-on-primary);
 }
 
 /* Month & year selection views (opened by clicking the header label). */
 .ndp-monthgrid,
 .ndp-yeargrid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.ndp-gridrow {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-top: 10px;
 }
 
 .ndp-monthcell,
@@ -848,29 +1098,29 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ndp-color-primary) 30%, transparent);
 }
 
-.ndp-monthcell:not(.is-disabled):focus-visible,
+.ndp-monthcell:focus-visible,
 .ndp-yearcell:not(.ndp-yearcell--empty):focus-visible {
-  box-shadow: inset 0 0 0 2px var(--ndp-color-focus);
-  outline: none;
+  outline: var(--ndp-focus-ring);
+  outline-offset: 1px;
 }
 
 .ndp-monthcell.is-selected,
 .ndp-yearcell.is-selected {
   background: var(--ndp-color-primary);
-  color: #fff;
+  color: var(--ndp-color-on-primary);
   box-shadow: 0 4px 10px color-mix(in srgb, var(--ndp-color-primary) 40%, transparent);
 }
 
 .ndp-monthcell-en,
 .ndp-yearcell-en {
-  font-size: 10px;
+  font-size: var(--ndp-font-size-xs);
   font-weight: 400;
   color: var(--ndp-color-text-faint);
 }
 
 .ndp-monthcell.is-selected .ndp-monthcell-en,
 .ndp-yearcell.is-selected .ndp-yearcell-en {
-  color: rgba(255, 255, 255, 0.82);
+  color: var(--ndp-color-on-primary);
 }
 
 /* Month selection (selectionUnit: 'month') — one month = its full date span. */
@@ -878,10 +1128,16 @@
   margin-top: 8px;
 }
 
-.ndp-monthcell.is-disabled {
-  opacity: 0.32;
+.ndp-monthcell.is-disabled,
+.ndp-yearcell.is-disabled {
+  opacity: 0.38;
   cursor: not-allowed;
-  pointer-events: none;
+}
+
+.ndp-monthcell.is-disabled:hover,
+.ndp-yearcell.is-disabled:hover {
+  background: transparent;
+  box-shadow: none;
 }
 
 .ndp-cal-label--static {
@@ -898,6 +1154,7 @@
   overscroll-behavior: contain;
   padding: 2px;
   scrollbar-width: thin;
+  scrollbar-color: var(--ndp-color-border) transparent;
   /* Faded edges + a partly visible row above and below signal "scrolls". */
   -webkit-mask-image: linear-gradient(transparent, #000 14px, #000 calc(100% - 14px), transparent);
   mask-image: linear-gradient(transparent, #000 14px, #000 calc(100% - 14px), transparent);
@@ -932,9 +1189,10 @@
 
 .ndp-today-btn {
   appearance: none;
+  min-height: 24px; /* WCAG 2.5.8 target size */
   border: 1px solid var(--ndp-color-border);
   border-radius: 999px;
-  padding: 2px 9px;
+  padding: 2px 10px;
   background: transparent;
   color: var(--ndp-color-primary);
   font: 700 11px var(--ndp-font);
@@ -1109,6 +1367,18 @@
   transition: color 0.12s ease, font-size 0.12s ease;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .ndp-wheel-item {
+    transition: none;
+  }
+}
+
+.ndp-wheel-list:focus-visible {
+  outline: var(--ndp-focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--ndp-radius);
+}
+
 .ndp-wheel-item:hover:not(.is-disabled) {
   color: var(--ndp-color-text);
 }
@@ -1167,7 +1437,7 @@
 
 .ndp-apply {
   background: var(--ndp-color-primary);
-  color: #fff;
+  color: var(--ndp-color-on-primary);
   box-shadow: 0 2px 6px color-mix(in srgb, var(--ndp-color-primary) 30%, transparent);
 }
 
@@ -1282,8 +1552,8 @@
     min-height: 36px;
   }
 
-  .ndp-panel--compact .ndp-cell {
-    height: 40px;
+  .ndp-panel--compact {
+    --ndp-cell-height: 40px;
   }
 }
 
@@ -1424,7 +1694,7 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: rgba(15, 23, 32, 0.45);
+  background: var(--ndp-color-backdrop);
   animation: ndp-fade-in 0.18s ease-out;
 }
 
@@ -1445,8 +1715,7 @@
 }
 
 /* Keep the confirm buttons reachable while the sheet's content scrolls. */
-.ndp-sheet .ndp-button-row,
-.ndp-sheet .ndp-panel--range .ndp-apply {
+.ndp-sheet .ndp-button-row {
   position: sticky;
   bottom: 0;
   z-index: 1;
@@ -1478,5 +1747,408 @@
   .ndp-sheet::before,
   .ndp-sheet--enter .ndp-panel {
     animation: none;
+  }
+}
+
+/* ---- footer rows ------------------------------------------------------------ */
+.ndp-button-row--single {
+  grid-template-columns: 1fr;
+}
+
+.ndp-button-row .ndp-apply,
+.ndp-button-row .ndp-secondary,
+.ndp-panel--compact .ndp-button-row .ndp-apply {
+  margin-top: 0;
+}
+
+.ndp-panel--range .ndp-button-row {
+  margin-top: 10px;
+}
+
+/* ---- range: two months, presets-only, per-end times ------------------------- */
+.ndp-months {
+  display: flex;
+  gap: 18px;
+}
+
+.ndp-month {
+  min-width: 0;
+  flex: 1;
+}
+
+.ndp-panel--two-months {
+  width: min(780px, calc(100vw - 16px));
+}
+
+.ndp-panel--presets-only {
+  width: auto;
+  min-width: min(360px, calc(100vw - 16px));
+}
+
+.ndp-ig-span {
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ndp-color-text-muted);
+}
+
+.ndp-range-times {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-top: 10px;
+}
+
+.ndp-range-times .ndp-time-entry {
+  gap: 3px;
+}
+
+.ndp-range-time-label {
+  margin-right: 4px;
+  color: var(--ndp-color-text-muted);
+  font-size: var(--ndp-font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ndp-range-times .ndp-time-input {
+  width: 38px;
+  padding: 5px 0;
+  font-size: 15px;
+}
+
+.ndp-range-times .ndp-time-entry-colon {
+  font-size: 15px;
+}
+
+.ndp-range-times .ndp-time-ampm {
+  min-width: 38px;
+  padding: 5px 4px;
+  font-size: 12px;
+}
+
+.ndp-submenu-item.is-active {
+  color: var(--ndp-color-primary);
+  font-weight: 700;
+}
+
+/* ---- time: native selects (timeInputStyle: 'dropdown') ---------------------- */
+.ndp-time-panel--dropdown {
+  justify-content: flex-start;
+}
+
+.ndp-time-entry--dropdown {
+  flex-wrap: wrap;
+}
+
+.ndp-time-select {
+  min-height: 36px;
+  border: 1px solid var(--ndp-color-border);
+  border-radius: var(--ndp-radius);
+  padding: 4px 6px;
+  background: var(--ndp-color-surface);
+  color: var(--ndp-color-text);
+  font: 600 15px var(--ndp-font);
+  font-variant-numeric: tabular-nums;
+}
+
+.ndp-time-select:focus-visible {
+  outline: var(--ndp-focus-ring);
+  outline-offset: 1px;
+}
+
+/* ---- standalone time picker --------------------------------------------------
+   Wheels only (the field takes typed time), then one footer row:
+   Now on the left, Clear / Done on the right. */
+.ndp-panel.ndp-panel--time {
+  flex-direction: column;
+  width: min(272px, calc(100vw - 16px));
+}
+
+.ndp-panel--time .ndp-time-panel.ndp-time-panel--standalone {
+  width: 100%;
+  gap: 0;
+  border: 0;
+  padding: 12px 12px 8px;
+  background: transparent;
+}
+
+.ndp-panel-root:not(.ndp-sheet) .ndp-panel--time .ndp-time-wheels {
+  gap: 6px;
+}
+
+.ndp-panel-root:not(.ndp-sheet) .ndp-panel--time .ndp-time-wheels::before {
+  left: 8px;
+  right: 8px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+.ndp-panel-root:not(.ndp-sheet) .ndp-panel--time .ndp-wheel {
+  width: 60px;
+  height: 200px;
+}
+
+.ndp-panel-root:not(.ndp-sheet) .ndp-panel--time .ndp-wheel-list {
+  padding: 80px 0; /* (200 − 40) / 2 */
+}
+
+.ndp-panel-root:not(.ndp-sheet) .ndp-panel--time .ndp-wheel-item {
+  height: 40px;
+  font-size: 17px;
+  line-height: 40px;
+}
+
+.ndp-panel-root:not(.ndp-sheet) .ndp-panel--time .ndp-wheel-item.is-selected {
+  font-size: 20px;
+}
+
+.ndp-panel-root:not(.ndp-sheet) .ndp-panel--time .ndp-wheel-colon {
+  font-size: 18px;
+}
+
+.ndp-time-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-top: 1px solid var(--ndp-color-border);
+  padding: 10px 12px;
+}
+
+.ndp-panel .ndp-time-footer .ndp-time-now {
+  margin: 0 auto 0 -4px;
+  border: 0;
+  padding: 8px;
+  background: transparent;
+  color: var(--ndp-color-primary);
+}
+
+.ndp-panel .ndp-time-footer .ndp-time-now:hover {
+  background: var(--ndp-color-primary-bg);
+}
+
+.ndp-time-footer .ndp-apply,
+.ndp-time-footer .ndp-secondary {
+  width: auto;
+  min-width: 72px;
+  margin-top: 0;
+  padding: 8px 14px;
+}
+
+.ndp-sheet .ndp-panel.ndp-panel--time {
+  width: 100%;
+}
+
+.ndp-sheet .ndp-time-footer {
+  position: sticky;
+  bottom: 0;
+  background: var(--ndp-color-surface);
+}
+
+.ndp-sheet .ndp-time-footer .ndp-apply,
+.ndp-sheet .ndp-time-footer .ndp-secondary {
+  flex: 1;
+  padding: 11px 14px;
+}
+
+/* ---- density ---------------------------------------------------------------- */
+.ndp-panel.ndp-density-compact {
+  --ndp-cell-height: 32px;
+  --ndp-gap: 1px;
+}
+
+.ndp-panel.ndp-density-comfortable {
+  --ndp-cell-height: 44px;
+}
+
+.ndp-panel.ndp-density-touch {
+  --ndp-cell-height: 48px;
+}
+
+.ndp-panel.ndp-density-touch .ndp-cal-header {
+  grid-template-columns: 44px 44px 1fr 44px 44px;
+}
+
+.ndp-panel.ndp-density-touch .ndp-nav {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ---- inline (always-visible) calendar --------------------------------------- */
+.ndp-panel-root.ndp-inline {
+  position: static;
+  z-index: auto;
+}
+
+.ndp-inline .ndp-panel {
+  box-shadow: none;
+}
+
+.ndp-inline .ndp-panel--date-only,
+.ndp-inline .ndp-panel--datetime,
+.ndp-inline .ndp-panel--month,
+.ndp-inline .ndp-panel--range {
+  max-width: 100%;
+}
+
+.ndp-trigger-wrap + .ndp-inline,
+.ndp-field-message + .ndp-inline {
+  margin-top: 6px;
+}
+
+/* ---- popup capped to the room beside the field ------------------------------ */
+.ndp-panel-root.ndp-popup--capped > .ndp-panel {
+  max-height: inherit;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* ---- validation + disabled field --------------------------------------------- */
+.ndp-field-message {
+  margin-top: 4px;
+  color: var(--ndp-color-danger);
+  font: var(--ndp-font-size-sm)/1.35 var(--ndp-font);
+}
+
+.ndp-field-message:empty {
+  display: none;
+}
+
+.ndp-trigger-wrap[aria-invalid="true"],
+.ndp-trigger-wrap.is-invalid {
+  border-color: var(--ndp-color-danger);
+}
+
+.ndp-trigger-wrap.is-disabled {
+  background: var(--ndp-color-surface-subtle);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+.ndp-trigger-wrap.is-disabled .ndp-trigger,
+.ndp-trigger:disabled {
+  cursor: not-allowed;
+  color: var(--ndp-color-text-muted);
+  background: transparent;
+}
+
+.ndp-trigger-wrap.is-disabled .ndp-clear,
+.ndp-trigger-wrap.is-disabled .ndp-mode-toggle {
+  display: none !important;
+}
+
+/* ---- touch: comfortable targets where the pointer is a finger --------------- */
+@media (pointer: coarse) {
+  .ndp-cal-header,
+  .ndp-panel--compact .ndp-cal-header {
+    grid-template-columns: 42px 42px 1fr 42px 42px;
+  }
+
+  .ndp-nav,
+  .ndp-panel--compact .ndp-nav {
+    min-width: 42px;
+    min-height: 42px;
+  }
+
+  .ndp-today-btn {
+    min-height: 34px;
+    padding: 4px 14px;
+    font-size: 13px;
+  }
+
+  .ndp-clear {
+    width: 36px;
+    height: 36px;
+  }
+
+  .ndp-mode-toggle {
+    width: 44px;
+  }
+}
+
+@media (max-width: 560px) {
+  .ndp-months {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ndp-panel--two-months {
+    width: min(360px, calc(100vw - 16px));
+  }
+}
+
+/* ---- motion feedback (none with reduced motion) ------------------------------ */
+.ndp-anim-next {
+  animation: ndp-slide-next 0.2s ease-out;
+}
+
+.ndp-anim-prev {
+  animation: ndp-slide-prev 0.2s ease-out;
+}
+
+.ndp-anim-fade {
+  animation: ndp-fade-in 0.2s ease-out;
+}
+
+.ndp-cell.is-just-selected {
+  animation: ndp-pop 0.24s ease-out;
+}
+
+@keyframes ndp-slide-next {
+  from { opacity: 0.35; transform: translateX(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ndp-slide-prev {
+  from { opacity: 0.35; transform: translateX(-14px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes ndp-pop {
+  0% { transform: scale(0.84); }
+  60% { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+/* Press feedback on everything clickable. */
+.ndp-cell:not(.is-disabled):not(.ndp-cell--empty):active,
+.ndp-monthcell:not(.is-disabled):active,
+.ndp-yearcell:not(.is-disabled):active,
+.ndp-nav:not(.is-hidden):active,
+.ndp-preset:active,
+.ndp-submenu-item:active,
+.ndp-today-btn:active,
+.ndp-time-now:active,
+.ndp-secondary:active,
+.ndp-mode-toggle:active,
+.ndp-step-back:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ndp-anim-next,
+  .ndp-anim-prev,
+  .ndp-anim-fade,
+  .ndp-cell.is-just-selected,
+  .ndp-trigger-wrap.is-updated,
+  .ndp-trigger-wrap.is-rejected,
+  .ndp-mode-toggle.is-switched svg {
+    animation: none;
+  }
+
+  .ndp-cell:active,
+  .ndp-monthcell:active,
+  .ndp-yearcell:active,
+  .ndp-nav:active,
+  .ndp-preset:active,
+  .ndp-submenu-item:active,
+  .ndp-today-btn:active,
+  .ndp-time-now:active,
+  .ndp-secondary:active,
+  .ndp-mode-toggle:active,
+  .ndp-step-back:active {
+    transform: none;
   }
 }

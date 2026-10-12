@@ -23,7 +23,7 @@
  * Usage
  * ─────
  * // Init
- * $('#from').nepaliDateRangePicker({ mode: 'BS', numberOfMonths: 2 });
+ * $('#from').nepaliDateRangePicker({ mode: 'BS', fiscalStartMonth: 4 });
  *
  * // Method calls
  * $('#from').nepaliDateRangePicker('show');
@@ -37,6 +37,9 @@ import {
   mountDateRangePicker,
   mountDateTimePicker,
   mountMonthPicker,
+  mountMultiDatePicker,
+  mountTimePicker,
+  mountYearPicker,
   regional,
   setDefaults,
 } from './index.js';
@@ -48,7 +51,14 @@ import type {
   MonthPickerOptions,
   MonthResult,
   MonthValue,
+  MultiDatePickerOptions,
+  MultiDateResult,
   PickerInstance,
+  TimePickerOptions,
+  TimeResult,
+  TimeValue,
+  YearPickerOptions,
+  YearResult,
 } from './index.js';
 
 // ─── types ───────────────────────────────────────────────────────────────────
@@ -78,7 +88,7 @@ type PluginMethod =
 function makePlugin<TResult, TOptions extends object>(
   $: JQueryLike,
   dataKey: string,
-  mount: (el: HTMLInputElement, opts: TOptions) => PickerInstance<TResult, TOptions>,
+  mount: (el: HTMLInputElement, opts: TOptions) => PickerInstance<TResult, TOptions, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
 ) {
   return function (
     this: Iterable<HTMLElement>,
@@ -177,6 +187,11 @@ export function install($: JQueryLike): void {
     'nepaliMonthPicker',
     mountMonthPicker,
   );
+
+  // YearPicker, TimePicker, MultiDatePicker
+  $.fn.nepaliYearPicker = makePlugin<YearResult, YearPickerOptions>($, 'nepaliYearPicker', mountYearPicker);
+  $.fn.nepaliTimePicker = makePlugin<TimeResult, TimePickerOptions>($, 'nepaliTimePicker', mountTimePicker);
+  $.fn.nepaliMultiDatePicker = makePlugin<MultiDateResult, MultiDatePickerOptions>($, 'nepaliMultiDatePicker', mountMultiDatePicker);
 }
 
 // ─── auto-init ────────────────────────────────────────────────────────────────
@@ -222,5 +237,8 @@ declare global {
     nepaliDateTimePicker: PluginCalls<DateTimeResult, DateTimePickerOptions, Date>;
     nepaliDateRangePicker: PluginCalls<DateRangeResult, DateRangePickerOptions, { start: Date; end: Date }>;
     nepaliMonthPicker: PluginCalls<MonthResult, MonthPickerOptions, MonthValue>;
+    nepaliYearPicker: PluginCalls<YearResult, YearPickerOptions, number>;
+    nepaliTimePicker: PluginCalls<TimeResult, TimePickerOptions, TimeValue>;
+    nepaliMultiDatePicker: PluginCalls<MultiDateResult, MultiDatePickerOptions, Date[]>;
   }
 }

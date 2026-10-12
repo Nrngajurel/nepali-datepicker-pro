@@ -5,7 +5,7 @@
 // field. The set of sections is described by a schema, so the same widget
 // backs the date, datetime (incl. AM/PM), month and range pickers.
 import { normalizeDigits } from '../format/parse.js';
-import { isSheetViewport } from '../render/dom.js';
+import { isSheetViewport } from '../render/popup.js';
 
 export interface SegmentSpec {
   key: string;
@@ -38,10 +38,21 @@ export interface SegmentedFieldConfig {
   commit: (ascii: string) => 'valid' | 'invalid' | 'empty';
   open: () => void;
   close: () => void;
+  /** Pasted text: parse and commit it; return whether it was accepted. */
+  paste?: (text: string) => boolean;
+  /** A commit was refused on leaving the field: the canonical ASCII that
+   *  failed validation, or null for a partly filled field. */
+  onReject?: (ascii: string | null) => void;
+  /** Keep refused text in the field (marked invalid) instead of reverting. */
+  keepInvalid?: () => boolean;
+  /** Typing changed the field (valid or not) — e.g. to clear a stale message. */
+  onEdit?: () => void;
 }
 
 export interface SegmentedField {
   isEditing: () => boolean;
+  /** The field shows refused text kept by `keepInvalid` — don't overwrite it. */
+  isHoldingInvalid: () => boolean;
   /** Re-seed an in-progress edit from the committed value (e.g. after a clear). */
   reset: () => void;
   destroy: () => void;
@@ -58,6 +69,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   let active = 0;
   let editing = false;
   let dirty = false; // whether the user changed anything this editing session
+  let holding = false; // refused text left in the field (keepInvalid)
 
   function build(): void {
     segments = [];
@@ -70,6 +82,9 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   }
 
   function display(seg: Segment): string {
+    // A year being typed shows the digits so far plus what's left ("208Y"),
+    // not a zero-padded number that looks finished ("0208").
+    if (seg.buffer && seg.len >= 4 && seg.buffer.length < seg.len) return seg.buffer + seg.placeholder.slice(seg.buffer.length);
     if (seg.value == null) return seg.placeholder;
     if (seg.kind === 'meridiem') return seg.value === 1 ? 'PM' : 'AM';
     return String(seg.value).padStart(seg.len, '0');
@@ -102,6 +117,9 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
 
   function paint(): void {
     input.value = render();
+    // Nothing typed yet: the mask reads as a hint (faint), with only the
+    // active section highlighted — not as if a date were filled in.
+    input.classList.toggle('is-mask', segments.every((seg) => seg.value == null));
     const [a, b] = rangeOf(active);
     input.setSelectionRange(a, b);
     input.setAttribute('aria-valuetext', input.value);
@@ -118,6 +136,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   // Flag the field valid/invalid after each edit (no calendar mutation — like a
   // native date input, the picker only updates on commit).
   function sync(): void {
+    cfg.onEdit?.();
     const ascii = assemble();
     if (!ascii) {
       input.classList.remove('ndp-input-invalid');
@@ -210,6 +229,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   }
 
   function beginEditing(atPos?: number): void {
+    holding = false;
     build();
     const map = cfg.seed(cfg.committed());
     segments.forEach((s) => { s.value = map[s.key] ?? null; s.buffer = ''; });
@@ -219,8 +239,37 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     paint();
   }
 
+  // A refused value: revert to the last good one, or (keepInvalid) leave the
+  // text in place, marked invalid, so it can be corrected.
+  function refuse(ascii: string | null): void {
+    cfg.onReject?.(ascii);
+    if (cfg.keepInvalid?.()) {
+      holding = true;
+      input.value = render();
+      input.classList.add('ndp-input-invalid');
+      input.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    input.value = cfg.formatted();
+  }
+
+  // Back into a field holding refused text: carry on editing that text.
+  function startEditing(atPos?: number): void {
+    if (holding && segments.length) {
+      holding = false;
+      editing = true;
+      dirty = true;
+      active = atPos == null ? 0 : segmentAtPos(atPos);
+      paint();
+      sync();
+      return;
+    }
+    beginEditing(atPos);
+  }
+
   function finishEditing(): void {
     editing = false;
+    input.classList.remove('is-mask');
     input.classList.remove('ndp-input-invalid');
     input.removeAttribute('aria-invalid');
     // Untouched session — just restore the canonical display, don't re-commit.
@@ -229,18 +278,18 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     const filled = segments.filter((s) => s.value != null).length;
     if (filled === segments.length) {
       const ascii = assemble()!;
-      if (cfg.commit(ascii) === 'invalid') input.value = cfg.formatted();
+      if (cfg.commit(ascii) === 'invalid') refuse(ascii);
     } else if (filled === 0) {
       cfg.commit('');
     } else {
-      input.value = cfg.formatted(); // discard a partial entry
+      refuse(null); // a partial entry
     }
   }
 
   function onKeydown(event: Event): void {
     const e = event as KeyboardEvent;
     if (e.altKey || e.ctrlKey || e.metaKey) return; // leave shortcuts alone
-    if (!editing) { if (e.key !== 'Tab') beginEditing(); }
+    if (!editing) { if (e.key !== 'Tab') startEditing(); }
     const key = e.key;
     const seg = segments[active];
     if (seg && seg.kind === 'meridiem' && /^[apAP]$/.test(key)) {
@@ -258,7 +307,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     } else if (key === 'ArrowLeft') {
       e.preventDefault();
       selectSegment(active - 1);
-    } else if (key === 'ArrowRight' || key === '-' || key === '/' || key === ':' || key === ' ') {
+    } else if (key === 'ArrowRight' || key === '-' || key === '/' || key === '.' || key === ':' || key === ' ') {
       e.preventDefault();
       selectSegment(active + 1);
     } else if (key === 'Backspace' || key === 'Delete') {
@@ -271,6 +320,8 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     } else if (key === 'Escape') {
       e.preventDefault();
       editing = false;
+      holding = false;
+      input.classList.remove('is-mask');
       input.value = cfg.formatted();
       input.classList.remove('ndp-input-invalid');
       input.removeAttribute('aria-invalid');
@@ -281,7 +332,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   }
 
   function onFocus(): void {
-    if (!editing) beginEditing();
+    if (!editing) startEditing();
     cfg.open();
   }
 
@@ -298,6 +349,22 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
     e.preventDefault(); // route all input through keydown
   }
 
+  // Paste a whole date ("2081-04-15", "15/04/2081", "Jun 29 2025", Devanagari
+  // digits…): the mount parses it, and on success the field shows the result.
+  function onPaste(event: Event): void {
+    const e = event as ClipboardEvent;
+    const text = e.clipboardData?.getData('text') ?? '';
+    e.preventDefault();
+    if (!text.trim() || !cfg.paste) return;
+    if (cfg.paste(text)) {
+      dirty = false;
+      if (document.activeElement === input) beginEditing();
+      else { editing = false; input.value = cfg.formatted(); }
+    } else {
+      cfg.onReject?.(null);
+    }
+  }
+
   input.classList.add('ndp-trigger--segmented');
   // On phone widths the bottom sheet is the way to pick (calendar + time
   // wheels); an on-screen keyboard would pop up over it, so ask for none
@@ -306,16 +373,22 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   syncInputMode();
   window.addEventListener('resize', syncInputMode);
   input.setAttribute('autocomplete', 'off');
+  // The mask (YYYY, hh, …) isn't a word: no spell-check squiggle under it.
+  input.setAttribute('spellcheck', 'false');
+  input.setAttribute('autocapitalize', 'off');
   if (!input.getAttribute('placeholder')) input.setAttribute('placeholder', cfg.placeholder());
   input.addEventListener('keydown', onKeydown);
   input.addEventListener('focus', onFocus);
   input.addEventListener('mouseup', onMouseup);
   input.addEventListener('blur', onBlur);
   input.addEventListener('beforeinput', onBeforeinput);
+  input.addEventListener('paste', onPaste);
 
   return {
     isEditing: () => editing,
+    isHoldingInvalid: () => holding,
     reset() {
+      holding = false;
       if (editing) beginEditing();
     },
     destroy() {
@@ -325,6 +398,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
       input.removeEventListener('mouseup', onMouseup);
       input.removeEventListener('blur', onBlur);
       input.removeEventListener('beforeinput', onBeforeinput);
+      input.removeEventListener('paste', onPaste);
       window.removeEventListener('resize', syncInputMode);
     },
   };

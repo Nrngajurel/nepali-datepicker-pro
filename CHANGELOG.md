@@ -9,6 +9,89 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **New pickers:** `mountYearPicker` (BS or AD year), `mountTimePicker` (time of day only) and
+  `mountMultiDatePicker` (pick several days, `maxDates`). They come with React and Vue components
+  (`NepaliYearPicker`, `NepaliTimePicker`, `NepaliMultiDatePicker`), jQuery plugins and custom
+  elements. The time picker's popup is just the wheels (type in the field itself), with Now, Clear
+  and Done in one footer row. BS/AD on the year picker is switched from the field, like the date
+  picker.
+- **Custom elements:** `import 'nepali-datepicker-pro/element'` registers `<nepali-date-picker>`,
+  `<nepali-date-range-picker>`, `<nepali-month-picker>`, `<nepali-year-picker>`,
+  `<nepali-time-picker>` and `<nepali-multi-date-picker>`. Use them from Angular, Svelte, Astro or
+  plain HTML. Attributes map to options, `name` submits with the form, and `change`, `clear`,
+  `open`, `close` and `invalid` are DOM events.
+- **Holidays and events on the calendar:**
+  - The `events` option takes a list, or a (possibly async) loader called per shown month.
+    Holidays show in red and events as a dot; their names appear in the tooltip and are read by
+    screen readers.
+  - `nepali-datepicker-pro/holidays` ships `nepalFixedHolidays()`, Nepal's fixed-date national
+    days. Lunar festivals change every year and aren't included; add them with `events`.
+    `mergeEvents()` combines both.
+- **Custom day cells:** `dayCellProps(date, bs)` can disable a day, or add a class, tooltip,
+  badge or holiday mark. The jQuery-UI-style `beforeShowDay` option now works too; it was
+  declared but ignored before.
+- **Week layout:** `weekStartsOn` (any weekday) and `weekendDays` (default Saturday) now take
+  effect. They were declared but ignored before.
+- **Range picker:**
+  - Two months side by side with `numberOfMonths: 2`, paging together or separately via
+    `linkedCalendars`.
+  - `maxRangeSpanDays` and `minRangeSpanDays` limits.
+  - A Cancel button and `onCancel`.
+  - A time for each end with `withTime`.
+  - `alwaysShowCalendars: false` hides the calendar until "Custom Range" is chosen.
+  - New built-in presets you can list by id, e.g.
+    `presets: ['today', 'next7', 'thisWeek', 'thisMonth', 'lastMonth', 'custom']`. "This month"
+    follows the active calendar. Every built-in is exported as `buildPresetLibrary()`.
+  - The field shows how many days are selected.
+- **Date-time picker:**
+  - `withSeconds`.
+  - `timeInputStyle: 'dropdown'` for native selects.
+  - `showButtonPanel` to choose the Today, Clear and Close buttons, including in date-only mode.
+- **`inline: true`** draws an always-visible calendar in the page instead of a popup.
+- **UI language:**
+  - `language: 'en' | 'ne' | 'bilingual'` (default bilingual, as before) translates every label,
+    hint and message.
+  - `strings` overrides any single one.
+  - The range picker's `locale.applyLabel`, `cancelLabel`, `customRangeLabel`, `daysOfWeek`,
+    `monthNames` and `firstDay` now work.
+  - `setDefaults(regional.ne)` switches the whole UI to Nepali.
+- **`script: 'latin' | 'devanagari'`** writes BS in English (Baisakh 2082) or AD in Devanagari
+  (जनवरी २०२५).
+- **Dark theme:**
+  - `theme: 'dark'`, or `'auto'` to follow the OS.
+  - Or set `data-ndp-theme="dark"` on any ancestor, such as `<html>`.
+- **`density: 'compact' | 'comfortable' | 'touch'`.**
+- New CSS tokens: `--ndp-color-on-primary`, `--ndp-color-weekend`, `--ndp-color-holiday`,
+  `--ndp-color-event`, `--ndp-color-range-bg`, `--ndp-cell-height`, `--ndp-gap`,
+  `--ndp-font-size*`, `--ndp-focus-ring`.
+- **Forms and validation:**
+  - `required` works with native form validation (`:invalid`, `reportValidity()`, blocked
+    submit).
+  - A refused typed value shows a message under the field (for example "Date must be on or after
+    2081-01-01"). The message is linked to the field for screen readers and set as the field's
+    custom validity.
+  - `onInvalid(reason, message)` and `invalidBehavior: 'keep'` (leave the text to fix instead of
+    reverting).
+  - `disabled`.
+  - A form reset restores the initial value.
+- **Paste a whole date** into a typeable field: ISO, slashed, day-first or month-first per the
+  display format, Devanagari digits, or month names in either calendar ("15 Ashar 2082",
+  "Jun 29 2025"). Ranges paste as "start – end".
+- **Typing follows a numeric `displayFormat`:** `DD/MM/YYYY` is typed day first.
+- **The field shows which calendar it's in:**
+  - "BS" / "AD" a few spaces after the date, in the field's font and the mask's faint color. It's never clipped by a long value, and
+    `showCalendarSuffix: false` hides it. It's display only: the value is unchanged.
+- **The month picker** gains `minMonth`, `maxMonth` and `disabledMonths`.
+- **React:**
+  - Components take a `ref`: show, hide, clear, getValue, setValue, update, focus, and
+    `instance`.
+  - `inputProps` puts an `id` or `name` on the field, so `<label htmlFor>` works.
+  - The bundle starts with `'use client'` for the Next.js App Router.
+- **Vue:** components `expose()` the same API through a template ref, and emit `@invalid`;
+  the range picker also emits `@cancel`.
+- **CommonJS builds** for every subpath (`require('nepali-datepicker-pro/react')` …) and a
+  `./package.json` export.
+
 - Keyboard navigation in the popup: **Alt+↓** from the field (↓ on a read-only field) moves focus
   into the calendar. There, arrows move by day and week, PageUp/PageDown by month (with Shift, by
   year), Home/End to the week's ends, and the calendar turns the page as you go. Enter or Space
@@ -23,6 +106,49 @@ and this project follows [Semantic Versioning](https://semver.org/).
   calendar.
 
 ### Changed
+
+- **Accessibility (WCAG 2.2 AA), checked by axe-core in CI:**
+  - The day grid is a proper ARIA grid. Weekday headers and week rows sit inside it.
+  - Every day has a full spoken name, e.g. "Saturday, 01 Baisakh 2081 (13 April 2024)", plus
+    "holiday", "start of range" or "unavailable" where they apply.
+  - Today is `aria-current="date"`.
+  - Month changes and picks are announced through a live region.
+  - Month and year grids, and the time wheels, work with the arrow keys.
+  - Focus stays put when the panel re-renders, for example after pressing "Next month".
+  - On phones the bottom sheet is modal: focus moves in, Tab stays inside, and the page behind
+    is inert.
+- **Colors meet AA contrast:**
+  - Primary is now `#257a41`, muted text `#5f6670` and danger `#c53030`.
+  - White text on the old green failed at 4.1:1.
+  - The focus ring is no longer hidden on today or hovered days.
+  - Small text is at least 10–11px.
+  - Touch targets grow on touch screens.
+- **Visual feedback:**
+  - A calendar icon starts every field.
+  - The field shows hover, focus and open states.
+  - While you type into an empty field, the `YYYY-MM-DD` mask stays faint, with the active
+    segment highlighted. A half-typed year shows as `208Y`, not `0208`.
+  - A value landing in the field glows briefly; a refused one shakes.
+  - Paging slides the month in from the side, switching BS/AD cross-fades, a picked day pops,
+    and the BS/AD icon turns.
+  - All motion respects `prefers-reduced-motion`.
+- **Popup placement:**
+  - A popup taller than the room beside the field is capped and scrolls.
+  - It never goes off the top of the screen.
+  - It hides while the field is scrolled out of view.
+  - It re-positions when its content changes size.
+- **Phones:** swipe left/right on the calendar to change month.
+- **Range picker:**
+  - By default, a range can no longer run across a disabled day; set
+    `allowDisabledInRange: true` for the old behavior.
+  - The picked start shows as selected before you hover the end.
+  - Keyboard focus previews the range like the mouse does.
+  - Apply is disabled until there's a range.
+- **Range output:** the `formatted` string follows `language: 'ne'`.
+- **Bundle size grows** with the new features: about 27 KB gzipped for the date picker alone
+  (was about 15 KB), and about 39 KB for everything. Unused pickers are dropped by bundlers.
+  `npm run size` enforces a budget. `style.css` now ships minified, at 6 KB gzipped (was 7.4 KB).
+- `images/` is no longer in the npm package; the README loads its images from the docs site.
 
 - On phone widths, tapping a typeable field no longer raises the on-screen keyboard over the bottom
   sheet; the sheet (calendar and time wheels) is the input there. Wider screens still get the
@@ -41,9 +167,6 @@ and this project follows [Semantic Versioning](https://semver.org/).
   form. `clearable: false` still turns clearing off.
 - The year view is now one scrollable list of every supported year, opened centered on the current
   year, instead of pages of 12 years stepped with ‹ › buttons. Scroll or swipe to any year directly.
-- Pinned `esbuild`/`vite` (via `overrides` in `package.json`) to patched versions to close the
-  `npm audit` findings pulled in transitively through `vitepress`'s bundled dev-server deps.
-  Dev-tooling only — does not affect the published package.
 
 ### Docs
 
@@ -57,6 +180,18 @@ and this project follows [Semantic Versioning](https://semver.org/).
   are already mounted.
 
 ### Fixed
+
+- Options that were typed and documented but did nothing now work, or are clearly deprecated:
+  `inline`, `beforeShowDay`, `weekStartsOn`, `showButtonPanel`, `timeInputStyle`,
+  `maxRangeSpanDays`, `numberOfMonths`, `linkedCalendars`, `alwaysShowCalendars` and the range
+  `locale` labels. `locale.weekLabel` is deprecated, since week numbers aren't shown. A test now
+  fails if a declared option is never read.
+- Vue: passing a `Date` to `v-model` no longer logs a prop-type warning.
+- Hovering the selected day no longer washes it out to the hover tint, which hid its number.
+- Opening a picker no longer scrolls the page to the bottom before the popup is placed.
+- The browser's spell-checker no longer underlines the empty field mask (`YYYY`, `hh`). In 12-hour
+  mode the empty AM/PM slot now reads `aa` instead of `--`.
+- The year list opens with the selected year centred, not tucked under the bottom fade.
 
 - React: changing a function option such as `disabledDates` after mount now takes effect (functions
   were ignored when checking for changes). Only the props that changed are applied, so re-rendering
@@ -115,6 +250,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
   now declared on `JQuery`, so `$('#x').nepaliDateTimePicker(...)` type-checks.
 - On phones, the date-time picker's time panel now spans the full width under the calendar
   instead of staying a narrow 168px strip.
+
+## [0.4.1] - 2026-07-24
+
+### Changed
+
+- Pinned `esbuild`/`vite` (via `overrides` in `package.json`) to patched versions to close the
+  `npm audit` findings pulled in transitively through `vitepress`'s bundled dev-server deps.
+  Dev-tooling only — does not affect the published package.
 
 ## [0.4.0] - 2026-07-24
 

@@ -78,13 +78,15 @@ export function formatMachineValue(
   format: ValueFormat,
   adapter: CalendarAdapter,
   withTime = false,
+  withSeconds = false,
 ): string | number | Date {
   if (typeof format === 'object') {
     return formatDateValue(parts.ad, adapter, { mode: format.calendar, format: format.format, locale: 'en' });
   }
   if (format === 'timestamp') return parts.ad.getTime();
   if (format === 'date-object') return parts.ad;
-  const time = withTime && parts.time ? `${pad2(parts.time.hour)}:${pad2(parts.time.minute)}` : '';
+  const seconds = withSeconds && parts.time ? `:${pad2(parts.time.second ?? 0)}` : '';
+  const time = withTime && parts.time ? `${pad2(parts.time.hour)}:${pad2(parts.time.minute)}${seconds}` : '';
   if (format === 'iso-bs') {
     const date = `${parts.bs.year}-${pad2(parts.bs.month)}-${pad2(parts.bs.day)}`;
     return time ? `${date} ${time}` : date;

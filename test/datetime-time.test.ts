@@ -117,7 +117,7 @@ test('time picker has no seconds — hour and minute wheels only', () => {
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
-  const labels = [...root.querySelectorAll('.ndp-wheel')].map((n) => n.getAttribute('aria-label'));
+  const labels = [...root.querySelectorAll('.ndp-wheel-list')].map((n) => n.getAttribute('aria-label'));
   assert.deepEqual(labels, ['Hour', 'Min'], 'only Hour and Min wheels render (no seconds)');
 });
 
@@ -126,7 +126,7 @@ test('12h format shows an AM/PM wheel and 12-hour value', () => {
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
-  const wheels = [...root.querySelectorAll('.ndp-wheel')];
+  const wheels = [...root.querySelectorAll('.ndp-wheel-list')];
   assert.deepEqual(wheels.map((n) => n.getAttribute('aria-label')), ['Hour', 'Min', 'AM/PM']);
   assert.equal(wheels[2].querySelector('.ndp-wheel-item.is-selected')!.textContent, 'PM');
   assert.equal(wheels[0].querySelector('.ndp-wheel-item.is-selected')!.textContent, '02');
@@ -263,7 +263,7 @@ test('12-hour is the default: AM/PM wheel, 12h display, 24h machine value', () =
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
   assert.equal(c.getState().timeFormat, '12h');
-  const wheels = [...root.querySelectorAll('.ndp-wheel')].map((n) => n.getAttribute('aria-label'));
+  const wheels = [...root.querySelectorAll('.ndp-wheel-list')].map((n) => n.getAttribute('aria-label'));
   assert.deepEqual(wheels, ['Hour', 'Min', 'AM/PM']);
   const v = c.getValue()!;
   assert.match(v.formatted, /02:05 PM$/);

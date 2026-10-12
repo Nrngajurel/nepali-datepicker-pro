@@ -1,5 +1,12 @@
 import type { Component } from 'vue';
-import { NepaliDateRangePicker, NepaliDateTimePicker, NepaliMonthPicker } from '@lib/vue.js';
+import {
+  NepaliDateRangePicker,
+  NepaliDateTimePicker,
+  NepaliMonthPicker,
+  NepaliMultiDatePicker,
+  NepaliTimePicker,
+  NepaliYearPicker,
+} from '@lib/vue.js';
 
 export type Framework = 'vanilla' | 'html' | 'react' | 'vue' | 'jquery';
 
@@ -54,6 +61,8 @@ export interface PickerDef {
   vueComponent: string;
   reactComponent: string;
   jqueryFn: string;
+  /** The `autoInit()` attribute, or '' for pickers auto-init doesn't scan
+   *  (the HTML snippet then calls the UMD mount function directly). */
   dataAttr: string;
   dataAttrMap: Record<string, string>;
   eventName: string;
@@ -72,16 +81,40 @@ export interface PickerDef {
 
 // Options shared by every picker (popup placement, portal, teardown).
 const COMMON_OPTS: OptionDoc[] = [
-  { name: 'clearable', type: 'boolean', def: 'true', desc: 'Show a × button to clear the current value.' },
+  { name: 'language', type: "'en' | 'ne' | 'bilingual'", def: "'bilingual'", desc: 'Language of every UI label, hint and message.' },
+  { name: 'strings', type: 'Partial<PickerStrings>', def: '—', desc: 'Override any single UI string.' },
+  { name: 'script', type: "'auto' | 'latin' | 'devanagari'", def: "'auto'", desc: "Script for calendar names and numbers. 'latin' writes BS in English (Baisakh 2082); 'devanagari' writes AD in Devanagari (जनवरी २०२५)." },
+  { name: 'theme', type: "'light' | 'dark' | 'auto'", def: 'follows the page', desc: "Color theme. 'auto' follows the OS. Or set data-ndp-theme on an ancestor." },
+  { name: 'density', type: "'compact' | 'comfortable' | 'touch'", def: 'per picker', desc: 'Cell and control sizing.' },
+  { name: 'inline', type: 'boolean', def: 'false', desc: 'Always-visible calendar in the page instead of a popup.' },
+  { name: 'required', type: 'boolean', def: 'false', desc: 'Native form validation treats an empty picker as invalid (:invalid, reportValidity(), blocked submit).' },
+  { name: 'disabled', type: 'boolean', def: 'false', desc: 'No typing, no popup, not submitted.' },
+  { name: 'invalidBehavior', type: "'revert' | 'keep'", def: "'revert'", desc: 'On blur, restore the last good value, or keep an invalid entry and mark the field invalid.' },
+  { name: 'showValidationMessage', type: 'boolean', def: 'true', desc: 'Show the validation message under the field.' },
+  { name: 'showFieldIcon', type: 'boolean', def: 'true', desc: 'A calendar icon at the start of the field.' },
+  { name: 'showCalendarSuffix', type: 'boolean', def: 'true (BS/AD pickers)', desc: 'A small "BS" / "AD" label after the value. Display only — the value is unchanged.' },
+  { name: 'onInvalid', type: '(reason, message) => void', def: '—', desc: 'A typed value was rejected, or a required field was left empty.' },
+  { name: 'clearable', type: 'boolean', def: 'true', desc: 'Let the user clear the value (Ctrl/⌘+Backspace, or the × that appears on hover).' },
   { name: 'appendTo', type: 'string | HTMLElement', def: 'document.body', desc: 'Where the popup portal is mounted.' },
   { name: 'opens', type: "'left' | 'right' | 'center' | 'auto'", def: "'auto'", desc: 'Horizontal alignment of the popup relative to the input.' },
   { name: 'drops', type: "'down' | 'up' | 'auto'", def: "'auto'", desc: 'Whether the popup opens below or above the input.' },
   { name: 'adapter', type: 'CalendarAdapter', def: 'built-in', desc: 'Swap the BS↔AD conversion engine (advanced).' },
 ];
 
+
+const DAY_GRID_OPTS: OptionDoc[] = [
+  { name: 'dayCellProps', type: '(date, bs) => DayCellProps | null', def: '—', desc: 'Per-day { disabled, className, title, badge, holiday }.' },
+  { name: 'beforeShowDay', type: '(date) => { selectable, cssClass?, tooltip? }', def: '—', desc: 'jQuery-UI-style alias for dayCellProps.' },
+  { name: 'events', type: 'CalendarEvent[] | (span) => CalendarEvent[] | Promise<…>', def: '—', desc: 'Holidays (red) and events (a dot) to mark. A loader is called per shown month and cached. See nepali-datepicker-pro/holidays.' },
+  { name: 'weekStartsOn', type: '0–6', def: '0 (Sunday)', desc: 'First column of the week.' },
+  { name: 'weekendDays', type: 'number[]', def: '[6]', desc: 'Days shown in red as the weekend (Saturday).' },
+];
+
 const COMMON_EVENTS: EventDoc[] = [
   { name: 'onOpen', payload: '()', desc: 'Fires when the popup is shown.' },
   { name: 'onClose', payload: '()', desc: 'Fires when the popup is hidden.' },
+  { name: 'onClear', payload: '()', desc: 'The user cleared the value.' },
+  { name: 'onInvalid', payload: '(reason, message)', desc: 'A typed value was refused, or a required field was left empty.' },
 ];
 
 const LOCALE: Choice[] = [
@@ -170,11 +203,15 @@ export const DEFS: PickerDef[] = [
       { name: 'minTime / maxTime', type: '{ hour, minute }', def: '—', desc: 'Clamp the selectable time of day; out-of-range hours show disabled on the wheel.' },
       { name: 'disabledTimes', type: '(h, m) => boolean', def: '—', desc: 'Disable specific hours/minutes on the time wheel.' },
       { name: 'defaultTime', type: '{ hour, minute }', def: 'now', desc: 'Time used when withTime turns on with no value.' },
+      { name: 'withSeconds', type: 'boolean', def: 'false', desc: 'Also pick seconds (needs withTime).' },
+      { name: 'timeInputStyle', type: "'spinner' | 'dropdown'", def: "'spinner'", desc: "Typeable fields plus scroll wheels, or native selects ('dropdown')." },
+      { name: 'showButtonPanel', type: '{ today?, clear?, close? }', def: 'Today; + Clear/Done with withTime', desc: 'Choose the footer buttons, including in date-only mode.' },
       { name: 'locale', type: "'ne' | 'en'", def: "'en'", desc: 'Digit and month-name language.' },
       { name: 'minDate / maxDate', type: "Date | 'today' | '+7d'", def: '—', desc: 'Earliest / latest selectable day (relative tokens allowed).' },
       { name: 'disabledWeekdays', type: 'number[]', def: '[]', desc: 'Grey-out weekdays (0 = Sunday … 6 = Saturday).' },
       { name: 'disabledDates', type: '(date) => boolean', def: '—', desc: 'Return true to disable a specific day.' },
-      { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD[ HH:mm]', desc: 'dayjs-style tokens for the input text.' },
+      ...DAY_GRID_OPTS,
+      { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD[ HH:mm]', desc: 'dayjs-style tokens for the input text. A numeric format sets the typing order (DD/MM/YYYY types day first).' },
       { name: 'closeOnSelect', type: 'boolean', def: 'true unless withTime', desc: 'Close the popup right after a day is picked.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Make the field a native-<input type=date>-style segmented editor: focus selects a section, ↑/↓ step it, digits fill with auto-advance, ←/→ move sections, Backspace clears, separators are always shown. Validated live; Enter/blur commits. Accepts Nepali or ASCII digits. Set false to keep the field read-only.' },
       VALUE_FORMAT_DOC,
@@ -258,13 +295,20 @@ export const DEFS: PickerDef[] = [
       { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
       { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: 'Show the other calendar as a small hint on the header, month/year grid, and day cells. false shows only the active mode.' },
       { name: 'value / defaultValue', type: '{ start, end } | null', def: '— (empty)', desc: 'Controlled / initial range. Empty until set (or use defaultPresetId).' },
-      { name: 'presets', type: "PresetDefinition[] | 'default' | false", def: "'default'", desc: "Quick-range rail (includes 'Pick a Month'); false hides it." },
+      { name: 'presets', type: "Array<PresetDefinition | BuiltInPresetId> | 'default' | false", def: "'default'", desc: "Quick-range rail (includes 'Pick a Month'); false hides it. Built-in ids: today, yesterday, last7/15/30/45/60/90, next7/15/30, thisWeek, lastWeek, thisMonth, lastMonth, nextMonth, fytd, fiscalYear, month, custom." },
       { name: 'defaultPresetId', type: 'string | null', def: '—', desc: 'Preset highlighted when the popup opens.' },
       { name: 'fiscalStartMonth', type: 'number (1–12)', def: '4', desc: 'BS month the fiscal year starts (Shrawan = 4).' },
       { name: 'autoApply', type: 'boolean', def: 'false', desc: 'Commit on the second click instead of an Apply button.' },
       { name: 'minDate / maxDate', type: "Date | 'today' | '-1y'", def: '—', desc: 'Earliest / latest selectable day.' },
       { name: 'disabledWeekdays', type: 'number[]', def: '[]', desc: 'Grey-out weekdays (0 = Sunday … 6 = Saturday).' },
-      { name: 'maxRangeSpanDays', type: 'number | null', def: '—', desc: 'Reject ranges longer than N days.' },
+      { name: 'disabledDates', type: '(date) => boolean', def: '—', desc: 'Return true to disable a specific day.' },
+      ...DAY_GRID_OPTS,
+      { name: 'numberOfMonths', type: '1 | 2', def: '1', desc: 'Months shown side by side (stacked on phones).' },
+      { name: 'linkedCalendars', type: 'boolean', def: 'true', desc: 'With two months: page them together, or navigate each independently.' },
+      { name: 'maxRangeSpanDays / minRangeSpanDays', type: 'number | null', def: '—', desc: 'Longest / shortest allowed range, in days (counting both ends).' },
+      { name: 'allowDisabledInRange', type: 'boolean', def: 'false', desc: "Allow a range with disabled days inside it. By default the end can't be picked past the first disabled day." },
+      { name: 'withTime', type: 'boolean', def: 'false', desc: 'Pick a time for each end of the range (timeFormat, minuteStep apply).' },
+      { name: 'alwaysShowCalendars', type: 'boolean', def: 'true', desc: 'false shows only the presets until "Custom Range" is chosen.' },
       { name: 'autoUpdateInput', type: 'boolean', def: 'true', desc: 'Write the applied range back into the input text.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the range in a segmented `YYYY-MM-DD – YYYY-MM-DD` field (focus selects a section, ↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
       { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD', desc: 'dayjs-style tokens for each bound.' },
@@ -277,6 +321,7 @@ export const DEFS: PickerDef[] = [
     events: [
       { name: 'onApply', payload: 'DateRangeResult', desc: 'A full start→end range was applied.' },
       { name: 'onChange', payload: '{ start?, end? }', desc: 'Partial change while picking (first click / preset).' },
+      { name: 'onCancel', payload: '()', desc: 'The popup was dismissed with Cancel; unapplied changes are discarded.' },
       ...COMMON_EVENTS,
       { name: 'apply.nepaliDateRangePicker', payload: 'CustomEvent<DateRangeResult>', desc: 'Bubbling DOM event dispatched on the input.' },
     ],
@@ -339,6 +384,8 @@ export const DEFS: PickerDef[] = [
       { name: 'locale', type: "'ne' | 'en'", def: "'en'", desc: 'Digit and month-name language.' },
       { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: 'Show the AD calendar as a small hint on the header and month/year grid. false shows only BS.' },
       { name: 'minYear / maxYear', type: 'number (BS)', def: '1970 / 2100', desc: 'Range of BS years the grid can navigate.' },
+      { name: 'minMonth / maxMonth', type: '{ year, month } | null (BS)', def: '—', desc: 'Earliest / latest pickable month.' },
+      { name: 'disabledMonths', type: '(year, month) => boolean', def: '—', desc: "Show a month but don't let it be picked." },
       { name: 'displayFormat', type: 'string', def: 'MMMM YYYY', desc: 'dayjs-style tokens for the input text.' },
       { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the month in a segmented `YYYY-MM` field (↑/↓ step, digits auto-advance, Backspace clears). Set false for read-only.' },
       { name: 'valueFormat', type: "'iso' | 'iso-bs' | 'timestamp' | { calendar, format }", def: "'iso'", desc: 'Format of the machine value(s). A month is emitted as a date RANGE (first→last day), so onChange/events carry startValue, endValue and value ("start,end").' },
@@ -371,6 +418,198 @@ export const DEFS: PickerDef[] = [
       const iso = (x?: Date) => (x ? x.toISOString().slice(0, 10) : '');
       return d.start && d.end ? `${d.formatted}  ·  report range ${iso(d.start)} → ${iso(d.end)}` : d.formatted;
     },
+  },
+  {
+    id: 'year',
+    title: 'Year',
+    description: 'Pick one BS or AD year from a scrollable list — returns the date range it covers.',
+    component: NepaliYearPicker,
+    mountName: 'mountYearPicker',
+    vueComponent: 'NepaliYearPicker',
+    reactComponent: 'NepaliYearPicker',
+    jqueryFn: 'nepaliYearPicker',
+    dataAttr: '',
+    dataAttrMap: {},
+    eventName: 'select.nepaliYearPicker',
+    useCase: {
+      title: 'Annual report filter',
+      description: 'Pick a BS year; the form submits its first and last day as two AD ISO fields.',
+      options: { minYear: 2070, submitName: { start: 'from_date', end: 'to_date' } },
+    },
+    controls: [
+      { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
+      { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
+      { key: 'locale', label: 'Locale', type: 'select', def: 'en', choices: LOCALE },
+      { key: 'minYear', label: 'Min year', hint: 'in the active calendar', type: 'text', def: '', placeholder: '2070' },
+      { key: 'maxYear', label: 'Max year', type: 'text', def: '', placeholder: '2090' },
+      { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
+      { key: 'valueFormat', label: 'Server value', hint: 'sent to backend', type: 'select', def: 'iso', choices: VALUE_FORMAT },
+      { key: 'submitName', label: 'Submit name', hint: 'hidden field name', type: 'text', def: '', placeholder: 'report_year' },
+    ],
+    optionKeys: ['mode', 'allowModeToggle', 'locale', 'minYear', 'maxYear', 'clearable', 'valueFormat', 'submitName'],
+    optionDocs: [
+      { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar the year is in.' },
+      { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
+      { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: "Show the other calendar's years as a hint." },
+      { name: 'value / defaultValue', type: 'number | null', def: '— (empty)', desc: 'Controlled / initial year.' },
+      { name: 'locale', type: "'ne' | 'en'", def: "'en'", desc: "Language of the formatted value ('ne' for Devanagari digits)." },
+      { name: 'minYear / maxYear', type: 'number', def: 'supported range', desc: 'Bounds, in the active calendar.' },
+      { name: 'disabledYears', type: '(year) => boolean', def: '—', desc: "Show a year but don't let it be picked." },
+      { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the year (YYYY).' },
+      { name: 'valueFormat', type: "'iso' | 'iso-bs' | 'timestamp' | { calendar, format }", def: "'iso'", desc: "Machine values for the year's first and last day." },
+      { name: 'submitName', type: 'string | { start, end }', def: '—', desc: 'One combined start,end field, or two named fields.' },
+      { name: 'altField', type: 'string | HTMLElement | { start, end }', def: '—', desc: 'Write the range into existing field(s).' },
+      ALT_FORMAT_DOC,
+      ...COMMON_OPTS,
+    ],
+    events: [
+      { name: 'onChange', payload: 'YearResult', desc: 'A year was picked: { year, mode, start, end (AD Dates), startValue, endValue, value, formatted }.' },
+      ...COMMON_EVENTS,
+      { name: 'select.nepaliYearPicker', payload: 'CustomEvent<YearResult>', desc: 'Bubbling DOM event dispatched on the input.' },
+    ],
+    buildOptions(v) {
+      const o: Record<string, unknown> = {};
+      if (v.mode && v.mode !== 'BS') o.mode = v.mode;
+      if (v.allowModeToggle === false) o.allowModeToggle = false;
+      if (v.locale && v.locale !== 'en') o.locale = v.locale;
+      if (v.minYear) o.minYear = Number(v.minYear);
+      if (v.maxYear) o.maxYear = Number(v.maxYear);
+      if (v.clearable === false) o.clearable = false;
+      if (v.valueFormat && v.valueFormat !== 'iso') o.valueFormat = v.valueFormat;
+      if (v.submitName) o.submitName = v.submitName;
+      return o;
+    },
+    describe: (d) => d.formatted,
+  },
+  {
+    id: 'time',
+    title: 'Time',
+    description: 'A time of day on its own — 12h/24h, optional seconds, wheels or native dropdowns.',
+    component: NepaliTimePicker,
+    mountName: 'mountTimePicker',
+    vueComponent: 'NepaliTimePicker',
+    reactComponent: 'NepaliTimePicker',
+    jqueryFn: 'nepaliTimePicker',
+    dataAttr: '',
+    dataAttrMap: {},
+    eventName: 'select.nepaliTimePicker',
+    useCase: {
+      title: 'Opening hours',
+      description: 'Office hours only, in 15-minute steps; submits a 24-hour HH:mm string.',
+      options: { minuteStep: 15, minTime: { hour: 9, minute: 0 }, maxTime: { hour: 17, minute: 0 }, submitName: 'opens_at' },
+    },
+    controls: [
+      { key: 'timeFormat', label: 'Time format', type: 'select', def: '12h', choices: [{ value: '12h', label: '12-hour (AM/PM)' }, { value: '24h', label: '24-hour' }] },
+      { key: 'withSeconds', label: 'Seconds', type: 'bool', def: false },
+      { key: 'minuteStep', label: 'Minute step', type: 'number', def: 1, min: 1, max: 30 },
+      { key: 'minHour', label: 'Earliest hour', hint: '0–23 (minTime)', type: 'number', def: 0, min: 0, max: 23 },
+      { key: 'maxHour', label: 'Latest hour', hint: '0–23 (maxTime)', type: 'number', def: 23, min: 0, max: 23 },
+      { key: 'timeInputStyle', label: 'Input style', type: 'select', def: 'spinner', choices: [{ value: 'spinner', label: 'Wheels (spinner)' }, { value: 'dropdown', label: 'Native dropdowns' }] },
+      { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
+      { key: 'submitName', label: 'Submit name', hint: 'hidden field name', type: 'text', def: '', placeholder: 'opens_at' },
+    ],
+    optionKeys: ['timeFormat', 'withSeconds', 'minuteStep', 'minTime', 'maxTime', 'timeInputStyle', 'clearable', 'submitName'],
+    optionDocs: [
+      { name: 'value / defaultValue', type: '{ hour, minute, second? } | null', def: '— (empty)', desc: 'Controlled / initial time.' },
+      { name: 'timeFormat', type: "'12h' | '24h'", def: "'12h'", desc: 'Clock style of the field and wheels. The submitted value is always 24-hour.' },
+      { name: 'withSeconds', type: 'boolean', def: 'false', desc: 'Also pick seconds.' },
+      { name: 'minuteStep', type: 'number', def: '1', desc: 'Minute increment.' },
+      { name: 'minTime / maxTime', type: '{ hour, minute }', def: '—', desc: 'Earliest / latest selectable time.' },
+      { name: 'disabledTimes', type: '(h, m) => boolean', def: '—', desc: 'Disable specific hours/minutes.' },
+      { name: 'timeInputStyle', type: "'spinner' | 'dropdown'", def: "'spinner'", desc: 'Wheels plus typeable fields, or native selects.' },
+      { name: 'allowInput', type: 'boolean', def: 'true', desc: 'Type the time into the field.' },
+      { name: 'submitName', type: 'string', def: '—', desc: 'Hidden field carrying the 24-hour HH:mm[:ss] value.' },
+      { name: 'altField', type: 'string | HTMLElement', def: '—', desc: 'Write the value into an existing field.' },
+      ...COMMON_OPTS.filter((o) => o.name !== 'adapter'),
+    ],
+    events: [
+      { name: 'onChange', payload: 'TimeResult', desc: "A time was picked: { hour, minute, second, formatted ('09:30 AM'), value ('09:30') }." },
+      ...COMMON_EVENTS,
+      { name: 'select.nepaliTimePicker', payload: 'CustomEvent<TimeResult>', desc: 'Bubbling DOM event dispatched on the input.' },
+    ],
+    buildOptions(v) {
+      const o: Record<string, unknown> = {};
+      if (v.timeFormat && v.timeFormat !== '12h') o.timeFormat = v.timeFormat;
+      if (v.withSeconds) o.withSeconds = true;
+      if (Number(v.minuteStep) > 1) o.minuteStep = Number(v.minuteStep);
+      if (Number(v.minHour) > 0) o.minTime = { hour: Number(v.minHour), minute: 0 };
+      if (v.maxHour !== undefined && Number(v.maxHour) < 23) o.maxTime = { hour: Number(v.maxHour), minute: 0 };
+      if (v.timeInputStyle && v.timeInputStyle !== 'spinner') o.timeInputStyle = v.timeInputStyle;
+      if (v.clearable === false) o.clearable = false;
+      if (v.submitName) o.submitName = v.submitName;
+      return o;
+    },
+    describe: (d) => d.formatted,
+  },
+  {
+    id: 'multi',
+    title: 'Multiple dates',
+    description: 'Pick several days from one calendar — click a day to add it, click again to remove it.',
+    component: NepaliMultiDatePicker,
+    mountName: 'mountMultiDatePicker',
+    vueComponent: 'NepaliMultiDatePicker',
+    reactComponent: 'NepaliMultiDatePicker',
+    jqueryFn: 'nepaliMultiDatePicker',
+    dataAttr: '',
+    dataAttrMap: {},
+    eventName: 'select.nepaliMultiDatePicker',
+    useCase: {
+      title: 'Leave request',
+      description: 'Up to five future days, Saturdays off; submits the days as comma-separated AD ISO dates.',
+      options: { maxDates: 5, minDate: 'today', disabledWeekdays: [6], submitName: 'leave_days' },
+    },
+    controls: [
+      { key: 'mode', label: 'Calendar system', type: 'select', def: 'BS', choices: [{ value: 'BS', label: 'Bikram Sambat' }, { value: 'AD', label: 'Gregorian' }] },
+      { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
+      { key: 'maxDates', label: 'Max dates', hint: '0 = no limit', type: 'number', def: 0, min: 0, max: 31 },
+      { key: 'locale', label: 'Locale', type: 'select', def: 'en', choices: LOCALE },
+      { key: 'minDate', label: 'Min date', hint: "Date | 'today' | '+7d'", type: 'text', def: '', placeholder: 'today' },
+      { key: 'maxDate', label: 'Max date', type: 'text', def: '', placeholder: '+2m' },
+      { key: 'disableWeekends', label: 'Disable Saturdays', type: 'bool', def: false },
+      { key: 'clearable', label: 'Clearable (× button)', type: 'bool', def: true },
+      { key: 'valueFormat', label: 'Server value', hint: 'sent to backend', type: 'select', def: 'iso', choices: VALUE_FORMAT },
+      { key: 'submitName', label: 'Submit name', hint: 'hidden field name', type: 'text', def: '', placeholder: 'leave_days' },
+    ],
+    optionKeys: ['mode', 'allowModeToggle', 'maxDates', 'locale', 'minDate', 'maxDate', 'disabledWeekdays', 'clearable', 'valueFormat', 'submitName'],
+    optionDocs: [
+      { name: 'mode', type: "'BS' | 'AD'", def: "'BS'", desc: 'Calendar system the picker opens in.' },
+      { name: 'allowModeToggle', type: 'boolean', def: 'true', desc: 'Show the BS/AD swap button on the input.' },
+      { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: 'Show the other calendar as a small hint.' },
+      { name: 'value / defaultValue', type: 'Date[] | null', def: '— (empty)', desc: 'Controlled / initial days.' },
+      { name: 'maxDates', type: 'number', def: 'no limit', desc: 'Most days that can be picked.' },
+      { name: 'locale', type: "'ne' | 'en'", def: "'en'", desc: 'Digit and month-name language.' },
+      { name: 'minDate / maxDate', type: "Date | 'today' | '+7d'", def: '—', desc: 'Earliest / latest selectable day.' },
+      { name: 'disabledWeekdays', type: 'number[]', def: '[]', desc: 'Grey-out weekdays (0 = Sunday … 6 = Saturday).' },
+      { name: 'disabledDates', type: '(date) => boolean', def: '—', desc: 'Return true to disable a specific day.' },
+      ...DAY_GRID_OPTS,
+      { name: 'displayFormat', type: 'string', def: 'YYYY-MM-DD', desc: 'Tokens for each day in the field; past three days the field shows a count.' },
+      VALUE_FORMAT_DOC,
+      { name: 'valueSeparator', type: 'string', def: "','", desc: 'Separator between days in the submitted value.' },
+      SUBMIT_NAME_DOC,
+      ALT_FIELD_DOC,
+      ALT_FORMAT_DOC,
+      ...COMMON_OPTS,
+    ],
+    events: [
+      { name: 'onChange', payload: 'MultiDateResult', desc: 'The set of days changed: { dates, bs, formatted, values, value }.' },
+      ...COMMON_EVENTS,
+      { name: 'select.nepaliMultiDatePicker', payload: 'CustomEvent<MultiDateResult>', desc: 'Bubbling DOM event dispatched on the input.' },
+    ],
+    buildOptions(v) {
+      const o: Record<string, unknown> = {};
+      if (v.mode && v.mode !== 'BS') o.mode = v.mode;
+      if (v.allowModeToggle === false) o.allowModeToggle = false;
+      if (Number(v.maxDates) > 0) o.maxDates = Number(v.maxDates);
+      if (v.locale && v.locale !== 'en') o.locale = v.locale;
+      if (v.minDate) o.minDate = v.minDate;
+      if (v.maxDate) o.maxDate = v.maxDate;
+      if (v.disableWeekends) o.disabledWeekdays = [6];
+      if (v.clearable === false) o.clearable = false;
+      if (v.valueFormat && v.valueFormat !== 'iso') o.valueFormat = v.valueFormat;
+      if (v.submitName) o.submitName = v.submitName;
+      return o;
+    },
+    describe: (d) => d.formatted,
   },
 ];
 
@@ -417,6 +656,16 @@ export function snippet(def: PickerDef, options: Record<string, unknown>, framew
       ].join('\n');
 
     case 'html': {
+      if (!def.dataAttr) {
+        // autoInit() doesn't scan for this picker: mount it from the UMD global.
+        return [
+          `<link rel="stylesheet" href="https://unpkg.com/nepali-datepicker-pro/dist/style.css">`,
+          `<script src="https://unpkg.com/nepali-datepicker-pro/dist/nepali-datepicker-pro.umd.cjs"></script>`,
+          ``,
+          `<input id="picker">`,
+          `<script>NepaliPicker.${def.mountName}(document.getElementById('picker'), ${jsObject(options)});</script>`,
+        ].join('\n');
+      }
       const parts = [def.dataAttr];
       const unsupported: string[] = [];
       for (const [k, v] of Object.entries(options)) {

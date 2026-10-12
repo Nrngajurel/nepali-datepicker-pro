@@ -2,12 +2,12 @@
 layout: home
 title: Nepali Datepicker Pro — Bikram Sambat date, range & month picker
 titleTemplate: false
-description: A self-owned Bikram Sambat ↔ Gregorian calendar engine with date, time, range and month pickers. Zero dependencies, ~17 KB gzip, and ready for vanilla JS, a <script> tag, jQuery, Vue and React.
+description: A self-owned Bikram Sambat ↔ Gregorian calendar engine with date, time, range, month, year and multi-date pickers. Zero dependencies, accessible, and ready for vanilla JS, a <script> tag, jQuery, Vue, React and custom elements.
 
 hero:
   name: Nepali Datepicker Pro
   text: Bikram Sambat pickers for every stack
-  tagline: A self-owned BS ↔ AD calendar engine with date, time, range and month pickers — zero dependencies, ~17 KB gzip, and one package for vanilla JS, jQuery, Vue and React.
+  tagline: A self-owned BS ↔ AD calendar engine with date, time, range, month, year and multi-date pickers — zero dependencies, WCAG 2.2 AA, and one package for vanilla JS, jQuery, Vue, React and custom elements.
   image:
     src: /images/date-time-picker.png
     alt: The Nepali Datepicker Pro date and time picker, showing a Bikram Sambat calendar with a same-screen time picker
@@ -30,7 +30,7 @@ features:
   - title: Real constraints
     details: min/max dates with relative tokens like '+7d', disabled weekdays, and custom per-day predicates.
   - title: Any stack
-    details: One package ships ES, UMD, Vue and React entry points plus data-attribute auto-init for plain HTML.
+    details: One package ships ES, CommonJS, UMD, Vue, React and custom-element entry points plus data-attribute auto-init for plain HTML.
   - title: Backend-ready values
     details: Decouple what the user sees from what you submit — valueFormat, submitName and altField hand your server a clean ISO string.
   - title: Accurate by construction

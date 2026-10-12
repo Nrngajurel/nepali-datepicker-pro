@@ -18,7 +18,8 @@ month covers, so your query doesn't need to know anything about Bikram Sambat.
 - **`value` is the `"start,end"` pair**, which is what a single `submitName` string writes. Pass
   `{ start, end }` instead to get two named fields.
 - **`minYear` / `maxYear` bound the grid** in BS years, defaulting to the validated 1970–2100
-  window.
+  window. `minMonth` / `maxMonth` (`{ year, month }`) and `disabledMonths(year, month)` limit
+  single months.
 - **The AD calendar shows as a hint by default** — the header and month grid show the Gregorian
   month(s)/year each BS month/year overlaps. Set `showSecondaryCalendar: false` for a BS-only
   grid.

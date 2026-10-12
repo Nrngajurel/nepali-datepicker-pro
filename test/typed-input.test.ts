@@ -217,7 +217,7 @@ test('12h mode shows an AM/PM section set with a/p keys', () => {
   document.body.appendChild(input);
   const inst = mountDateTimePicker(input, { withTime: true, timeFormat: '12h', value: null });
   input.dispatchEvent(new FocusEvent('focus'));
-  assert.equal(input.value, 'YYYY-MM-DD hh:mm --', 'AM/PM placeholder present in 12h mode');
+  assert.equal(input.value, 'YYYY-MM-DD hh:mm aa', 'AM/PM placeholder present in 12h mode');
 
   type(input, '20810115');
   type(input, '0230'); // 02:30

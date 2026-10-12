@@ -1,37 +1,37 @@
 /**
- * Refined React wrappers for the Nepali date picker family.
+ * React wrappers for the Nepali date picker family.
  *
- * Fixes over the original
- * ────────────────────────
- * 1. Stale closure on callbacks  – callbacks (onChange, onApply, …) are kept in
- *    a ref so the picker always calls the latest version without needing a
- *    remount or update() call for them.
+ * Every component is built by one factory, so they all behave the same:
  *
- * 2. update() storm  – the original `[props]` dep fires on every render because
- *    the parent recreates the props object each time. We now split stable config
- *    (mode, locale, minDate, …) from live callbacks and only call update() when
- *    config actually changes — tracked by a JSON fingerprint.
+ * 1. Latest callbacks  – callbacks (onChange, onApply, …) are kept in a ref, so
+ *    the picker always calls the latest version without a remount or update().
  *
- * 3. className leak  – className is extracted before anything is passed to the
- *    picker; the picker never sees it.
+ * 2. Minimal updates  – options are compared per key (Dates by value,
+ *    functions/instances by identity) and only changed keys go to update().
+ *    Re-sending an unchanged controlled `value` would reset a half-picked range.
  *
- * 4. Typed properly  – PickerInstance generics are filled in; no `unknown`.
+ * 3. Reconciler-safe mount  – the picker wraps its <input> in its own DOM
+ *    (icon, clear button, mode switch, hidden submit fields…). React only owns
+ *    an empty host <div>; the input is created imperatively inside it, so
+ *    React 18/19 and StrictMode's mount→unmount→mount never fight the picker.
  *
- * 5. Reconciler-safe mount  – the picker wraps its trigger <input> in its own
- *    DOM node (clear button, mode toggle, hidden submit fields…), which moves
- *    the input out of the slot React tracks. Rendering `<input ref>` directly
- *    then made React 19 throw "The node to be removed is not a child of this
- *    node" at unmount (and under StrictMode's mount→unmount→mount). We now
- *    render an empty host <div> that React owns and create the <input>
- *    imperatively inside it, so React only ever manages the host and the picker
- *    is free to rearrange its own descendants.
+ * 4. Ref API  – `ref` gives show/hide/clear/getValue/setValue/update/focus and
+ *    the underlying `instance`.
+ *
+ * 5. Form-friendly  – `inputProps` (id, name, placeholder, aria-*) land on the
+ *    created <input>, so a <label htmlFor> points at it.
  */
+'use client';
 
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useLayoutEffect, useRef } from 'react';
+import type { ForwardRefExoticComponent, RefAttributes } from 'react';
 import {
   mountDateRangePicker,
   mountDateTimePicker,
   mountMonthPicker,
+  mountMultiDatePicker,
+  mountTimePicker,
+  mountYearPicker,
 } from './index.js';
 import type {
   DateRangePickerOptions,
@@ -40,7 +40,15 @@ import type {
   DateTimeResult,
   MonthPickerOptions,
   MonthResult,
+  MonthValue,
+  MultiDatePickerOptions,
+  MultiDateResult,
   PickerInstance,
+  TimePickerOptions,
+  TimeResult,
+  TimeValue,
+  YearPickerOptions,
+  YearResult,
 } from './index.js';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -108,144 +116,105 @@ function useLiveOptions<TOptions>(
   }, [combined]);
 }
 
-/**
- * Mounts an imperative picker inside a React-owned host <div>.
- *
- * The `factory` builds the picker on a freshly-created <input>. It is captured
- * via a ref so the mount always uses the latest closure, but only ever runs
- * once (mount/unmount only). `destroy()` tears the picker down, then we empty
- * the host so React can safely remove/remount it.
- */
-function useImperativePicker<TResult, TOptions>(
-  factory: (input: HTMLInputElement) => PickerInstance<TResult, TOptions>,
-) {
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const instanceRef = useRef<PickerInstance<TResult, TOptions> | null>(null);
-  const factoryRef = useLatest(factory);
+/** Every callback option any picker takes; each is routed to the latest prop. */
+const CALLBACKS = ['onChange', 'onApply', 'onOpen', 'onClose', 'onClear', 'onCancel', 'onChangeMonthYear', 'onInvalid'] as const;
 
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    const input = document.createElement('input');
-    host.appendChild(input);
-    instanceRef.current = factoryRef.current(input);
-    return () => {
-      instanceRef.current?.destroy();
-      instanceRef.current = null;
-      // destroy() removes the picker's wrapper (and the input inside it); clear
-      // any stray nodes so the host is empty for React to remove or remount.
-      host.replaceChildren();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // intentionally empty — mount/unmount only
-
-  return { hostRef, instanceRef };
+/** What a picker component's `ref` exposes. */
+export interface PickerHandle<TResult, TOptions, TInput = TResult> {
+  show(): void;
+  hide(): void;
+  clear(): void;
+  getValue(): TResult | null;
+  setValue(value: TInput | null): void;
+  update(patch: Partial<TOptions>): void;
+  /** Focus the field. */
+  focus(): void;
+  /** The underlying picker instance (null before mount / after unmount). */
+  readonly instance: PickerInstance<TResult, TOptions, TInput> | null;
 }
 
-// ─── NepaliDateTimePicker ─────────────────────────────────────────────────────
-
-export interface NepaliDateTimePickerProps extends DateTimePickerOptions {
+export interface PickerComponentProps {
   className?: string;
+  /** Attributes for the created <input>: id (for <label htmlFor>), name, placeholder, aria-*. */
+  inputProps?: Record<string, string>;
 }
 
-export function NepaliDateTimePicker({
-  className,
-  ...options
-}: NepaliDateTimePickerProps) {
-  // Always-current refs for every callback — no stale closures.
-  const onChangeCb = useLatest(options.onChange);
-  const onOpenCb = useLatest(options.onOpen);
-  const onCloseCb = useLatest(options.onClose);
-  const onClearCb = useLatest(options.onClear);
-  const onChangeMonthYearCb = useLatest(options.onChangeMonthYear);
+type Mount<TOptions, TResult, TInput> = (input: HTMLInputElement, options: TOptions) => PickerInstance<TResult, TOptions, TInput>;
 
-  const { hostRef, instanceRef } = useImperativePicker<
-    DateTimeResult,
-    DateTimePickerOptions
-  >((input) =>
-    mountDateTimePicker(input, {
-      ...options,
-      onChange: (r) => onChangeCb.current?.(r),
-      onOpen: () => onOpenCb.current?.(),
-      onClose: () => onCloseCb.current?.(),
-      onClear: () => onClearCb.current?.(),
-      onChangeMonthYear: (y, m) => onChangeMonthYearCb.current?.(y, m),
-    }),
-  );
+function createPickerComponent<TOptions extends object, TResult, TInput>(displayName: string, mount: Mount<TOptions, TResult, TInput>) {
+  const Component = forwardRef<PickerHandle<TResult, TOptions, TInput>, TOptions & PickerComponentProps>(function Picker({ className, inputProps, ...rest }, ref) {
+    const options = rest as unknown as TOptions;
+    const latest = useLatest(options as Record<string, unknown>);
+    const hostRef = useRef<HTMLDivElement | null>(null);
+    const instanceRef = useRef<PickerInstance<TResult, TOptions, TInput> | null>(null);
+    const mountOptions = useLatest(() => {
+      const wired: Record<string, unknown> = { ...(options as Record<string, unknown>) };
+      CALLBACKS.forEach((name) => {
+        wired[name] = (...args: unknown[]) => (latest.current[name] as ((...a: unknown[]) => unknown) | undefined)?.(...args);
+      });
+      return wired as TOptions;
+    });
+    const latestInputProps = useLatest(inputProps);
 
-  // Propagate structural config changes (never callbacks).
-  const { onChange, onOpen, onClose, onChangeMonthYear, onClear, ...config } = options;
-  useLiveOptions<DateTimePickerOptions>(instanceRef, config as Record<string, unknown>);
+    useEffect(() => {
+      const host = hostRef.current;
+      if (!host) return;
+      const input = document.createElement('input');
+      Object.entries(latestInputProps.current ?? {}).forEach(([key, value]) => input.setAttribute(key, value));
+      host.appendChild(input);
+      instanceRef.current = mount(input, mountOptions.current());
+      return () => {
+        instanceRef.current?.destroy();
+        instanceRef.current = null;
+        // destroy() removes the picker's wrapper (and the input inside it); clear
+        // any stray nodes so the host is empty for React to remove or remount.
+        host.replaceChildren();
+      };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // intentionally empty — mount/unmount only
 
-  return <div ref={hostRef} className={className} />;
+    useImperativeHandle(ref, () => ({
+      show: () => instanceRef.current?.show(),
+      hide: () => instanceRef.current?.hide(),
+      clear: () => instanceRef.current?.clear(),
+      getValue: () => instanceRef.current?.getValue() ?? null,
+      setValue: (value) => instanceRef.current?.setValue(value),
+      update: (patch) => instanceRef.current?.update(patch),
+      focus: () => hostRef.current?.querySelector('input')?.focus(),
+      get instance() {
+        return instanceRef.current;
+      },
+    }), []);
+
+    // Propagate structural config changes (never callbacks).
+    const config: Record<string, unknown> = {};
+    Object.entries(options as Record<string, unknown>).forEach(([key, value]) => {
+      if (!(CALLBACKS as readonly string[]).includes(key)) config[key] = value;
+    });
+    useLiveOptions<TOptions>(instanceRef, config);
+
+    return <div ref={hostRef} className={className} />;
+  });
+  Component.displayName = displayName;
+  return Component as ForwardRefExoticComponent<TOptions & PickerComponentProps & RefAttributes<PickerHandle<TResult, TOptions, TInput>>>;
 }
 
-// ─── NepaliDateRangePicker ────────────────────────────────────────────────────
+// ─── components ─────────────────────────────────────────────────────────────
 
-export interface NepaliDateRangePickerProps extends DateRangePickerOptions {
-  className?: string;
-}
+export type NepaliDateTimePickerProps = DateTimePickerOptions & PickerComponentProps;
+export const NepaliDateTimePicker = createPickerComponent<DateTimePickerOptions, DateTimeResult, Date | DateTimeResult>('NepaliDateTimePicker', mountDateTimePicker);
 
-export function NepaliDateRangePicker({
-  className,
-  ...options
-}: NepaliDateRangePickerProps) {
-  const onApplyCb = useLatest(options.onApply);
-  const onChangeCb = useLatest(options.onChange);
-  const onOpenCb = useLatest(options.onOpen);
-  const onCloseCb = useLatest(options.onClose);
-  const onClearCb = useLatest(options.onClear);
+export type NepaliDateRangePickerProps = DateRangePickerOptions & PickerComponentProps;
+export const NepaliDateRangePicker = createPickerComponent<DateRangePickerOptions, DateRangeResult, { start: Date; end: Date }>('NepaliDateRangePicker', mountDateRangePicker);
 
-  const { hostRef, instanceRef } = useImperativePicker<
-    DateRangeResult,
-    DateRangePickerOptions
-  >((input) =>
-    mountDateRangePicker(input, {
-      ...options,
-      onApply: (r) => onApplyCb.current?.(r),
-      onChange: (p) => onChangeCb.current?.(p),
-      onOpen: () => onOpenCb.current?.(),
-      onClose: () => onCloseCb.current?.(),
-      onClear: () => onClearCb.current?.(),
-    }),
-  );
+export type NepaliMonthPickerProps = MonthPickerOptions & PickerComponentProps;
+export const NepaliMonthPicker = createPickerComponent<MonthPickerOptions, MonthResult, MonthValue>('NepaliMonthPicker', mountMonthPicker);
 
-  const { onApply, onChange, onOpen, onClose, onClear, ...config } = options;
-  useLiveOptions<DateRangePickerOptions>(instanceRef, config as Record<string, unknown>);
+export type NepaliYearPickerProps = YearPickerOptions & PickerComponentProps;
+export const NepaliYearPicker = createPickerComponent<YearPickerOptions, YearResult, number>('NepaliYearPicker', mountYearPicker);
 
-  return <div ref={hostRef} className={className} />;
-}
+export type NepaliTimePickerProps = TimePickerOptions & PickerComponentProps;
+export const NepaliTimePicker = createPickerComponent<TimePickerOptions, TimeResult, TimeValue>('NepaliTimePicker', mountTimePicker);
 
-// ─── NepaliMonthPicker ────────────────────────────────────────────────────────
-
-export interface NepaliMonthPickerProps extends MonthPickerOptions {
-  className?: string;
-}
-
-export function NepaliMonthPicker({
-  className,
-  ...options
-}: NepaliMonthPickerProps) {
-  const onChangeCb = useLatest(options.onChange);
-  const onOpenCb = useLatest(options.onOpen);
-  const onCloseCb = useLatest(options.onClose);
-  const onClearCb = useLatest(options.onClear);
-
-  const { hostRef, instanceRef } = useImperativePicker<
-    MonthResult,
-    MonthPickerOptions
-  >((input) =>
-    mountMonthPicker(input, {
-      ...options,
-      onChange: (r) => onChangeCb.current?.(r),
-      onOpen: () => onOpenCb.current?.(),
-      onClose: () => onCloseCb.current?.(),
-      onClear: () => onClearCb.current?.(),
-    }),
-  );
-
-  const { onChange, onOpen, onClose, onClear, ...config } = options;
-  useLiveOptions<MonthPickerOptions>(instanceRef, config as Record<string, unknown>);
-
-  return <div ref={hostRef} className={className} />;
-}
+export type NepaliMultiDatePickerProps = MultiDatePickerOptions & PickerComponentProps;
+export const NepaliMultiDatePicker = createPickerComponent<MultiDatePickerOptions, MultiDateResult, Date[]>('NepaliMultiDatePicker', mountMultiDatePicker);

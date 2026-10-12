@@ -1,6 +1,9 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { formatDateValue, formatMachineValue, stringifyMachineValue } from '../format/index.js';
-import type { CalendarAdapter, MonthPickerOptions, MonthResult, MonthValue, PickerInstance, PickerLocale } from '../types.js';
+import { fill } from '../i18n/strings.js';
+import { resolveUi } from './ui.js';
+import type { UiConfig } from './ui.js';
+import type { CalendarAdapter, InvalidReason, MonthPickerOptions, MonthResult, MonthValue, PickerInstance, PickerLocale } from '../types.js';
 
 export interface MonthPickerControllerState {
   isOpen: boolean;
@@ -22,6 +25,12 @@ export interface MonthPickerController extends PickerInstance<MonthResult, Month
   selectYearView(year: number): void;
   validateTyped(text: string): 'valid' | 'invalid' | 'empty';
   commitTyped(text: string): 'valid' | 'invalid' | 'empty';
+  typedError(text: string): InvalidReason | null;
+  invalidMessage(reason: InvalidReason): string;
+  /** Whether a month is outside minMonth/maxMonth/minYear/maxYear or rejected by disabledMonths. */
+  isMonthDisabled(year: number, month: number): boolean;
+  getUi(): UiConfig;
+  getOptions(): Readonly<MonthPickerOptions>;
   /** The calendar adapter in use (the `adapter` option, or the built-in one) — the render layer draws with it. */
   getAdapter(): CalendarAdapter;
   typedString(): string;
@@ -34,6 +43,8 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
   const adapter = options.adapter ?? defaultCalendarAdapter;
   // Read live so a runtime `update({ locale })` re-labels the month grid.
   const currentLocale = (): PickerLocale => options.locale ?? 'en';
+  let ui = resolveUi(options);
+  const monthIndex = (v: MonthValue): number => v.year * 12 + v.month;
   let listeners: Array<(value: MonthResult) => void> = [];
   let stateListeners: Array<() => void> = [];
   let clearListeners: Array<() => void> = [];
@@ -93,6 +104,8 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
 
   const controller: MonthPickerController = {
     getAdapter: () => adapter,
+    getUi: () => ui,
+    getOptions: () => options,
     getState: () => state,
     getValue: () => (state.selected ? buildResult(state.selected.year, state.selected.month) : null),
     setValue(value) {
@@ -112,6 +125,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
     },
     update(patch) {
       options = { ...options, ...patch };
+      ui = resolveUi(options);
       setState('showSecondaryCalendar' in patch ? { showSecondaryCalendar: options.showSecondaryCalendar !== false } : {});
       // `value` is controlled: a new value passed through update() (React/Vue
       // props) replaces the current one, silently — like setValue.
@@ -155,6 +169,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
       else setState({ view: 'month' });
     },
     selectMonthView(month) {
+      if (controller.isMonthDisabled(state.viewYear, month)) return;
       const selected = { year: state.viewYear, month };
       setState({ selected, viewMonth: month });
       emit(buildResult(selected.year, month));
@@ -169,15 +184,41 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
       const v = state.selected ?? adapter.todayBs();
       return `${v.year}-${String(v.month).padStart(2, '0')}`;
     },
+    isMonthDisabled(year, month) {
+      const { min, max } = controller.yearBounds();
+      if (year < min || year > max) return true;
+      const index = year * 12 + month;
+      if (options.minMonth && index < monthIndex(options.minMonth)) return true;
+      if (options.maxMonth && index > monthIndex(options.maxMonth)) return true;
+      return !!options.disabledMonths?.(year, month);
+    },
     // Parse `YYYY-MM`; a month is valid when the year is in range and month 1–12.
     validateTyped(text) {
-      const m = /^\s*(\d{1,4})-(\d{1,2})\s*$/.exec(text);
       if (text.trim() === '') return 'empty';
+      return controller.typedError(text) ? 'invalid' : 'valid';
+    },
+    typedError(text) {
+      if (text.trim() === '') return null;
+      const m = /^\s*(\d{1,4})-(\d{1,2})\s*$/.exec(text);
       if (!m) return 'invalid';
       const year = Number(m[1]);
       const month = Number(m[2]);
       const { min, max } = controller.yearBounds();
-      return year >= min && year <= max && month >= 1 && month <= 12 ? 'valid' : 'invalid';
+      if (year < min || year > max || month < 1 || month > 12) return 'invalid';
+      if (options.minMonth && year * 12 + month < monthIndex(options.minMonth)) return 'before-min';
+      if (options.maxMonth && year * 12 + month > monthIndex(options.maxMonth)) return 'after-max';
+      return controller.isMonthDisabled(year, month) ? 'unavailable' : null;
+    },
+    invalidMessage(reason) {
+      const fmt = (v: MonthValue | null | undefined): string => (v ? `${v.year}-${String(v.month).padStart(2, '0')}` : '');
+      switch (reason) {
+        case 'before-min': return fill(ui.strings.beforeMin, { date: fmt(options.minMonth) });
+        case 'after-max': return fill(ui.strings.afterMax, { date: fmt(options.maxMonth) });
+        case 'unavailable': return ui.strings.dateUnavailable;
+        case 'required': return ui.strings.required;
+        case 'incomplete': return ui.strings.incomplete;
+        default: return ui.strings.invalidDate;
+      }
     },
     commitTyped(text) {
       const status = controller.validateTyped(text);

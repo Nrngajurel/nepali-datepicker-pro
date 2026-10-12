@@ -1,7 +1,7 @@
 {
   "name": "nepali-datepicker-pro",
   "version": "0.4.1",
-  "description": "Framework-agnostic Nepali BS/AD date, datetime, and range picker with a same-screen time picker. Works from vanilla JS, a <script> tag, jQuery, Vue, and React.",
+  "description": "Framework-agnostic, accessible Nepali BS/AD date, date-time, range, month, year, time and multi-date picker. Works from vanilla JS, a <script> tag, jQuery, Vue, React and as custom elements.",
   "type": "module",
   "license": "MIT",
   "author": {
@@ -38,7 +38,10 @@
   ],
   "sideEffects": [
     "*.css",
-    "./dist/jquery.js"
+    "./dist/jquery.js",
+    "./dist/jquery.cjs",
+    "./dist/element.js",
+    "./dist/element.cjs"
   ],
   "main": "./dist/nepali-datepicker-pro.umd.cjs",
   "module": "./dist/index.js",
@@ -52,22 +55,35 @@
     },
     "./jquery": {
       "types": "./dist/jquery.d.ts",
-      "import": "./dist/jquery.js"
+      "import": "./dist/jquery.js",
+      "require": "./dist/jquery.cjs"
     },
     "./vue": {
       "types": "./dist/vue.d.ts",
-      "import": "./dist/vue.js"
+      "import": "./dist/vue.js",
+      "require": "./dist/vue.cjs"
     },
     "./react": {
       "types": "./dist/react.d.ts",
-      "import": "./dist/react.js"
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
     },
-    "./style.css": "./dist/style.css"
+    "./element": {
+      "types": "./dist/element.d.ts",
+      "import": "./dist/element.js",
+      "require": "./dist/element.cjs"
+    },
+    "./holidays": {
+      "types": "./dist/holidays.d.ts",
+      "import": "./dist/holidays.js",
+      "require": "./dist/holidays.cjs"
+    },
+    "./style.css": "./dist/style.css",
+    "./package.json": "./package.json"
   },
   "files": [
     "dist",
     "examples",
-    "images",
     "skills",
     "README.md",
     "LICENSE"
@@ -87,7 +103,8 @@
     "lint": "tsc --noEmit",
     "prepublishOnly": "npm run lint && npm run test && npm run build",
     "test:e2e": "playwright test",
-    "test:e2e:webkit": "docker run --rm --ipc=host -u \"$(id -u):$(id -g)\" -e HOME=/tmp -e CI=1 -v \"$PWD\":/work -w /work mcr.microsoft.com/playwright:v1.64.0-noble npx playwright test --config playwright.webkit.config.ts"
+    "test:e2e:webkit": "docker run --rm --ipc=host -u \"$(id -u):$(id -g)\" -e HOME=/tmp -e CI=1 -v \"$PWD\":/work -w /work mcr.microsoft.com/playwright:v1.64.0-noble npx playwright test --config playwright.webkit.config.ts",
+    "size": "node scripts/check-size.mjs"
   },
   "peerDependencies": {
     "jquery": ">=3",
@@ -116,6 +133,7 @@
     }
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.64.0",
     "@types/jquery": "^4.0.1",
     "@types/node": "^20.0.0",

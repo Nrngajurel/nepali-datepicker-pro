@@ -30,10 +30,61 @@ The package ships one entry point per stack, so bundlers only pull in what you a
 | `nepali-datepicker-pro/vue` | Vue 3 components with `v-model` |
 | `nepali-datepicker-pro/react` | React components |
 | `nepali-datepicker-pro/jquery` | The jQuery plugin methods |
+| `nepali-datepicker-pro/element` | Custom elements for Angular, Svelte, Astro, Lit or plain HTML |
+| `nepali-datepicker-pro/holidays` | Nepal's fixed-date national days for the `events` option |
 | `nepali-datepicker-pro/style.css` | The stylesheet |
 
-The UMD build (`dist/nepali-datepicker-pro.umd.cjs`) exposes everything on a global
-`NepaliPicker` for `<script>`-tag pages.
+Every subpath ships both ESM and CommonJS (`require('nepali-datepicker-pro/react')` works). The
+UMD build (`dist/nepali-datepicker-pro.umd.cjs`) exposes everything on a global `NepaliPicker`
+for `<script>`-tag pages, including the jQuery plugin.
+
+## Bundle size
+
+Zero runtime dependencies, but the pickers do a lot: about **27 KB gzipped** for the date picker
+alone and about **39 KB** for every picker together, plus **6 KB** gzipped for `style.css`.
+Each picker lives in its own module, so bundlers drop the ones you don't import.
+
+## Custom elements
+
+For frameworks without a dedicated wrapper (Angular, Svelte, Astro, Lit…) or plain HTML with a
+bundler, import the element entry once. It registers six tags:
+
+```html
+<script type="module">
+  import 'nepali-datepicker-pro/element';
+  import 'nepali-datepicker-pro/style.css';
+</script>
+
+<form>
+  <nepali-date-picker name="dob" mode="BS" max-date="today" required></nepali-date-picker>
+  <nepali-date-range-picker name="period" number-of-months="2"></nepali-date-range-picker>
+  <nepali-month-picker name="month"></nepali-month-picker>
+  <nepali-year-picker name="year"></nepali-year-picker>
+  <nepali-time-picker name="at" time-format="24h"></nepali-time-picker>
+  <nepali-multi-date-picker name="days" max-dates="5"></nepali-multi-date-picker>
+</form>
+```
+
+- **Attributes map to options** in kebab-case (`min-date` → `minDate`) and apply live when they
+  change. Strings: `mode`, `language`, `theme`, `density`, `script`, `locale`, `time-format`,
+  `display-format`, `value-format`, `min-date`, `max-date`, `opens`, `drops`,
+  `invalid-behavior`, `time-input-style`. Numbers: `minute-step`, `number-of-months`,
+  `fiscal-start-month`, `max-range-span-days`, `min-range-span-days`, `max-dates`, `min-year`,
+  `max-year`, `week-starts-on`. Booleans (present, or `"true"`/`"false"`): `with-time`,
+  `with-seconds`, `inline`, `required`, `disabled`, `allow-mode-toggle`, `clearable`,
+  `allow-input`, `auto-apply`, `show-secondary-calendar`, `show-calendar-suffix`,
+  `linked-calendars`.
+- **`name`** becomes `submitName`, so the machine value submits with the surrounding form.
+  `placeholder` goes on the field. `value` takes `YYYY-MM-DD`, `start,end` (range and
+  multi-date), `YYYY-MM` (BS month), `YYYY` (year) or `HH:mm[:ss]` (time).
+- **Richer options** — functions, `events`, `presets`, `strings` — go on the `options` property:
+  `el.options = { disabledDates: (d) => d.getDay() === 6 }`.
+- **Events** on the element: `change` (`detail` is the result), `clear`, `open`, `close` and
+  `invalid` (`detail` is `{ reason, message }`).
+- **Members:** `value` (read the result, or set a value), `instance`, `show()`, `hide()`,
+  `clear()`.
+- **Light DOM.** There's no shadow root, so `style.css`, the theme tokens and your page styles
+  apply. An `<input>` you put inside the element is used as the field; otherwise one is created.
 
 ## Requirements
 

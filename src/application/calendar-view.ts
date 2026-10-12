@@ -89,10 +89,11 @@ export function crossCalendarMonthSpan(mode: CalendarMode, adapter: CalendarAdap
 // Full day-grid for one viewed month, walking the active mode's calendar
 // rather than always BS. Always pads to a fixed 6 rows (42 cells) — not just
 // to a whole week — so the grid (and the popup around it) doesn't change
-// height as you navigate between a 5-row month and a 6-row one.
-export function buildViewMonthCells(mode: CalendarMode, adapter: CalendarAdapter, dateMath: DateMath, year: number, month: number): Array<DateValue | null> {
+// height as you navigate between a 5-row month and a 6-row one. Columns start
+// on `weekStartsOn` (0 = Sunday).
+export function buildViewMonthCells(mode: CalendarMode, adapter: CalendarAdapter, dateMath: DateMath, year: number, month: number, weekStartsOn = 0): Array<DateValue | null> {
   const days = daysInViewMonth(mode, adapter, dateMath, year, month);
-  const leading = firstOfViewMonth(mode, adapter, year, month).getDay();
+  const leading = (firstOfViewMonth(mode, adapter, year, month).getDay() - weekStartsOn + 7) % 7;
   const cells: Array<DateValue | null> = Array.from({ length: leading }, () => null);
   for (let day = 1; day <= days; day += 1) {
     cells.push(mode === 'AD' ? createDateValue(adapter, new Date(year, month - 1, day)) : dateValueFromBs(adapter, { year, month, day }));

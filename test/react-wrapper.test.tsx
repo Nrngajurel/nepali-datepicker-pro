@@ -5,12 +5,14 @@
 // "node to be removed is not a child" crash), and StrictMode double-mount is
 // survived. Uses react-dom/client + React's act() — no testing-library needed.
 import { describe, test, expect, afterEach } from 'vitest';
-import { createElement, StrictMode, act } from 'react';
+import { createElement, createRef, StrictMode, act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import {
   NepaliDateTimePicker,
   NepaliDateRangePicker,
   NepaliMonthPicker,
+  NepaliTimePicker,
+  type PickerHandle,
 } from '../src/react';
 import type { DateTimeResult, MonthResult } from '../src/index';
 
@@ -221,5 +223,23 @@ describe('option updates', () => {
     rerender(roots[roots.length - 1], el(2)); // new inline function, same controlled value
     const range = document.querySelector('.ndp-panel .ndp-range-hint');
     expect(range?.textContent).toMatch(/end date/); // still waiting for the end date
+  });
+});
+
+describe('ref API and new components', () => {
+  test('ref exposes getValue / setValue / show / focus', () => {
+    const ref = createRef<PickerHandle<DateTimeResult, object, Date>>();
+    const c = render(createElement(NepaliDateTimePicker, { ref, value: new Date(2024, 3, 15), inputProps: { id: 'when', name: 'when' } }));
+    expect(ref.current!.getValue()!.ad.getDate()).toBe(15);
+    act(() => ref.current!.setValue(new Date(2024, 3, 20)));
+    expect(ref.current!.getValue()!.ad.getDate()).toBe(20);
+    act(() => ref.current!.show());
+    expect(document.querySelector('.ndp-panel')).toBeTruthy();
+    expect(c.querySelector('input')!.id).toBe('when');
+  });
+
+  test('NepaliTimePicker mounts with a value', () => {
+    const c = render(createElement(NepaliTimePicker, { value: { hour: 14, minute: 5 }, timeFormat: '24h' }));
+    expect(c.querySelector('input')!.value).toBe('14:05');
   });
 });

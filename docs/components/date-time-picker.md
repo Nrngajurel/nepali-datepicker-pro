@@ -26,6 +26,11 @@ matches exactly what you're looking at.
   navigate the calendar you switch to (not just relabel it), and show the overlapped span of the
   other calendar as a hint (e.g. a BS month shows "April/May" since it straddles two AD months).
   Set `showSecondaryCalendar: false` to hide that hint and show only the active calendar.
+- **More time options.** `withSeconds` adds seconds, `timeInputStyle: 'dropdown'` swaps the
+  wheels for native selects, and `showButtonPanel` chooses the Today / Clear / Close buttons.
+- **Mark days.** `events` shows holidays and events, `dayCellProps` adds badges, classes or
+  tooltips to single days, and `weekStartsOn` / `weekendDays` change the week layout — see
+  [Options](/guide/options#holidays-events).
 
 ## See also
 

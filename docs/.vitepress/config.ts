@@ -123,6 +123,9 @@ export default defineConfig({
           { text: 'Date & Time Picker', link: '/components/date-time-picker' },
           { text: 'Date Range Picker', link: '/components/date-range-picker' },
           { text: 'Month Picker', link: '/components/month-picker' },
+          { text: 'Year Picker', link: '/components/year-picker' },
+          { text: 'Time Picker', link: '/components/time-picker' },
+          { text: 'Multiple Date Picker', link: '/components/multi-date-picker' },
         ],
       },
       {
@@ -136,6 +139,9 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'Options', link: '/guide/options' },
+          { text: 'Theming', link: '/guide/theming' },
+          { text: 'Localization', link: '/guide/localization' },
+          { text: 'Accessibility', link: '/guide/accessibility' },
           { text: 'Migration', link: '/guide/migration' },
         ],
       },

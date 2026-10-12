@@ -7,13 +7,18 @@ const callbacks = [
   ['onClear', 'user cleared the value (×, Clear, erased text)', 'all'],
   ['onOpen / onClose', 'popup shown / hidden', 'all'],
   ['onChangeMonthYear', 'navigated to a new month/year', 'date-time'],
+  ['onCancel', 'popup dismissed with Cancel', 'range'],
+  ['onInvalid(reason, message)', 'typed value refused / required field empty', 'all'],
 ];
 
 const domEvents = [
   ['select.nepaliDatePicker', 'date-time value committed', 'date-time'],
   ['apply.nepaliDateRangePicker', 'range applied', 'range'],
   ['select.nepaliMonthPicker', 'month selected (with AD range)', 'month'],
-  ['clear.nepaliDatePicker / clear.nepaliDateRangePicker / clear.nepaliMonthPicker', 'user cleared the value', 'all'],
+  ['select.nepaliYearPicker', 'year selected (with AD range)', 'year'],
+  ['select.nepaliTimePicker', 'time selected', 'time'],
+  ['select.nepaliMultiDatePicker', 'set of days changed', 'multi-date'],
+  ['clear.nepaliDatePicker / clear.nepaliDateRangePicker / clear.nepaliMonthPicker / clear.nepaliYearPicker / clear.nepaliTimePicker / clear.nepaliMultiDatePicker', 'user cleared the value', 'all'],
 ];
 
 const methods = ['getValue()', 'setValue(v)', 'show()', 'hide()', 'update(patch)', 'onChange(cb) → unsubscribe', 'clear()', 'onClear(cb) → unsubscribe', 'destroy()'];

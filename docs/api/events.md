@@ -22,14 +22,31 @@ however your stack prefers.
 ## Clearing
 
 When the user clears a picker (the × button, the date-time panel's Clear button, or erasing the
-typed text), it calls `onClear()` and dispatches a bubbling `clear.nepaliDatePicker`,
-`clear.nepaliDateRangePicker` or `clear.nepaliMonthPicker` event. The change events don't fire
+typed text), it calls `onClear()` and dispatches a bubbling `clear.*` event with the same suffix
+as its change event (`clear.nepaliDatePicker`, `clear.nepaliDateRangePicker`,
+`clear.nepaliMonthPicker`, `clear.nepaliYearPicker`, `clear.nepaliTimePicker`,
+`clear.nepaliMultiDatePicker`). The change events don't fire
 for a clear. `instance.clear()` does the same from code, `instance.onClear(cb)` subscribes, and
 `setValue(null)` clears without notifying. In Vue a clear sets `v-model` to `null` and emits
 `@clear`.
 
+## Validation and cancel
+
+- `onInvalid(reason, message)` fires when a typed value is refused or a required field is left
+  empty — see [Accessibility](/guide/accessibility#forms-validation). Vue emits `@invalid`.
+- The range picker's `onCancel()` fires when the popup is dismissed with Cancel. Vue emits
+  `@cancel`.
+
+## Framework handles
+
+React components take a `ref` (`PickerHandle`) and Vue components expose the same API through a
+template ref (`PickerExpose`): `show()`, `hide()`, `clear()`, `getValue()`, `setValue(v)`,
+`update(patch)`, `focus()` and `instance`. Custom elements have `value`, `instance`, `show()`,
+`hide()` and `clear()`, and dispatch `change`, `clear`, `open`, `close` and `invalid`.
+
 ## Teardown
 
 `destroy()` is safe to call more than once, and removes the portal, the document-level listeners
-and any injected hidden fields. In Vue and React the wrapper components call it for you on
+and any injected hidden fields. Your `<input>` stays in the page with its original attributes, so it
+can be mounted again. In Vue and React the wrapper components call it for you on
 unmount.

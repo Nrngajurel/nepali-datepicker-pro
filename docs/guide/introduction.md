@@ -1,17 +1,18 @@
 ---
 title: Introduction
-description: What Nepali Datepicker Pro is, what it ships, and why it exists — a framework-agnostic Bikram Sambat date, time, range and month picker with zero dependencies.
+description: What Nepali Datepicker Pro is, what it ships, and why it exists — a framework-agnostic Bikram Sambat date, time, range, month, year and multi-date picker with zero dependencies.
 ---
 
 # Introduction
 
 **Nepali Datepicker Pro** is a self-owned Bikram Sambat ↔ Gregorian calendar engine with date,
-time, range and month pickers — framework-agnostic, and ready for vanilla JS, a plain
-`<script>` tag, jQuery, Vue and React.
+time, range, month, year and multi-date pickers — framework-agnostic, and ready for vanilla JS,
+a plain `<script>` tag, jQuery, Vue, React and custom elements.
 
 - **BS 1970–2100** of validated calendar data
-- **~17 KB gzip**, tree-shakeable
+- **About 27 KB gzip** for the date picker alone (about 39 KB for every picker), tree-shakeable
 - **Zero runtime dependencies**
+- **WCAG 2.2 AA**, checked with axe-core in CI
 
 ## What's in the box
 
@@ -20,6 +21,9 @@ time, range and month pickers — framework-agnostic, and ready for vanilla JS, 
 | [Date & Time Picker](/components/date-time-picker) | A single date, with an optional same-screen time picker. |
 | [Date Range Picker](/components/date-range-picker) | Start/end range with a presets rail and Nepali fiscal-year helpers. |
 | [Month Picker](/components/month-picker) | One BS month, resolved to the AD date range it covers. |
+| [Year Picker](/components/year-picker) | One BS or AD year, resolved to the date range it covers. |
+| [Time Picker](/components/time-picker) | A time of day on its own, 12h or 24h. |
+| [Multiple Date Picker](/components/multi-date-picker) | Several days from one calendar. |
 | [Helper functions](/api/helpers) | A `NepaliFunctions`-compatible BS↔AD toolkit, usable with no picker at all. |
 
 ## Why another Nepali datepicker

@@ -16,4 +16,27 @@ jobs:
       - run: npm ci
       - run: npm run lint           # tsc --noEmit
       - run: npm test               # vitest: engine correctness + DOM/mount tests
-      - run: npm run build          # vite library build (ES + UMD + types)
+      - run: npm run build          # vite library build (ES + CJS + UMD + types)
+      - run: npm run size           # gzipped size budgets (scripts/check-size.mjs)
+
+  e2e:
+    # Real browsers: layout, keyboard, the phone bottom sheet, and axe-core
+    # accessibility audits (WCAG 2.2 AA) — Chromium desktop, Pixel 7, Firefox.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox
+      - run: npm run test:e2e
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: test-results/
+          retention-days: 7

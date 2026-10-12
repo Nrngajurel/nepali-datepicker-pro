@@ -19,6 +19,7 @@ export interface TypedTokens {
   day: number;
   hour?: number;
   minute?: number;
+  second?: number;
 }
 
 /** Split a typed string into numeric parts without any calendar validation.
@@ -27,12 +28,13 @@ export interface TypedTokens {
 export function tokenizeTyped(text: string): TypedTokens | 'empty' | null {
   const s = normalizeDigits(text).trim();
   if (s === '') return 'empty';
-  const m = s.match(/^(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2}))?$/);
+  const m = s.match(/^(\d{1,4})[-/.](\d{1,2})[-/.](\d{1,2})(?:[ T](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
   if (!m) return null;
   const tokens: TypedTokens = { year: Number(m[1]), month: Number(m[2]), day: Number(m[3]) };
   if (m[4] != null) {
     tokens.hour = Number(m[4]);
     tokens.minute = Number(m[5]);
+    if (m[6] != null) tokens.second = Number(m[6]);
   }
   return tokens;
 }

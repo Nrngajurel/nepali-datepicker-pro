@@ -1,4 +1,6 @@
-import { copyFileSync, mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+// Vite's own CSS minifier (a direct dependency of Vite 8).
+import { transform as transformCss } from 'lightningcss';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
@@ -13,11 +15,14 @@ export default defineConfig(() => ({
     dts({ include: ['src'] }),
     {
       // Ship the stylesheet as dist/style.css (imported by consumers via
-      // `nepali-datepicker/style.css`).
+      // `nepali-datepicker-pro/style.css`), minified. No targets: modern
+      // syntax (color-mix, :has) is kept as written, only whitespace and
+      // comments go. The commented source is src/theme.css.
       name: 'copy-theme-css',
       closeBundle() {
         mkdirSync(resolve(here, 'dist'), { recursive: true });
-        copyFileSync(resolve(here, 'src/theme.css'), resolve(here, 'dist/style.css'));
+        const { code } = transformCss({ filename: 'style.css', code: readFileSync(resolve(here, 'src/theme.css')), minify: true });
+        writeFileSync(resolve(here, 'dist/style.css'), code);
       },
     },
   ],
@@ -30,12 +35,21 @@ export default defineConfig(() => ({
         jquery: resolve(here, 'src/jquery.ts'),
         vue: resolve(here, 'src/vue.ts'),
         react: resolve(here, 'src/react.tsx'),
+        element: resolve(here, 'src/element.ts'),
+        holidays: resolve(here, 'src/holidays.ts'),
       },
-      formats: ['es'],
+      // ES modules for bundlers, CommonJS for require() (Jest, older tooling).
+      formats: ['es', 'cjs'],
+      fileName: (format, name) => `${name}.${format === 'es' ? 'js' : 'cjs'}`,
     },
     rollupOptions: {
       // Framework wrappers must never bundle their host framework.
       external: ['vue', 'react', 'react-dom', 'react/jsx-runtime', 'jquery'],
+      output: {
+        // Next.js App Router: the React wrappers are client components. A
+        // directive in the source is dropped by bundling, so it's re-added here.
+        banner: (chunk: { name: string; isEntry: boolean }) => (chunk.isEntry && chunk.name === 'react' ? "'use client';" : ''),
+      },
     },
   },
 }));

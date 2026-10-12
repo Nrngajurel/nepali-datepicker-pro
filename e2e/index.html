@@ -21,10 +21,18 @@
     <input id="range">
     <label for="month">Month</label>
     <input id="month">
+    <label for="year">Year</label>
+    <input id="year">
+    <label for="time">Time</label>
+    <input id="time">
+    <label for="multi">Several dates</label>
+    <input id="multi">
+    <label for="range2">Range (two months)</label>
+    <input id="range2">
   </form>
   <div class="spacer"></div>
   <script type="module">
-    import { mountDateTimePicker, mountDateRangePicker, mountMonthPicker } from '/src/index.ts';
+    import { mountDateTimePicker, mountDateRangePicker, mountMonthPicker, mountYearPicker, mountTimePicker, mountMultiDatePicker } from '/src/index.ts';
 
     const changes = { date: [], datetime: [], range: [], month: [] };
     const record = (key) => (value) => changes[key].push(value);
@@ -34,6 +42,10 @@
       datetime: mountDateTimePicker(document.getElementById('datetime'), { value: new Date(2024, 3, 15, 9, 0), withTime: true, onChange: record('datetime') }),
       range: mountDateRangePicker(document.getElementById('range'), { value: { start: new Date(2024, 3, 1), end: new Date(2024, 3, 10) }, onChange: record('range') }),
       month: mountMonthPicker(document.getElementById('month'), { value: { year: 2081, month: 1 }, onChange: record('month') }),
+      year: mountYearPicker(document.getElementById('year'), { value: 2081 }),
+      time: mountTimePicker(document.getElementById('time'), { value: { hour: 9, minute: 30 } }),
+      multi: mountMultiDatePicker(document.getElementById('multi'), { value: [new Date(2024, 3, 15), new Date(2024, 3, 18)] }),
+      range2: mountDateRangePicker(document.getElementById('range2'), { value: { start: new Date(2024, 3, 1), end: new Date(2024, 4, 10) }, numberOfMonths: 2 }),
     };
     window.ready = true;
   </script>

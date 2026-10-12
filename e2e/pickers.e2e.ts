@@ -115,8 +115,8 @@ test.describe('layout', () => {
     const timeBox = (await root.locator('.ndp-time-panel').boundingBox())!;
     expect(timeBox.width).toBeGreaterThan(panelBox.width * 0.8);
     // Pick 2 PM on the wheels, then Done.
-    await root.locator('.ndp-wheel[aria-label="Hour"] .ndp-wheel-item', { hasText: /^02$/ }).click();
-    await root.locator('.ndp-wheel[aria-label="AM/PM"] .ndp-wheel-item', { hasText: 'PM' }).click();
+    await root.locator('.ndp-wheel-list[aria-label="Hour"] .ndp-wheel-item', { hasText: /^02$/ }).click();
+    await root.locator('.ndp-wheel-list[aria-label="AM/PM"] .ndp-wheel-item', { hasText: 'PM' }).click();
     await expect(root.locator('.ndp-time-readout')).toHaveText('02:00 PM');
     await root.locator('.ndp-apply', { hasText: 'Done' }).click();
     await expect(root).toHaveCount(0);
@@ -161,7 +161,7 @@ test.describe('closing', () => {
   test('tapping outside closes (the backdrop on phones)', async ({ page, isMobile }) => {
     const root = await open(page, 'date');
     if (isMobile) await page.mouse.click(10, 10); // top of the screen = backdrop
-    else await page.mouse.click(700, 600);
+    else await page.mouse.click(700, 4); // empty page margin above the form
     await expect(root).toHaveCount(0);
   });
 

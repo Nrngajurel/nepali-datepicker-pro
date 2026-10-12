@@ -1,13 +1,14 @@
 /**
- * Refined Vue 3 wrappers for the Nepali date picker family.
+ * Vue 3 wrappers for the Nepali date picker family.
  *
  * Features
  * ────────
  * • v-model          – two-way binding via modelValue prop + update:modelValue emit
  * • @change          – typed result emitted on every picker change
- * • @open / @close   – lifecycle events
- * • @changeMonthYear – (DateTimePicker only)
- * • Full TypeScript – props and emits are narrowly typed; no `unknown` leaks
+ * • @open / @close / @clear / @invalid – lifecycle and validation events
+ * • @changeMonthYear – (DateTimePicker only); @cancel – (DateRangePicker only)
+ * • Template ref API – show / hide / clear / getValue / setValue / update / focus
+ *   and the underlying `instance`, via `expose()`
  * • Reactive options – deep-watches `options` prop and calls instance.update()
  * • Lifecycle safe   – destroys instance in onBeforeUnmount
  *
@@ -15,11 +16,10 @@
  * ──────────────
  * <!-- DateTimePicker -->
  * <NepaliDateTimePicker
+ *   ref="picker"
  *   v-model="myDate"
  *   :options="{ mode: 'BS', withTime: true }"
  *   @change="onDateChange"
- *   @open="onOpen"
- *   @close="onClose"
  *   @changeMonthYear="onMonthYear"
  * />
  *
@@ -30,12 +30,11 @@
  *   @change="onRangeChange"
  * />
  *
- * <!-- MonthPicker -->
- * <NepaliMonthPicker
- *   v-model="myMonth"
- *   :options="{ locale: 'ne' }"
- *   @change="onMonthChange"
- * />
+ * <!-- MonthPicker / YearPicker / TimePicker / MultiDatePicker -->
+ * <NepaliMonthPicker v-model="myMonth" :options="{ locale: 'ne' }" />
+ * <NepaliYearPicker v-model="myYear" />
+ * <NepaliTimePicker v-model="myTime" :options="{ timeFormat: '24h' }" />
+ * <NepaliMultiDatePicker v-model="myDates" :options="{ maxDates: 5 }" />
  */
 
 import {
@@ -52,6 +51,9 @@ import {
   mountDateRangePicker,
   mountDateTimePicker,
   mountMonthPicker,
+  mountMultiDatePicker,
+  mountTimePicker,
+  mountYearPicker,
 } from './index.js';
 
 import type {
@@ -59,106 +61,19 @@ import type {
   DateRangeResult,
   DateTimePickerOptions,
   DateTimeResult,
+  InvalidReason,
   MonthPickerOptions,
   MonthResult,
+  MonthValue,
+  MultiDatePickerOptions,
+  MultiDateResult,
   PickerInstance,
+  TimePickerOptions,
+  TimeResult,
+  TimeValue,
+  YearPickerOptions,
+  YearResult,
 } from './index.js';
-
-// ─── DateTimePicker ──────────────────────────────────────────────────────────
-
-export const NepaliDateTimePicker = defineComponent({
-  name: 'NepaliDateTimePicker',
-
-  props: {
-    /** v-model value — the raw AD Date that drives the picker. */
-    modelValue: {
-      type: Object as PropType<Date | null>,
-      default: null,
-    },
-    options: {
-      type: Object as PropType<DateTimePickerOptions>,
-      default: () => ({}),
-    },
-  },
-
-  emits: {
-    /** v-model write-back. */
-    'update:modelValue': (value: Date | null) => true,
-    /** Full picker result on every selection. */
-    change: (result: DateTimeResult) => true,
-    open: () => true,
-    close: () => true,
-    /** The user cleared the value; v-model is set to null. */
-    clear: () => true,
-    changeMonthYear: (year: number, month: number) => true,
-  },
-
-  setup(props, { emit }) {
-    const inputRef = ref<HTMLInputElement | null>(null);
-    let instance: PickerInstance<DateTimeResult, DateTimePickerOptions> | null = null;
-
-    onMounted(() => {
-      if (!inputRef.value) return;
-
-      instance = mountDateTimePicker(inputRef.value, {
-        ...props.options,
-        // Sync initial value from v-model (prefer modelValue, fall back to options.value)
-        value: props.modelValue ?? props.options?.value ?? null,
-
-        onChange(result) {
-          emit('update:modelValue', result.ad);
-          emit('change', result);
-          props.options?.onChange?.(result);
-        },
-
-        onClear() {
-          emit('update:modelValue', null);
-          emit('clear');
-          props.options?.onClear?.();
-        },
-
-        onOpen() {
-          emit('open');
-          props.options?.onOpen?.();
-        },
-
-        onClose() {
-          emit('close');
-          props.options?.onClose?.();
-        },
-
-        onChangeMonthYear(year, month) {
-          emit('changeMonthYear', year, month);
-          props.options?.onChangeMonthYear?.(year, month);
-        },
-      });
-    });
-
-    // Keep picker in sync when modelValue changes externally.
-    watch(
-      () => props.modelValue,
-      (next) => instance?.setValue(next as any),
-    );
-
-    // Propagate option changes (excluding callbacks — those are baked in above —
-    // and `value`: v-model is the controlled value in Vue, synced by the watcher above).
-    watch(
-      () => props.options,
-      (next) => {
-        if (!next) return;
-        const { onChange, onOpen, onClose, onChangeMonthYear, onClear, value, ...rest } = next;
-        instance?.update(rest);
-      },
-      { deep: true },
-    );
-
-    onBeforeUnmount(() => instance?.destroy());
-
-    return () => h('input', { ref: inputRef });
-  },
-});
-
-// ─── DateRangePicker ─────────────────────────────────────────────────────────
 
 /** Shape used for v-model on the range picker. */
 export interface DateRangeModelValue {
@@ -166,169 +81,193 @@ export interface DateRangeModelValue {
   end: Date;
 }
 
-export const NepaliDateRangePicker = defineComponent({
-  name: 'NepaliDateRangePicker',
+/** What a picker component's template ref exposes. */
+export interface PickerExpose<TResult, TOptions, TInput> {
+  show(): void;
+  hide(): void;
+  clear(): void;
+  getValue(): TResult | null;
+  setValue(value: TInput | null): void;
+  update(patch: Partial<TOptions>): void;
+  focus(): void;
+  readonly instance: PickerInstance<TResult, TOptions, TInput> | null;
+}
 
-  props: {
-    modelValue: {
-      type: Object as PropType<DateRangeModelValue | null>,
-      default: null,
+const CALLBACKS = ['onChange', 'onApply', 'onOpen', 'onClose', 'onClear', 'onCancel', 'onChangeMonthYear', 'onInvalid'];
+
+interface Spec<TOptions, TResult, TModel, TInput> {
+  name: string;
+  mount: (input: HTMLInputElement, options: TOptions) => PickerInstance<TResult, TOptions, TInput>;
+  /** Vue runtime prop type(s) for modelValue. */
+  modelType: PropType<TModel | null>;
+  /** The callback carrying the committed value ('onChange' or 'onApply'). */
+  valueCallback: 'onChange' | 'onApply';
+  toModel(result: TResult): TModel;
+  fromModel(model: TModel): TInput;
+  /** Extra emits beyond the shared ones. */
+  extra?: { changeMonthYear?: boolean; cancel?: boolean };
+}
+
+function createPickerComponent<TOptions extends object, TResult, TModel, TInput>(spec: Spec<TOptions, TResult, TModel, TInput>) {
+  return defineComponent({
+    name: spec.name,
+
+    props: {
+      /** v-model value. */
+      modelValue: {
+        type: spec.modelType,
+        default: null,
+      },
+      options: {
+        type: Object as PropType<TOptions>,
+        default: () => ({}),
+      },
     },
-    options: {
-      type: Object as PropType<DateRangePickerOptions>,
-      default: () => ({}),
+
+    emits: {
+      /** v-model write-back. */
+      'update:modelValue': (_value: TModel | null) => true,
+      /** Full picker result on every committed change. */
+      change: (_result: TResult) => true,
+      open: () => true,
+      close: () => true,
+      /** The user cleared the value; v-model is set to null. */
+      clear: () => true,
+      /** A typed value was refused, or a required field was left empty. */
+      invalid: (_reason: InvalidReason, _message: string) => true,
+      changeMonthYear: (_year: number, _month: number) => true,
+      cancel: () => true,
     },
-  },
 
-  emits: {
-    'update:modelValue': (value: DateRangeModelValue | null) => true,
-    /** Emitted when both start and end are selected (autoApply or Apply click). */
-    change: (result: DateRangeResult) => true,
-    open: () => true,
-    close: () => true,
-    /** The user cleared the value; v-model is set to null. */
-    clear: () => true,
-  },
+    setup(props, { emit, expose }) {
+      const inputRef = ref<HTMLInputElement | null>(null);
+      let instance: PickerInstance<TResult, TOptions, TInput> | null = null;
+      const own = () => props.options as Record<string, ((...args: unknown[]) => void) | undefined>;
 
-  setup(props, { emit }) {
-    const inputRef = ref<HTMLInputElement | null>(null);
-    let instance: PickerInstance<DateRangeResult, DateRangePickerOptions> | null = null;
-
-    onMounted(() => {
-      if (!inputRef.value) return;
-
-      instance = mountDateRangePicker(inputRef.value, {
-        ...props.options,
-        value: props.modelValue ?? props.options?.value ?? null,
-
-        onApply(result) {
-          emit('update:modelValue', { start: result.start, end: result.end });
+      onMounted(() => {
+        if (!inputRef.value) return;
+        const options = { ...(props.options as Record<string, unknown>) } as Record<string, unknown>;
+        if (props.modelValue != null) options.value = spec.fromModel(props.modelValue as TModel);
+        options[spec.valueCallback] = (result: TResult) => {
+          emit('update:modelValue', spec.toModel(result));
           emit('change', result);
-          props.options?.onApply?.(result);
-        },
-
-        onClear() {
+          own()[spec.valueCallback]?.(result);
+        };
+        // The range picker reports partial picks through onChange too.
+        if (spec.valueCallback === 'onApply') options.onChange = (partial: unknown) => own().onChange?.(partial);
+        options.onClear = () => {
           emit('update:modelValue', null);
           emit('clear');
-          props.options?.onClear?.();
-        },
-
-        onOpen() {
-          emit('open');
-          props.options?.onOpen?.();
-        },
-
-        onClose() {
-          emit('close');
-          props.options?.onClose?.();
-        },
+          own().onClear?.();
+        };
+        options.onOpen = () => { emit('open'); own().onOpen?.(); };
+        options.onClose = () => { emit('close'); own().onClose?.(); };
+        options.onInvalid = (reason: InvalidReason, message: string) => { emit('invalid', reason, message); own().onInvalid?.(reason, message); };
+        if (spec.extra?.changeMonthYear) options.onChangeMonthYear = (y: number, m: number) => { emit('changeMonthYear', y, m); own().onChangeMonthYear?.(y, m); };
+        if (spec.extra?.cancel) options.onCancel = () => { emit('cancel'); own().onCancel?.(); };
+        instance = spec.mount(inputRef.value, options as TOptions);
       });
-    });
 
-    watch(
-      () => props.modelValue,
-      (next) => instance?.setValue(next as any),
-    );
+      // Keep picker in sync when modelValue changes externally.
+      watch(
+        () => props.modelValue,
+        (next) => instance?.setValue(next == null ? null : spec.fromModel(next as TModel)),
+      );
 
-    watch(
-      () => props.options,
-      (next) => {
-        if (!next) return;
-        const { onApply, onOpen, onClose, onChange, onClear, value, ...rest } = next;
-        instance?.update(rest);
-      },
-      { deep: true },
-    );
+      // Propagate option changes (excluding callbacks — those are routed above —
+      // and `value`: v-model is the controlled value in Vue, synced by the watcher above).
+      watch(
+        () => props.options,
+        (next) => {
+          if (!next) return;
+          const rest: Record<string, unknown> = {};
+          Object.entries(next as Record<string, unknown>).forEach(([key, value]) => {
+            if (key !== 'value' && !CALLBACKS.includes(key)) rest[key] = value;
+          });
+          instance?.update(rest as Partial<TOptions>);
+        },
+        { deep: true },
+      );
 
-    onBeforeUnmount(() => instance?.destroy());
+      onBeforeUnmount(() => instance?.destroy());
 
-    return () => h('input', { ref: inputRef });
-  },
+      const api: PickerExpose<TResult, TOptions, TInput> = {
+        show: () => instance?.show(),
+        hide: () => instance?.hide(),
+        clear: () => instance?.clear(),
+        getValue: () => instance?.getValue() ?? null,
+        setValue: (value) => instance?.setValue(value),
+        update: (patch) => instance?.update(patch),
+        focus: () => inputRef.value?.focus(),
+        get instance() {
+          return instance;
+        },
+      };
+      expose(api);
+
+      return () => h('input', { ref: inputRef });
+    },
+  });
+}
+
+// ─── components ─────────────────────────────────────────────────────────────
+
+export const NepaliDateTimePicker = createPickerComponent<DateTimePickerOptions, DateTimeResult, Date, Date>({
+  name: 'NepaliDateTimePicker',
+  mount: mountDateTimePicker,
+  // `Date`, not `Object`: Vue's runtime prop check types a Date as "Date",
+  // so `Object` would warn on every v-model value.
+  modelType: Date as PropType<Date | null>,
+  valueCallback: 'onChange',
+  toModel: (result) => result.ad,
+  fromModel: (date) => date,
+  extra: { changeMonthYear: true },
 });
 
-// ─── MonthPicker ─────────────────────────────────────────────────────────────
+export const NepaliDateRangePicker = createPickerComponent<DateRangePickerOptions, DateRangeResult, DateRangeModelValue, DateRangeModelValue>({
+  name: 'NepaliDateRangePicker',
+  mount: mountDateRangePicker,
+  modelType: Object as PropType<DateRangeModelValue | null>,
+  valueCallback: 'onApply',
+  toModel: (result) => ({ start: result.start, end: result.end }),
+  fromModel: (range) => range,
+  extra: { cancel: true },
+});
 
-export const NepaliMonthPicker = defineComponent({
+export const NepaliMonthPicker = createPickerComponent<MonthPickerOptions, MonthResult, MonthResult, MonthValue>({
   name: 'NepaliMonthPicker',
+  mount: mountMonthPicker,
+  // A plain { year, month } works too — only those two fields are read.
+  modelType: Object as PropType<MonthResult | null>,
+  valueCallback: 'onChange',
+  toModel: (result) => result,
+  // MonthPicker takes { year, month } as value, not the whole result.
+  fromModel: (model) => ({ year: model.year, month: model.month }),
+});
 
-  props: {
-    modelValue: {
-      type: Object as PropType<MonthResult | null>,
-      default: null,
-    },
-    options: {
-      type: Object as PropType<MonthPickerOptions>,
-      default: () => ({}),
-    },
-  },
+export const NepaliYearPicker = createPickerComponent<YearPickerOptions, YearResult, number, number>({
+  name: 'NepaliYearPicker',
+  mount: mountYearPicker,
+  modelType: Number as PropType<number | null>,
+  valueCallback: 'onChange',
+  toModel: (result) => result.year,
+  fromModel: (year) => year,
+});
 
-  emits: {
-    'update:modelValue': (value: MonthResult | null) => true,
-    change: (result: MonthResult) => true,
-    open: () => true,
-    close: () => true,
-    /** The user cleared the value; v-model is set to null. */
-    clear: () => true,
-  },
+export const NepaliTimePicker = createPickerComponent<TimePickerOptions, TimeResult, TimeValue, TimeValue>({
+  name: 'NepaliTimePicker',
+  mount: mountTimePicker,
+  modelType: Object as PropType<TimeValue | null>,
+  valueCallback: 'onChange',
+  toModel: (result) => ({ hour: result.hour, minute: result.minute, second: result.second }),
+  fromModel: (time) => time,
+});
 
-  setup(props, { emit }) {
-    const inputRef = ref<HTMLInputElement | null>(null);
-    let instance: PickerInstance<MonthResult, MonthPickerOptions> | null = null;
-
-    onMounted(() => {
-      if (!inputRef.value) return;
-
-      instance = mountMonthPicker(inputRef.value, {
-        ...props.options,
-        // MonthPicker takes { year, month } as value, not Date.
-        value: props.modelValue
-          ? { year: props.modelValue.year, month: props.modelValue.month }
-          : props.options?.value ?? null,
-
-        onChange(result) {
-          emit('update:modelValue', result);
-          emit('change', result);
-          props.options?.onChange?.(result);
-        },
-
-        onClear() {
-          emit('update:modelValue', null);
-          emit('clear');
-          props.options?.onClear?.();
-        },
-
-        onOpen() {
-          emit('open');
-          props.options?.onOpen?.();
-        },
-
-        onClose() {
-          emit('close');
-          props.options?.onClose?.();
-        },
-      });
-    });
-
-    watch(
-      () => props.modelValue,
-      (next) => {
-        if (!next) { instance?.setValue(null); return; }
-        instance?.setValue({ year: next.year, month: next.month } as any);
-      },
-    );
-
-    watch(
-      () => props.options,
-      (next) => {
-        if (!next) return;
-        const { onChange, onOpen, onClose, onClear, value, ...rest } = next;
-        instance?.update(rest);
-      },
-      { deep: true },
-    );
-
-    onBeforeUnmount(() => instance?.destroy());
-
-    return () => h('input', { ref: inputRef });
-  },
+export const NepaliMultiDatePicker = createPickerComponent<MultiDatePickerOptions, MultiDateResult, Date[], Date[]>({
+  name: 'NepaliMultiDatePicker',
+  mount: mountMultiDatePicker,
+  modelType: Array as PropType<Date[] | null>,
+  valueCallback: 'onChange',
+  toModel: (result) => result.dates,
+  fromModel: (dates) => dates,
 });

@@ -1,11 +1,14 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { nativeDateMath } from '../date-math/native-date-math.js';
 import { buildViewMonthCells, clampViewMonth, clampViewYear, firstOfViewMonth, viewYearBounds, viewYearMonthOf } from './calendar-view.js';
-import { isDayDisabled } from './constraints.js';
+import { isDayDisabled, resolveBound } from './constraints.js';
+import { createDayDecorator, resolveUi } from './ui.js';
+import type { DayInfo, UiConfig } from './ui.js';
+import { fill } from '../i18n/strings.js';
 import { createDateValue, dateValueFromBs } from '../domain/date-value.js';
 import { formatDateValue, formatMachineValue } from '../format/index.js';
 import { tokenizeTyped } from '../format/parse.js';
-import type { CalendarAdapter, CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, PickerInstance, TimeValue } from '../types.js';
+import type { CalendarAdapter, CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, InvalidReason, PickerInstance, TimeValue } from '../types.js';
 
 export interface DateTimeControllerState {
   isOpen: boolean;
@@ -38,8 +41,10 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   setTime(hour: number, minute: number, second?: number): void;
   setHour(hour24: number): boolean;
   setMinute(minute: number): boolean;
+  setSecond(second: number): boolean;
   stepHour(delta: number): void;
   stepMinute(delta: number): void;
+  stepSecond(delta: number): void;
   toggleMeridiem(): void;
   setTimeToNow(): void;
   confirm(): void;
@@ -54,6 +59,10 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   isDisabled(value: DateValue): boolean;
   validateTyped(text: string): 'valid' | 'invalid' | 'empty';
   commitTyped(text: string): 'valid' | 'invalid' | 'empty';
+  /** Why typed text is invalid, or null when it's valid or empty. */
+  typedError(text: string): InvalidReason | null;
+  /** The user-facing message for a validation failure. */
+  invalidMessage(reason: InvalidReason): string;
   typedString(): string;
   typedReference(): string;
   yearBounds(): { min: number; max: number };
@@ -62,6 +71,12 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   setPanelStep(step: 'date' | 'time'): void;
   /** The calendar adapter in use (the `adapter` option, or the built-in one) — the render layer draws with it. */
   getAdapter(): CalendarAdapter;
+  /** Resolved UI strings, script and week layout — the render layer reads it. */
+  getUi(): UiConfig;
+  /** Decorations for one day cell (dayCellProps, events, weekend). */
+  dayInfo(value: DateValue): DayInfo;
+  /** Current options (read-only view). */
+  getOptions(): Readonly<DateTimePickerOptions>;
   cellForBs(year: number, month: number, day: number): DateValue;
   buildMonthCells(year: number, month: number): Array<DateValue | null>;
 }
@@ -78,6 +93,9 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   const initialDate = providedValue ?? new Date();
   const initialValue = createDateValue(adapter, initialDate);
   const defaultTime = options.defaultTime ?? { hour: initialDate.getHours(), minute: initialDate.getMinutes(), second: initialDate.getSeconds() };
+  let ui = resolveUi(options);
+  const decorator = createDayDecorator(() => options, adapter, () => setState({}));
+  const withSeconds = (): boolean => !!options.withTime && !!options.withSeconds;
   const initialMode: CalendarMode = options.mode ?? 'BS';
   const initialView = viewYearMonthOf(initialMode, adapter, initialValue.ad);
 
@@ -89,7 +107,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     viewYear: initialView.year,
     viewMonth: initialView.month,
     selected: providedValue ? initialValue : null,
-    time: options.withTime ? { hour: defaultTime.hour, minute: defaultTime.minute, second: 0 } : null,
+    time: options.withTime ? { hour: defaultTime.hour, minute: defaultTime.minute, second: options.withSeconds ? defaultTime.second ?? 0 : 0 } : null,
     view: 'day',
     yearGroupStart: initialView.year - 6,
     timeFormat: options.timeFormat ?? '12h',
@@ -142,38 +160,48 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   }
 
   // Parse typed text into a concrete DateValue (+ optional time), honouring the
-  // active BS/AD mode and all date/time constraints. Returns a status sentinel
-  // for blank ('empty') or unparseable/out-of-range/disabled ('invalid') input.
-  function parseTyped(text: string): { value: DateValue; time: { hour: number; minute: number } | null } | 'empty' | 'invalid' {
+  // active BS/AD mode and all date/time constraints. Returns 'empty' for blank
+  // input, or the reason it can't be accepted.
+  function parseTyped(text: string): { value: DateValue; time: Required<TimeValue> | null } | 'empty' | { error: InvalidReason } {
     const tokens = tokenizeTyped(text);
     if (tokens === 'empty') return 'empty';
-    if (!tokens) return 'invalid';
+    const invalid = { error: 'invalid' as InvalidReason };
+    if (!tokens) return invalid;
     let value: DateValue;
     try {
       if (state.mode === 'BS') {
-        if (tokens.year < adapter.minSupportedYear || tokens.year > adapter.maxSupportedYear) return 'invalid';
-        if (tokens.month < 1 || tokens.month > 12) return 'invalid';
-        if (tokens.day < 1 || tokens.day > adapter.daysInBsMonth(tokens.year, tokens.month)) return 'invalid';
+        if (tokens.year < adapter.minSupportedYear || tokens.year > adapter.maxSupportedYear) return invalid;
+        if (tokens.month < 1 || tokens.month > 12) return invalid;
+        if (tokens.day < 1 || tokens.day > adapter.daysInBsMonth(tokens.year, tokens.month)) return invalid;
         value = dateValueFromBs(adapter, { year: tokens.year, month: tokens.month, day: tokens.day });
       } else {
-        if (tokens.month < 1 || tokens.month > 12 || tokens.day < 1 || tokens.day > 31) return 'invalid';
+        if (tokens.month < 1 || tokens.month > 12 || tokens.day < 1 || tokens.day > 31) return invalid;
         const ad = new Date(tokens.year, tokens.month - 1, tokens.day);
         // Reject calendar overflow (e.g. Feb 30 rolling into March).
-        if (ad.getFullYear() !== tokens.year || ad.getMonth() !== tokens.month - 1 || ad.getDate() !== tokens.day) return 'invalid';
+        if (ad.getFullYear() !== tokens.year || ad.getMonth() !== tokens.month - 1 || ad.getDate() !== tokens.day) return invalid;
         value = createDateValue(adapter, ad);
       }
     } catch {
-      return 'invalid';
+      return invalid;
     }
-    if (controller.isDisabled(value)) return 'invalid';
+    if (controller.isDisabled(value)) return { error: disabledReason(value) };
     if (options.withTime && tokens.hour != null) {
-      if (tokens.hour > 23 || (tokens.minute ?? 0) > 59) return 'invalid';
+      if (tokens.hour > 23 || (tokens.minute ?? 0) > 59 || (tokens.second ?? 0) > 59) return invalid;
       // Same rule as the wheels: a time outside minTime/maxTime or rejected by
       // disabledTimes is invalid (it used to be accepted, or silently clamped).
-      if (controller.isMinuteDisabled(tokens.hour, tokens.minute ?? 0)) return 'invalid';
-      return { value, time: { hour: tokens.hour, minute: tokens.minute ?? 0 } };
+      if (controller.isMinuteDisabled(tokens.hour, tokens.minute ?? 0)) return { error: 'time-unavailable' };
+      return { value, time: { hour: tokens.hour, minute: tokens.minute ?? 0, second: withSeconds() ? tokens.second ?? 0 : 0 } };
     }
     return { value, time: null };
+  }
+
+  // Which constraint a disabled day breaks, for the validation message.
+  function disabledReason(value: DateValue): InvalidReason {
+    const min = resolveBound(options.minDate, nativeDateMath);
+    if (min && value.ad.getTime() < min.getTime()) return 'before-min';
+    const max = resolveBound(options.maxDate, nativeDateMath);
+    if (max && value.ad.getTime() > max.getTime()) return 'after-max';
+    return 'unavailable';
   }
 
   function pad2(n: number): string {
@@ -187,12 +215,12 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       : `${value.ad.getFullYear()}-${pad2(value.ad.getMonth() + 1)}-${pad2(value.ad.getDate())}`;
     if (!options.withTime) return date;
     const now = new Date();
-    const t = state.time ?? { hour: now.getHours(), minute: now.getMinutes() };
-    return `${date} ${pad2(t.hour)}:${pad2(t.minute)}`;
+    const t = state.time ?? { hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds() };
+    return `${date} ${pad2(t.hour)}:${pad2(t.minute)}${withSeconds() ? `:${pad2(t.second ?? 0)}` : ''}`;
   }
 
   // Shared state mutation for preview/commit of a parsed typed value.
-  function applyParsed(parsed: { value: DateValue; time: { hour: number; minute: number } | null }): void {
+  function applyParsed(parsed: { value: DateValue; time: Required<TimeValue> | null }): void {
     const view = viewYearMonthOf(state.mode, adapter, parsed.value.ad);
     const patch: Partial<DateTimeControllerState> = {
       selected: parsed.value,
@@ -200,7 +228,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       viewMonth: view.month,
     };
     if (parsed.time && state.time) {
-      patch.time = clampTime({ hour: parsed.time.hour, minute: parsed.time.minute, second: 0 });
+      patch.time = clampTime({ hour: parsed.time.hour, minute: parsed.time.minute, second: parsed.time.second });
     }
     setState(patch);
   }
@@ -215,11 +243,11 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       formatted: formatDateValue(ad, adapter, {
         mode: state.mode,
         format: options.displayFormat ?? (options.withTime
-          ? (state.timeFormat === '12h' ? 'YYYY-MM-DD hh:mm A' : 'YYYY-MM-DD HH:mm')
+          ? (state.timeFormat === '12h' ? `YYYY-MM-DD hh:mm${withSeconds() ? ':ss' : ''} A` : `YYYY-MM-DD HH:mm${withSeconds() ? ':ss' : ''}`)
           : 'YYYY-MM-DD'),
         locale: options.locale ?? 'en',
       }),
-      value: formatMachineValue({ ad, bs: value.bs, time: state.time ?? undefined }, options.valueFormat ?? 'iso', adapter, !!options.withTime),
+      value: formatMachineValue({ ad, bs: value.bs, time: state.time ?? undefined }, options.valueFormat ?? 'iso', adapter, !!options.withTime, withSeconds()),
     };
   }
 
@@ -232,6 +260,9 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
   const controller: DateTimeController = {
     getState: () => state,
     getAdapter: () => adapter,
+    getUi: () => ui,
+    getOptions: () => options,
+    dayInfo: (value) => decorator.info(value),
     getValue: () => (state.selected ? buildResult(state.selected) : null),
     setValue(value) {
       const ad = value instanceof Date ? value : value?.ad ?? null;
@@ -246,7 +277,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
         selected: createDateValue(adapter, ad),
         viewYear: view.year,
         viewMonth: view.month,
-        ...(state.time ? { time: clampTime({ hour: ad.getHours(), minute: ad.getMinutes(), second: 0 }) } : {}),
+        ...(state.time ? { time: clampTime({ hour: ad.getHours(), minute: ad.getMinutes(), second: withSeconds() ? ad.getSeconds() : 0 }) } : {}),
       });
     },
     show() {
@@ -263,6 +294,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     update(patch) {
       options = { ...options, ...patch };
+      ui = resolveUi(options);
       const next: Partial<DateTimeControllerState> = {};
       if ('mode' in patch) {
         const nextMode = options.mode ?? 'BS';
@@ -343,6 +375,11 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       if (state.time.minute !== minute) commitTime({ ...state.time, minute });
       return true;
     },
+    setSecond(second) {
+      if (!state.time || !Number.isInteger(second) || second < 0 || second > 59) return false;
+      if (state.time.second !== second) commitTime({ ...state.time, second });
+      return true;
+    },
     stepHour(delta) {
       if (!state.time) return;
       commitTime({ ...state.time, hour: wrap(state.time.hour + delta, 24) });
@@ -350,6 +387,10 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     stepMinute(delta) {
       if (!state.time) return;
       commitTime({ ...state.time, minute: wrap(state.time.minute + delta * state.minuteStep, 60) });
+    },
+    stepSecond(delta) {
+      if (!state.time) return;
+      commitTime({ ...state.time, second: wrap(state.time.second + delta, 60) });
     },
     toggleMeridiem() {
       if (!state.time) return;
@@ -359,7 +400,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     setTimeToNow() {
       if (!state.time) return;
       const now = new Date();
-      commitTime({ hour: now.getHours(), minute: now.getMinutes(), second: now.getSeconds() });
+      commitTime({ hour: now.getHours(), minute: now.getMinutes(), second: withSeconds() ? now.getSeconds() : 0 });
     },
     confirm() {
       if (state.selected) emit(state.selected);
@@ -409,12 +450,31 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       setState(reviewInMode(state.mode === 'BS' ? 'AD' : 'BS'));
     },
     isDisabled(value) {
-      return isDayDisabled(value.ad, options, nativeDateMath);
+      return isDayDisabled(value.ad, options, nativeDateMath) || decorator.isDisabled(value);
     },
     // Non-mutating check used to flag the input as valid/invalid while typing.
     validateTyped(text) {
       const parsed = parseTyped(text);
-      return parsed === 'empty' ? 'empty' : parsed === 'invalid' ? 'invalid' : 'valid';
+      return parsed === 'empty' ? 'empty' : 'error' in parsed ? 'invalid' : 'valid';
+    },
+    typedError(text) {
+      const parsed = parseTyped(text);
+      return parsed !== 'empty' && 'error' in parsed ? parsed.error : null;
+    },
+    invalidMessage(reason) {
+      const fmt = (bound: Date | string | null | undefined): string => {
+        const date = resolveBound(bound, nativeDateMath);
+        return date ? formatDateValue(date, adapter, { mode: state.mode, format: 'YYYY-MM-DD', locale: options.language === 'ne' ? 'ne' : 'en' }) : '';
+      };
+      switch (reason) {
+        case 'before-min': return fill(ui.strings.beforeMin, { date: fmt(options.minDate) });
+        case 'after-max': return fill(ui.strings.afterMax, { date: fmt(options.maxDate) });
+        case 'unavailable': return ui.strings.dateUnavailable;
+        case 'time-unavailable': return ui.strings.timeUnavailable;
+        case 'incomplete': return ui.strings.incomplete;
+        case 'required': return ui.strings.required;
+        default: return ui.strings.invalidDate;
+      }
     },
     // Parse + apply typed text: select the date, sync the calendar view and
     // emit; on blank, clear the selection. Invalid input is a no-op.
@@ -424,7 +484,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
         controller.clear();
         return 'empty';
       }
-      if (parsed === 'invalid') return 'invalid';
+      if ('error' in parsed) return 'invalid';
       applyParsed(parsed);
       emit(parsed.value);
       return 'valid';
@@ -464,7 +524,10 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       return dateValueFromBs(adapter, { year, month, day });
     },
     buildMonthCells(year, month) {
-      return buildViewMonthCells(state.mode, adapter, nativeDateMath, year, month);
+      const cells = buildViewMonthCells(state.mode, adapter, nativeDateMath, year, month, ui.weekStartsOn);
+      const days = cells.filter((cell): cell is DateValue => !!cell);
+      if (days.length) decorator.load(days[0].ad, days[days.length - 1].ad);
+      return cells;
     },
   };
 
