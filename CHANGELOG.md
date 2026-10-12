@@ -40,6 +40,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- The focused input no longer shows a stray vertical line next to the × (its outline was clipped by
+  the input group). The whole field now gets one soft focus ring instead.
 - Date-time `setValue` (and so Vue `v-model` / jQuery `'setValue'`) now keeps the time of the
   value you pass instead of the previous time, and moves the calendar to that month.
 - Clearing a picker now tells your code. Before, the × button changed nothing for `onChange`,
