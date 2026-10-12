@@ -1,6 +1,6 @@
 import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import { formatDateValue, formatMachineValue, stringifyMachineValue } from '../format/index.js';
-import type { MonthPickerOptions, MonthResult, MonthValue, PickerInstance, PickerLocale } from '../types.js';
+import type { CalendarAdapter, MonthPickerOptions, MonthResult, MonthValue, PickerInstance, PickerLocale } from '../types.js';
 
 export interface MonthPickerControllerState {
   isOpen: boolean;
@@ -22,6 +22,8 @@ export interface MonthPickerController extends PickerInstance<MonthResult, Month
   selectYearView(year: number): void;
   validateTyped(text: string): 'valid' | 'invalid' | 'empty';
   commitTyped(text: string): 'valid' | 'invalid' | 'empty';
+  /** The calendar adapter in use (the `adapter` option, or the built-in one) — the render layer draws with it. */
+  getAdapter(): CalendarAdapter;
   typedString(): string;
   typedReference(): string;
   yearBounds(): { min: number; max: number };
@@ -90,6 +92,7 @@ export function createMonthPickerController(initialOptions: MonthPickerOptions =
   }
 
   const controller: MonthPickerController = {
+    getAdapter: () => adapter,
     getState: () => state,
     getValue: () => (state.selected ? buildResult(state.selected.year, state.selected.month) : null),
     setValue(value) {

@@ -1,4 +1,3 @@
-import { defaultCalendarAdapter } from '../adapters/bs-ad-calendar-adapter.js';
 import type { DateRangeController } from '../application/date-range-controller.js';
 import { previewRange } from '../application/date-range-controller.js';
 import type { DateTimeController } from '../application/date-time-controller.js';
@@ -24,6 +23,7 @@ interface ViewControls {
   setView(view: CalendarView): void;
   selectMonthView(month: number): void;
   selectYearView(year: number): void;
+  getAdapter(): CalendarAdapter;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string, attrs: Record<string, string> = {}): HTMLElementTagNameMap[K] {
@@ -106,7 +106,7 @@ function monthSpanText(span: MonthSpan, otherMode: CalendarMode, adapter: Calend
 // `mode` decides which calendar is the big/primary label (what's navigated)
 // and which is the small/secondary hint — the two swap when mode is 'AD'.
 function renderHeader(controller: ViewControls): HTMLElement {
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   const { view, viewYear, viewMonth, mode = 'BS', showSecondaryCalendar = true } = controller.getState();
   const header = el('div', 'ndp-cal-header');
 
@@ -162,14 +162,14 @@ function renderHeader(controller: ViewControls): HTMLElement {
   return header;
 }
 
-function renderWeekdays(mode: CalendarMode = 'BS'): HTMLElement {
+function renderWeekdays(adapter: CalendarAdapter, mode: CalendarMode = 'BS'): HTMLElement {
   const row = el('div', 'ndp-weekdays', { role: 'row' });
-  defaultCalendarAdapter.bsWeekdayShort(mode === 'AD' ? 'en' : 'ne').forEach((weekday) => row.appendChild(setText(el('div', 'ndp-weekday', { role: 'columnheader' }), weekday)));
+  adapter.bsWeekdayShort(mode === 'AD' ? 'en' : 'ne').forEach((weekday) => row.appendChild(setText(el('div', 'ndp-weekday', { role: 'columnheader' }), weekday)));
   return row;
 }
 
 function renderMonthGrid(controller: ViewControls): HTMLElement {
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   const { viewYear, viewMonth, mode = 'BS', showSecondaryCalendar = true } = controller.getState();
   const otherMode: CalendarMode = mode === 'AD' ? 'BS' : 'AD';
   const grid = el('div', 'ndp-monthgrid', { role: 'grid' });
@@ -201,7 +201,7 @@ function renderMonthGrid(controller: ViewControls): HTMLElement {
 // time with ‹ ›), opened scrolled so the current view year sits in the middle.
 // Scrolling / flicking is far quicker than stepping pages, especially on touch.
 function renderYearGrid(controller: ViewControls): HTMLElement {
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   const { viewYear, mode = 'BS', showSecondaryCalendar = true } = controller.getState();
   const { min, max } = viewYearBounds(mode, adapter);
   const grid = el('div', 'ndp-yeargrid', { role: 'grid', 'aria-label': 'Select year' });
@@ -233,7 +233,7 @@ function renderYearGrid(controller: ViewControls): HTMLElement {
 // the same 5-column layout (and full-width centered label) as the day header.
 // Mode-aware: "Pick a Month" spans a BS or a Gregorian month depending on mode.
 function renderMonthRangeHeader(controller: DateRangeController): HTMLElement {
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   const { viewYear, mode, showSecondaryCalendar } = controller.getState();
   const header = el('div', 'ndp-cal-header');
   const outerPrev = navButton('«', '', () => {}, true);
@@ -256,7 +256,7 @@ function renderMonthRangeHeader(controller: DateRangeController): HTMLElement {
 // Gregorian, per the active mode), and the range spans that month's first →
 // last day.
 function renderMonthRangeGrid(controller: DateRangeController): HTMLElement {
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   const state = controller.getState();
   const viewYear = state.viewYear;
   const mode = state.mode;
@@ -297,7 +297,7 @@ function renderModeSwitch(mode: CalendarMode, toggle: () => void): HTMLElement {
 
 export function renderRangePanel(root: HTMLElement, controller: DateRangeController): void {
   const state = controller.getState();
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   const fmt = (value: DateValue) => formatDateValue(value.ad, adapter, { mode: state.mode, locale: state.mode === 'BS' ? 'ne' : 'en' });
   root.innerHTML = '';
   const panel = el('div', 'ndp-panel ndp-panel--range ndp-panel--compact', { role: 'dialog', 'aria-label': 'Date range picker' });
@@ -364,7 +364,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
   } else {
     calCol.appendChild(renderHeader(controller));
     if (state.view === 'day') {
-      calCol.appendChild(renderWeekdays(state.mode));
+      calCol.appendChild(renderWeekdays(adapter, state.mode));
       const grid = el('div', 'ndp-grid', { role: 'grid' });
       const preview = previewRange(state);
       controller.buildMonthCells(state.viewYear, state.viewMonth).forEach((cell) => {
@@ -628,7 +628,7 @@ function renderTimeControls(controller: DateTimeController, touch = false): HTML
 // Step 2 of the phone date-time sheet: which date you picked (tap to go back
 // and change it), the time as a big readout, and the wheels.
 function renderTimeStep(controller: DateTimeController): HTMLElement {
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   const state = controller.getState();
   const selected = state.selected!;
   const time = state.time!;
@@ -656,7 +656,7 @@ function renderTimeStep(controller: DateTimeController): HTMLElement {
 
 export function renderDateTimePanel(root: HTMLElement, controller: DateTimeController): void {
   const state = controller.getState();
-  const adapter = defaultCalendarAdapter;
+  const adapter = controller.getAdapter();
   // Preserve keyboard focus (and caret) across the full re-render so typing/
   // arrowing in a time field isn't interrupted. Fields are tagged data-ndp-field.
   const active = document.activeElement as HTMLElement | null;
@@ -700,7 +700,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   calCol.appendChild(todayRow);
 
   if (state.view === 'day') {
-    calCol.appendChild(renderWeekdays(state.mode));
+    calCol.appendChild(renderWeekdays(adapter, state.mode));
     const grid = el('div', 'ndp-grid', { role: 'grid' });
     const todayBs = adapter.todayBs();
     const today = controller.cellForBs(todayBs.year, todayBs.month, todayBs.day);

@@ -4,7 +4,7 @@ import { buildViewMonthCells, clampViewMonth, clampViewYear, firstOfViewMonth, l
 import { isDayDisabled, resolveBound } from './constraints.js';
 import { createDateRange, createDateValue, dateValueFromBs, isSameDateValue } from '../domain/date-value.js';
 import { formatRange, formatMachineValue, stringifyMachineValue } from '../format/index.js';
-import type { CalendarMode, DateRange, DateRangePickerOptions, DateRangeResult, DateValue, PickerInstance, PresetDefinition } from '../types.js';
+import type { CalendarAdapter, CalendarMode, DateRange, DateRangePickerOptions, DateRangeResult, DateValue, PickerInstance, PresetDefinition } from '../types.js';
 import { normalizePresets } from './presets.js';
 
 export interface DateRangeControllerState {
@@ -50,6 +50,8 @@ export interface DateRangeController extends PickerInstance<DateRangeResult, Dat
   isDisabled(value: DateValue): boolean;
   validateTyped(text: string): 'valid' | 'invalid' | 'empty';
   commitTyped(text: string): 'valid' | 'invalid' | 'empty';
+  /** The calendar adapter in use (the `adapter` option, or the built-in one) — the render layer draws with it. */
+  getAdapter(): CalendarAdapter;
   typedString(): string;
   typedReference(): string;
   yearBounds(): { min: number; max: number };
@@ -219,6 +221,7 @@ export function createDateRangeController(initialOptions: DateRangePickerOptions
 
   const controller: DateRangeController = {
     getState: () => state,
+    getAdapter: () => adapter,
     getPresets: () => presets,
     getToday: () => today,
     getValue: () => (state.range ? toResult(state.range) : null),

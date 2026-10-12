@@ -308,3 +308,18 @@ test('navigation stops at the ends of the supported range instead of crashing', 
   r.navigateMonth(1);
   assert.doesNotThrow(() => r.buildMonthCells(r.getState().viewYear, r.getState().viewMonth));
 });
+
+test('a custom adapter is used by the panel too, not just the controller', async () => {
+  const { BsAdCalendarAdapter } = await import('../src/adapters/bs-ad-calendar-adapter');
+  class Renamed extends BsAdCalendarAdapter {
+    bsMonthNames(): string[] {
+      return Array.from({ length: 12 }, (_, i) => `M${i + 1}`);
+    }
+  }
+  const c = createDateTimeController({ value: base(), adapter: new Renamed() });
+  c.show();
+  const root = render(c, 'datetime');
+  assert.match(root.querySelector('.ndp-cal-label-primary')!.textContent!, /^M1 /, 'header month name comes from the adapter');
+  c.setView('month');
+  assert.equal(root.querySelector('.ndp-monthcell')!.firstChild!.textContent, 'M1');
+});

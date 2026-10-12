@@ -5,7 +5,7 @@ import { isDayDisabled } from './constraints.js';
 import { createDateValue, dateValueFromBs } from '../domain/date-value.js';
 import { formatDateValue, formatMachineValue } from '../format/index.js';
 import { tokenizeTyped } from '../format/parse.js';
-import type { CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, PickerInstance, TimeValue } from '../types.js';
+import type { CalendarAdapter, CalendarMode, DateTimePickerOptions, DateTimeResult, DateValue, PickerInstance, TimeValue } from '../types.js';
 
 export interface DateTimeControllerState {
   isOpen: boolean;
@@ -60,6 +60,8 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   isHourDisabled(hour: number): boolean;
   isMinuteDisabled(hour: number, minute: number): boolean;
   setPanelStep(step: 'date' | 'time'): void;
+  /** The calendar adapter in use (the `adapter` option, or the built-in one) — the render layer draws with it. */
+  getAdapter(): CalendarAdapter;
   cellForBs(year: number, month: number, day: number): DateValue;
   buildMonthCells(year: number, month: number): Array<DateValue | null>;
 }
@@ -229,6 +231,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
 
   const controller: DateTimeController = {
     getState: () => state,
+    getAdapter: () => adapter,
     getValue: () => (state.selected ? buildResult(state.selected) : null),
     setValue(value) {
       const ad = value instanceof Date ? value : value?.ad ?? null;

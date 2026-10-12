@@ -51,6 +51,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A custom `adapter` is now used for everything the popup shows (month names, digits, weekday
+  labels, cross-calendar hints), not just for the value. The panel used to draw with the built-in
+  adapter regardless.
 - Only one picker popup is open at a time; opening one closes the other. Tabbing out of a field
   (focus moving to another control) now closes its popup.
 - `autoInit()` can be called again (e.g. after AJAX or Turbo loads new content) without mounting a
