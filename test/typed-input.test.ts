@@ -409,3 +409,17 @@ test('range: a defaultPresetId still preselects that preset', () => {
   // 'last7' resolves to a concrete range, so the picker is not empty.
   assert.ok(inst.getValue(), 'defaultPresetId preselects a range');
 });
+
+test('a half-typed year is not clamped into a real date: the edit is rejected and reverts', () => {
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  const inst = mountDateTimePicker(input, { value: new Date(2024, 3, 13) }); // 2081-01-01 BS
+  input.dispatchEvent(new FocusEvent('focus'));
+  type(input, '205'); // three digits of a year…
+  key(input, 'ArrowRight'); // …then move on, leaving the year at 205
+  type(input, '0101');
+  input.dispatchEvent(new FocusEvent('blur'));
+  const bs = (inst.getState() as { selected: { bs: { year: number } } }).selected.bs;
+  assert.equal(bs.year, 2081, 'value unchanged — not saved as 1970');
+  assert.equal(normalizeDigits(input.value), '2081-01-01', 'field reverts to the committed value');
+});

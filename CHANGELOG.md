@@ -46,6 +46,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A half-typed year (e.g. `205`, then moving on) is no longer clamped into a real year and saved as
+  a 1970 date. The entry is rejected and the field goes back to its previous value.
 - Navigating past the ends of the supported calendar (BS 1970–2100, about AD 1913–2044) no longer
   crashes the picker. Navigation stops at the first/last month the calendar fully covers, and
   months beyond it show as disabled in the month grid.

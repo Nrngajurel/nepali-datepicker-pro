@@ -154,7 +154,12 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
 
   function finalize(seg: Segment): void {
     if (!seg.buffer) return;
-    seg.value = Math.max(seg.min, Math.min(seg.max, parseInt(seg.buffer, 10)));
+    const n = parseInt(seg.buffer, 10);
+    // Two-digit sections clamp (typing 9 into a month means 09). A year is
+    // kept as typed: clamping a half-typed "205" up to the first supported
+    // year would silently save a date nobody entered — out of range, it fails
+    // validation and the field reverts instead.
+    seg.value = seg.len >= 4 ? n : Math.max(seg.min, Math.min(seg.max, n));
     seg.buffer = '';
   }
 
