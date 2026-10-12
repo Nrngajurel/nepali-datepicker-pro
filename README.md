@@ -556,6 +556,7 @@ npm install
 npm run dev      # VitePress docs site, with live component demos
 npm run test     # vitest
 npm run test:e2e # Playwright: real browsers, desktop + phone viewports
+npm run test:e2e:webkit # same on WebKit/Safari (iPhone + desktop), via Docker
 npm run lint     # tsc --noEmit
 npm run build    # ESM + UMD + .d.ts into dist/
 ```

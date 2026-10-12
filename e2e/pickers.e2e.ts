@@ -33,9 +33,11 @@ async function open(page: Page, id: string): Promise<Locator> {
   return root;
 }
 
-/** Wait for the sheet's slide-up / backdrop fade so boxes are measured at rest. */
+/** Wait for the sheet's slide-up / backdrop fade so boxes are measured at rest.
+ *  Polls until nothing is animating: a re-render during the slide replaces the
+ *  panel element (cancelling the animation a one-shot `finished` would await). */
 async function settle(root: Locator): Promise<void> {
-  await root.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+  await expect.poll(() => root.evaluate((el) => el.getAnimations({ subtree: true }).length)).toBe(0);
 }
 
 /** Panel box must sit fully inside the viewport. */

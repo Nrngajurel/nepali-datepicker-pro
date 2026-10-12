@@ -13,6 +13,7 @@ npm run dev          # = docs:dev — VitePress docs site with live component de
 npm test             # vitest run — full suite, ~sub-second
 npm run test:watch   # vitest watch mode
 npm run test:e2e     # Playwright browser tests (e2e/*.e2e.ts) — Chromium desktop + Pixel 7 phone, Firefox desktop
+npm run test:e2e:webkit # same suite on WebKit (iPhone 13 + desktop Safari), run in the Playwright Docker image (host WebKit needs Ubuntu 24.04 libs)
 npm run lint         # tsc --noEmit
 npm run build        # vite build (ES entries + .d.ts) + vite build --config vite.umd.config.ts (UMD)
 npm run docs:build   # build the VitePress site (served under base /nepali-datepicker-pro/)
