@@ -166,6 +166,9 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     if (controller.isDisabled(value)) return 'invalid';
     if (options.withTime && tokens.hour != null) {
       if (tokens.hour > 23 || (tokens.minute ?? 0) > 59) return 'invalid';
+      // Same rule as the wheels: a time outside minTime/maxTime or rejected by
+      // disabledTimes is invalid (it used to be accepted, or silently clamped).
+      if (controller.isMinuteDisabled(tokens.hour, tokens.minute ?? 0)) return 'invalid';
       return { value, time: { hour: tokens.hour, minute: tokens.minute ?? 0 } };
     }
     return { value, time: null };

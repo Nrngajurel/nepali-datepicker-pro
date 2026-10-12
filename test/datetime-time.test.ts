@@ -314,3 +314,19 @@ test('wide screens ignore the step and keep date + time side by side', () => {
   assert.ok(root.querySelector('.ndp-time-panel'));
   assert.equal(root.querySelector('.ndp-time-step'), null);
 });
+
+test('typed times obey disabledTimes and minTime/maxTime like the wheels do', () => {
+  const c = createDateTimeController({
+    withTime: true,
+    timeFormat: '24h',
+    minTime: { hour: 9, minute: 0 },
+    maxTime: { hour: 17, minute: 0 },
+    disabledTimes: (h) => h === 12,
+  });
+  assert.equal(c.commitTyped('2081-01-01 10:30'), 'valid');
+  assert.equal(c.validateTyped('2081-01-01 12:15'), 'invalid', 'disabledTimes');
+  assert.equal(c.commitTyped('2081-01-01 12:15'), 'invalid');
+  assert.equal(c.commitTyped('2081-01-01 18:00'), 'invalid', 'after maxTime is rejected, not clamped');
+  assert.equal(c.commitTyped('2081-01-01 08:59'), 'invalid', 'before minTime is rejected, not clamped');
+  assert.equal(c.getValue()!.time!.hour, 10, 'the last valid time is kept');
+});

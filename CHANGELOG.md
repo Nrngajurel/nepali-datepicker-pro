@@ -51,12 +51,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- A typed time is now checked like a picked one: times rejected by `disabledTimes`, or outside
+  `minTime`/`maxTime`, are marked invalid instead of being accepted or silently clamped.
 - Picking a fiscal year from the range picker's submenu now fires `onChange`, like the other
   presets.
 - AD mode with `locale: 'ne'` showed BS month names (15 January as "१५ बैशाख"); it now shows
   Gregorian months in Nepali (`१५ जनवरी`).
-- Relative bounds like `minDate: '-1m'` on the 31st no longer overshoot (Jan 31 − 1 month was
-  Dec 31 + overflow; adding months now clamps to the month's last day).
+- Relative bounds like `minDate: '-1m'` no longer overshoot at month ends: on 31 March, `'-1m'`
+  gave 3 March instead of 29 February. Adding months now stops at the target month's last day.
 - A half-typed year (e.g. `205`, then moving on) is no longer clamped into a real year and saved as
   a 1970 date. The entry is rejected and the field goes back to its previous value.
 - Navigating past the ends of the supported calendar (BS 1970–2100, about AD 1913–2044) no longer
