@@ -36,6 +36,8 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Date-time `setValue` (and so Vue `v-model` / jQuery `'setValue'`) now keeps the time of the
+  value you pass instead of the previous time, and moves the calendar to that month.
 - Clearing a picker now tells your code. Before, the × button changed nothing for `onChange`,
   Vue's `v-model`, React or jQuery. Every picker now has an `onClear` option, a `clear.*` DOM event
   (`clear.nepaliDatePicker`, `clear.nepaliDateRangePicker`, `clear.nepaliMonthPicker`), and

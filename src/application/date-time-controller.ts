@@ -224,7 +224,19 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     getValue: () => (state.selected ? buildResult(state.selected) : null),
     setValue(value) {
       const ad = value instanceof Date ? value : value?.ad ?? null;
-      setState({ selected: ad ? createDateValue(adapter, ad) : null });
+      if (!ad) {
+        setState({ selected: null });
+        return;
+      }
+      // Take the time from the value too (it was dropped, so the old time stuck),
+      // and bring the calendar to the value's month.
+      const view = viewYearMonthOf(state.mode, adapter, ad);
+      setState({
+        selected: createDateValue(adapter, ad),
+        viewYear: view.year,
+        viewMonth: view.month,
+        ...(state.time ? { time: clampTime({ hour: ad.getHours(), minute: ad.getMinutes(), second: 0 }) } : {}),
+      });
     },
     show() {
       if (!state.isOpen) {

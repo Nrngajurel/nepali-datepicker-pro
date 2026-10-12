@@ -8,6 +8,7 @@ import { test } from 'vitest';
 
 import { createDateTimeController } from '../src/application/date-time-controller';
 import { renderDateTimePanel } from '../src/render/dom';
+import { defaultCalendarAdapter } from '../src/adapters/bs-ad-calendar-adapter';
 
 const base = () => new Date(2024, 3, 13, 10, 30, 0); // 2081-01-01 BS, 10:30:00
 
@@ -242,4 +243,16 @@ test('12h mode exposes an AM/PM toggle button in the entry', () => {
   assert.equal(ampm.textContent, 'PM');
   ampm.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   assert.equal(c.getState().time!.hour, 2, 'toggled to AM (14 → 2)');
+});
+
+test('setValue keeps the given time and moves the calendar to that month', () => {
+  const c = createDateTimeController({ withTime: true, value: new Date(2024, 3, 15, 9, 0) });
+  c.setValue(new Date(2030, 5, 1, 14, 30));
+  const v = c.getValue()!;
+  assert.equal(v.ad.getHours(), 14);
+  assert.equal(v.ad.getMinutes(), 30);
+  assert.equal(v.value, '2030-06-01T14:30');
+  const bs = defaultCalendarAdapter.adToBs(new Date(2030, 5, 1));
+  assert.equal(c.getState().viewYear, bs.year);
+  assert.equal(c.getState().viewMonth, bs.month);
 });
