@@ -345,3 +345,21 @@ test('autoInit() can run again without double-mounting fields it already set up'
   autoInit();
   assert.equal(document.querySelectorAll('.ndp-trigger-wrap').length, 4, 'new field mounted');
 });
+
+test('phone width: a typeable field asks for no on-screen keyboard (the sheet is the input); desktop gets the numeric keypad', () => {
+  const original = window.matchMedia;
+  const input = document.createElement('input');
+  document.body.appendChild(input);
+  window.matchMedia = ((q: string) => ({ matches: q.includes('max-width: 560px'), media: q })) as unknown as typeof window.matchMedia;
+  try {
+    const p = mountDateTimePicker(input);
+    assert.equal(input.getAttribute('inputmode'), 'none');
+    window.matchMedia = original;
+    window.dispatchEvent(new Event('resize')); // e.g. rotating to a wide layout
+    assert.equal(input.getAttribute('inputmode'), 'numeric');
+    p.destroy();
+    assert.equal(input.hasAttribute('inputmode'), false, 'destroy restores the attribute');
+  } finally {
+    window.matchMedia = original;
+  }
+});

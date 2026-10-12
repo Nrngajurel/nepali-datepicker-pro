@@ -5,6 +5,7 @@
 // field. The set of sections is described by a schema, so the same widget
 // backs the date, datetime (incl. AM/PM), month and range pickers.
 import { normalizeDigits } from '../format/parse.js';
+import { isSheetViewport } from '../render/dom.js';
 
 export interface SegmentSpec {
   key: string;
@@ -298,7 +299,12 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
   }
 
   input.classList.add('ndp-trigger--segmented');
-  input.setAttribute('inputmode', 'numeric');
+  // On phone widths the bottom sheet is the way to pick (calendar + time
+  // wheels); an on-screen keyboard would pop up over it, so ask for none
+  // there. Wider screens get the numeric keypad for typing.
+  const syncInputMode = (): void => input.setAttribute('inputmode', isSheetViewport() ? 'none' : 'numeric');
+  syncInputMode();
+  window.addEventListener('resize', syncInputMode);
   input.setAttribute('autocomplete', 'off');
   if (!input.getAttribute('placeholder')) input.setAttribute('placeholder', cfg.placeholder());
   input.addEventListener('keydown', onKeydown);
@@ -319,6 +325,7 @@ export function attachSegmentedField(input: HTMLInputElement, cfg: SegmentedFiel
       input.removeEventListener('mouseup', onMouseup);
       input.removeEventListener('blur', onBlur);
       input.removeEventListener('beforeinput', onBeforeinput);
+      window.removeEventListener('resize', syncInputMode);
     },
   };
 }

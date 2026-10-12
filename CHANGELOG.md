@@ -24,6 +24,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- On phone widths, tapping a typeable field no longer raises the on-screen keyboard over the bottom
+  sheet; the sheet (calendar and time wheels) is the input there. Wider screens still get the
+  numeric keypad for typing.
 - "Last 7/15/30/45/60 days" presets now span exactly that many days including today (they spanned
   one day more). Presets now use the date they're clicked on, so a page left open past midnight
   doesn't select yesterday's ranges.

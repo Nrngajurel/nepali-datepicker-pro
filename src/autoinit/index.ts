@@ -42,7 +42,7 @@ function claimTrigger(target: HTMLInputElement | HTMLElement): {
     trigger.setAttribute('type', 'button');
     target.appendChild(trigger);
   }
-  const saved = ['class', 'role', 'aria-haspopup', 'aria-expanded', 'name', 'readonly']
+  const saved = ['class', 'role', 'aria-haspopup', 'aria-expanded', 'name', 'readonly', 'inputmode', 'autocomplete', 'placeholder']
     .map((name) => [name, trigger.getAttribute(name)] as const);
   trigger.classList.add('ndp-trigger');
   trigger.setAttribute('role', 'combobox');
