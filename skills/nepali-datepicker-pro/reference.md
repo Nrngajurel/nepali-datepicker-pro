@@ -228,6 +228,13 @@ are the headless state machines underneath the DOM mount functions — only reac
 these when building a fully custom renderer; for a normal integration use `mount*`
 or the framework components instead.
 
+## Keyboard
+
+Field: type/arrow through segments; **Alt+↓** (↓ when read-only) enters the calendar;
+**Ctrl/⌘+Backspace** clears. Calendar: arrows = day/week, PageUp/PageDown (+Shift) =
+month/year, Home/End = week start/end, Enter/Space = pick. Escape closes and refocuses
+the field. One popup open at a time; Tab out of a field closes its popup.
+
 ## Styling
 
 Single stylesheet, CSS custom properties for theming — no CSS-in-JS, no Tailwind

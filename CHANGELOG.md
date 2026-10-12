@@ -9,6 +9,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Keyboard navigation in the popup: **Alt+↓** from the field (↓ on a read-only field) moves focus
+  into the calendar. There, arrows move by day and week, PageUp/PageDown by month (with Shift, by
+  year), Home/End to the week's ends, and the calendar turns the page as you go. Enter or Space
+  picks; Escape closes and returns focus to the field. Only one day is in the Tab order at a time.
 - Date-time picker on phones is now two steps: pick the date, then the time on large wheels with a
   big readout. A chip with the chosen date goes back to the calendar. Desktop keeps date and time
   side by side.

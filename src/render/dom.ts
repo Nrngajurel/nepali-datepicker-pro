@@ -7,6 +7,8 @@ import type { MonthPickerController } from '../application/month-picker-controll
 import { GREGORIAN_MONTHS_SHORT, nativeDateMath } from '../date-math/native-date-math.js';
 import { formatDateValue } from '../format/index.js';
 import { normalizeDigits } from '../format/parse.js';
+import { mapGridKey } from '../a11y/index.js';
+import type { GridKeyAction } from '../a11y/index.js';
 import { computePopupPosition } from '../position/index.js';
 import type { CalendarAdapter, CalendarMode, DateRange, DateValue } from '../types.js';
 
@@ -88,6 +90,96 @@ function bsYearOfAdYear(adapter: CalendarAdapter, year: number): number {
 function isViewMonthInRange(mode: CalendarMode, adapter: CalendarAdapter, year: number, month: number): boolean {
   const clamped = clampViewMonth(mode, adapter, year, month);
   return clamped.year === year && clamped.month === month;
+}
+
+// ---- keyboard navigation in the day grid ----------------------------------
+// Roving tabindex: one day cell is tabbable (data-ndp-entry, the target of
+// Alt+↓ from the field); arrows / PageUp / PageDown / Home / End move between
+// days, turning the page when they leave the visible month. Enter / Space
+// press the focused day button. The panel is rebuilt on every state change,
+// so the day to focus next is remembered per popup root.
+const pendingDayFocus = new WeakMap<HTMLElement, string>();
+
+function dayKey(date: Date): string {
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
+function moveDay(from: Date, action: GridKeyAction): Date {
+  const to = new Date(from);
+  if (action === 'prev-day') to.setDate(to.getDate() - 1);
+  if (action === 'next-day') to.setDate(to.getDate() + 1);
+  if (action === 'prev-week') to.setDate(to.getDate() - 7);
+  if (action === 'next-week') to.setDate(to.getDate() + 7);
+  if (action === 'week-start') to.setDate(to.getDate() - to.getDay());
+  if (action === 'week-end') to.setDate(to.getDate() + (6 - to.getDay()));
+  if (action === 'prev-month') return nativeDateMath.add(from, -1, 'month');
+  if (action === 'next-month') return nativeDateMath.add(from, 1, 'month');
+  if (action === 'prev-year') return nativeDateMath.add(from, -1, 'year');
+  if (action === 'next-year') return nativeDateMath.add(from, 1, 'year');
+  return to;
+}
+
+/** Before rebuilding: if a day cell has focus, focus the same day afterwards. */
+function rememberDayFocus(root: HTMLElement): void {
+  const active = document.activeElement as HTMLElement | null;
+  const key = active && root.contains(active) ? active.getAttribute('data-ndp-day') : null;
+  if (key && !pendingDayFocus.has(root)) pendingDayFocus.set(root, key);
+}
+
+/** Tag a day button for keyboard navigation. */
+function markDayCell(btn: HTMLElement, value: DateValue): void {
+  btn.setAttribute('data-ndp-day', dayKey(value.ad));
+  btn.tabIndex = -1;
+}
+
+/** After the grid is built: pick the tabbable cell and wire the keys. */
+function finishDayGrid(
+  root: HTMLElement,
+  grid: HTMLElement,
+  controller: { navigateMonth(delta: number): void; getState(): { viewYear: number; viewMonth: number; mode: CalendarMode }; getAdapter(): CalendarAdapter },
+  preferred: Array<DateValue | null | undefined>,
+): void {
+  const cellFor = (key: string) => grid.querySelector<HTMLElement>(`[data-ndp-day="${key}"]`);
+  const pending = pendingDayFocus.get(root);
+  const entry = (pending ? cellFor(pending) : null)
+    ?? preferred.map((v) => (v ? cellFor(dayKey(v.ad)) : null)).find(Boolean)
+    ?? grid.querySelector<HTMLElement>('[data-ndp-day]:not(.is-disabled)')
+    ?? grid.querySelector<HTMLElement>('[data-ndp-day]');
+  if (entry) {
+    entry.tabIndex = 0;
+    entry.setAttribute('data-ndp-entry', '');
+  }
+  grid.addEventListener('keydown', (event) => {
+    const e = event as KeyboardEvent;
+    const action = mapGridKey(e);
+    if (!action || action === 'select' || action === 'close') return;
+    const cell = (e.target as HTMLElement).closest<HTMLElement>('[data-ndp-day]');
+    if (!cell) return;
+    e.preventDefault();
+    const [y, m, d] = cell.getAttribute('data-ndp-day')!.split('-').map(Number);
+    const target = moveDay(new Date(y, m - 1, d), action);
+    const key = dayKey(target);
+    const inView = cellFor(key);
+    if (inView) {
+      grid.querySelectorAll<HTMLElement>('[data-ndp-day]').forEach((c) => { c.tabIndex = -1; });
+      inView.tabIndex = 0;
+      inView.focus();
+      return;
+    }
+    const state = controller.getState();
+    const view = viewYearMonthOf(state.mode, controller.getAdapter(), target);
+    pendingDayFocus.set(root, key);
+    controller.navigateMonth((view.year * 12 + view.month) - (state.viewYear * 12 + state.viewMonth));
+  });
+}
+
+/** After the panel is in the document: move focus to the remembered day. */
+function restoreDayFocus(root: HTMLElement): void {
+  const key = pendingDayFocus.get(root);
+  if (!key) return;
+  pendingDayFocus.delete(root);
+  const cell = root.querySelector<HTMLElement>(`[data-ndp-day="${key}"]`) ?? root.querySelector<HTMLElement>('[data-ndp-entry]');
+  cell?.focus();
 }
 
 function monthSpanText(span: MonthSpan, otherMode: CalendarMode, adapter: CalendarAdapter, withYear = true): string {
@@ -192,6 +284,7 @@ function renderMonthGrid(controller: ViewControls): HTMLElement {
       btn.appendChild(setText(el('span', 'ndp-monthcell-en'), monthSpanText(span, otherMode, adapter, false)));
     }
     btn.addEventListener('click', () => controller.selectMonthView(month));
+    if (selected) btn.setAttribute('data-ndp-entry', '');
     grid.appendChild(btn);
   }
   return grid;
@@ -216,7 +309,10 @@ function renderYearGrid(controller: ViewControls): HTMLElement {
       btn.appendChild(setText(el('span', 'ndp-yearcell-en'), secondaryLabel));
     }
     btn.addEventListener('click', () => controller.selectYearView(year));
-    if (selected) selectedCell = btn;
+    if (selected) {
+      selectedCell = btn;
+      btn.setAttribute('data-ndp-entry', '');
+    }
     grid.appendChild(btn);
   }
   // Center the selected year once the grid is laid out (it isn't attached yet).
@@ -299,6 +395,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
   const state = controller.getState();
   const adapter = controller.getAdapter();
   const fmt = (value: DateValue) => formatDateValue(value.ad, adapter, { mode: state.mode, locale: state.mode === 'BS' ? 'ne' : 'en' });
+  rememberDayFocus(root);
   root.innerHTML = '';
   const panel = el('div', 'ndp-panel ndp-panel--range ndp-panel--compact', { role: 'dialog', 'aria-label': 'Date range picker' });
 
@@ -375,6 +472,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
         const disabled = controller.isDisabled(cell);
         const cls = classForRange(cell, preview, controller.getToday()) + (disabled ? ' is-disabled' : '');
         const btn = el('button', cls, { type: 'button', role: 'gridcell', 'aria-selected': inRange(preview, cell) ? 'true' : 'false' });
+        markDayCell(btn, cell);
         if (disabled) btn.setAttribute('aria-disabled', 'true');
         const primaryDay = state.mode === 'AD' ? String(cell.ad.getDate()) : adapter.toLocaleDigits(cell.bs.day, 'ne');
         btn.appendChild(setText(el('span', 'ndp-cell-primary'), primaryDay));
@@ -388,6 +486,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
         }
         grid.appendChild(btn);
       });
+      finishDayGrid(root, grid, controller, [state.pendingStart, state.range?.end, state.range?.start, controller.getToday()]);
       calCol.appendChild(grid);
     } else if (state.view === 'month') {
       calCol.appendChild(renderMonthGrid(controller));
@@ -402,6 +501,7 @@ export function renderRangePanel(root: HTMLElement, controller: DateRangeControl
 
   panel.append(presetRail, calCol);
   root.appendChild(panel);
+  restoreDayFocus(root);
 }
 
 function meridiemOf(hour: number): 'AM' | 'PM' {
@@ -661,6 +761,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   // arrowing in a time field isn't interrupted. Fields are tagged data-ndp-field.
   const active = document.activeElement as HTMLElement | null;
   const restoreField = active && root.contains(active) ? active.getAttribute('data-ndp-field') : null;
+  rememberDayFocus(root);
   root.innerHTML = '';
   const dateOnly = !state.time;
   const panelClass = `ndp-panel ndp-panel--datetime${dateOnly ? ' ndp-panel--date-only' : ''}`;
@@ -715,6 +816,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
       if (isSameDay(cell, state.selected)) classes.push('is-range-start');
       if (disabled) classes.push('is-disabled');
       const btn = el('button', classes.join(' '), { type: 'button', role: 'gridcell', 'aria-selected': isSameDay(cell, state.selected) ? 'true' : 'false' });
+      markDayCell(btn, cell);
       if (disabled) btn.setAttribute('aria-disabled', 'true');
       const primaryDay = state.mode === 'AD' ? String(cell.ad.getDate()) : adapter.toLocaleDigits(cell.bs.day, 'ne');
       btn.appendChild(setText(el('span', 'ndp-cell-primary'), primaryDay));
@@ -725,6 +827,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
       if (!disabled) btn.addEventListener('click', () => controller.selectDay(cell));
       grid.appendChild(btn);
     });
+    finishDayGrid(root, grid, controller, [state.selected, today]);
     calCol.appendChild(grid);
   } else if (state.view === 'month') {
     calCol.appendChild(renderMonthGrid(controller));
@@ -752,6 +855,7 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   }
 
   root.appendChild(panel);
+  restoreDayFocus(root);
 
   if (restoreField) {
     const next = panel.querySelector<HTMLElement>(`[data-ndp-field="${restoreField}"]`);

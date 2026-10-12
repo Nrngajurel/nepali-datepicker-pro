@@ -312,7 +312,7 @@ test.describe('range selection', () => {
     await root.locator('.ndp-preset', { hasText: 'Last 7 days' }).click();
     await root.locator('.ndp-apply', { hasText: 'Apply' }).click();
     const value = await page.evaluate(() => window.pickers.range.getValue());
-    expect(value.end.getTime() - value.start.getTime()).toBeGreaterThan(6 * 86400000);
+    expect(Math.round((value.end.getTime() - value.start.getTime()) / 86400000)).toBe(6); // 7 days including today
   });
 
   test('fiscal-year submenu chips open and select', async ({ page }) => {
@@ -351,5 +351,62 @@ test.describe('desktop positioning', () => {
       const box = (await panel.boundingBox())!;
       return Math.abs(box.y - (input.y + input.height + 6));
     }).toBeLessThan(2);
+  });
+});
+
+test.describe('keyboard', () => {
+  test.skip(({ isMobile }) => isMobile, 'keyboard navigation is a desktop concern');
+
+  const focusedDay = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute('data-ndp-day') ?? null);
+
+  test('Alt+↓ enters the grid; arrows, PageDown move; Enter picks and focus returns to the field', async ({ page }) => {
+    const root = await open(page, 'date'); // value 2024-04-15 = BS 2081-01-03
+    await page.keyboard.press('Alt+ArrowDown');
+    expect(await focusedDay(page)).toBe('2024-4-15');
+    await page.keyboard.press('ArrowRight');
+    expect(await focusedDay(page)).toBe('2024-4-16');
+    await page.keyboard.press('ArrowDown');
+    expect(await focusedDay(page)).toBe('2024-4-23');
+    await page.keyboard.press('Home');
+    expect(await focusedDay(page)).toBe('2024-4-21'); // Sunday
+    await page.keyboard.press('PageDown'); // next month, same day — turns the page
+    expect(await focusedDay(page)).toBe('2024-5-21');
+    await expect(root.locator('.ndp-cal-label-primary')).toContainText('जेठ');
+    await page.keyboard.press('Enter');
+    await expect(root).toHaveCount(0);
+    const value = await page.evaluate(() => window.pickers.date.getValue());
+    expect(value.value).toBe('2024-05-21');
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('date');
+    await page.waitForTimeout(100);
+    await expect(popup(page)).toHaveCount(0); // returning focus didn't reopen it
+  });
+
+  test('Escape inside the popup closes it and returns focus to the field', async ({ page }) => {
+    await open(page, 'date');
+    await page.keyboard.press('Alt+ArrowDown');
+    await page.keyboard.press('Escape');
+    await expect(popup(page)).toHaveCount(0);
+    expect(await page.evaluate(() => document.activeElement?.id)).toBe('date');
+  });
+
+  test('range: pick start and end from the keyboard', async ({ page }) => {
+    const root = await open(page, 'range');
+    await root.locator('.ndp-preset', { hasText: 'Custom Range' }).click();
+    await root.locator('[data-ndp-entry]').focus();
+    const start = await focusedDay(page);
+    await page.keyboard.press('Enter');
+    await expect(root.locator('.ndp-range-hint')).toContainText('end date');
+    expect(await focusedDay(page)).toBe(start); // focus survives the re-render
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await root.locator('.ndp-apply', { hasText: 'Apply' }).click();
+    const value = await page.evaluate(() => window.pickers.range.getValue());
+    expect(Math.round((value.end - value.start) / 86400000)).toBe(7);
+  });
+
+  test('month picker: Alt+↓ focuses the selected month', async ({ page }) => {
+    await open(page, 'month');
+    await page.keyboard.press('Alt+ArrowDown');
+    expect(await page.evaluate(() => document.activeElement?.classList.contains('ndp-monthcell'))).toBe(true);
   });
 });

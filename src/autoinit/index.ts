@@ -89,6 +89,50 @@ function closeWhenFocusLeaves(sources: HTMLElement[], inside: HTMLElement[], sig
   sources.forEach((el) => el.addEventListener('focusout', onFocusOut, { signal }));
 }
 
+// Keyboard in and out of the popup:
+// - Alt+↓ (or ↓ on a read-only field) moves focus into the open popup, onto
+//   its tabbable day / month / year (data-ndp-entry, see render/dom.ts).
+// - Escape inside the popup closes it and puts focus back on the field.
+// - When the popup closes with focus inside it (Escape, or a keyboard pick
+//   that closes it), focus returns to the field — without that focus
+//   reopening the popup, which a focus on the field normally does.
+function popupKeyboard(
+  trigger: HTMLElement,
+  portal: HTMLElement,
+  controller: { show(): void; hide(): void; getState(): { isOpen: boolean } },
+  signal: AbortSignal,
+): { showOnFocus: () => void; beforeClose: () => void } {
+  let quiet = false;
+  const focusTrigger = (): void => {
+    quiet = true;
+    trigger.focus();
+    quiet = false;
+  };
+  portal.addEventListener('keydown', (event) => {
+    if ((event as KeyboardEvent).key !== 'Escape') return;
+    event.preventDefault();
+    controller.hide();
+    focusTrigger();
+  }, { signal });
+  trigger.addEventListener('keydown', (event) => {
+    const e = event as KeyboardEvent;
+    const readOnly = !(trigger instanceof HTMLInputElement) || trigger.readOnly;
+    const enter = e.key === 'ArrowDown' && (e.altKey || (readOnly && controller.getState().isOpen));
+    if (!enter) return;
+    e.preventDefault();
+    controller.show();
+    portal.querySelector<HTMLElement>('[data-ndp-entry]')?.focus();
+  }, { signal });
+  return {
+    showOnFocus: () => {
+      if (!quiet) controller.show();
+    },
+    beforeClose: () => {
+      if (portal.contains(document.activeElement)) focusTrigger();
+    },
+  };
+}
+
 function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): HTMLElement {
   if (appendTo instanceof HTMLElement) return appendTo;
   if (typeof appendTo === 'string') return document.querySelector<HTMLElement>(appendTo) ?? document.body;
@@ -241,6 +285,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   portal.className = 'ndp-panel-root';
   portal.style.display = 'none';
   resolveAppendTo(target, merged.appendTo ?? merged.container).appendChild(portal);
+  const keys = popupKeyboard(trigger, portal, controller, signal);
 
   const unsubscribe = (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange(render);
   const outside = (event: MouseEvent) => {
@@ -305,6 +350,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
   let wasOpen = false;
   function render(): void {
     const state = controller.getState();
+    if (!state.isOpen && wasOpen) keys.beforeClose();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
     syncMachine();
@@ -331,7 +377,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
         formatted: () => controller.getValue()?.formatted ?? '',
         validate: (ascii) => controller.validateTyped(ascii),
         commit: (ascii) => controller.commitTyped(ascii),
-        open: () => controller.show(),
+        open: keys.showOnFocus,
         close: () => controller.hide(),
       });
     }
@@ -342,7 +388,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
       if (e.key === 'Escape' && controller.getState().isOpen) { e.preventDefault(); controller.hide(); }
       else if ((e.key === 'ArrowDown' || e.key === 'Down') && !controller.getState().isOpen) { e.preventDefault(); controller.show(); }
     }, { signal });
-    trigger.addEventListener('focus', () => controller.show(), { signal });
+    trigger.addEventListener('focus', keys.showOnFocus, { signal });
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
   closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());
@@ -387,6 +433,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   portal.className = 'ndp-panel-root';
   portal.style.display = 'none';
   resolveAppendTo(target, merged.appendTo).appendChild(portal);
+  const keys = popupKeyboard(trigger, portal, controller, signal);
   const unsubscribe = (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange(render);
   const outside = (event: MouseEvent) => {
     // A tap on the portal itself (not the panel inside it) is the bottom
@@ -438,6 +485,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
   let wasOpen = false;
   function render(): void {
     const state = controller.getState();
+    if (!state.isOpen && wasOpen) keys.beforeClose();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
     syncMachine();
@@ -471,7 +519,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
         formatted: () => controller.getValue()?.formatted ?? '',
         validate: (ascii) => controller.validateTyped(ascii),
         commit: (ascii) => controller.commitTyped(ascii),
-        open: () => controller.show(),
+        open: keys.showOnFocus,
         close: () => controller.hide(),
       });
     }
@@ -493,7 +541,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     }, { signal });
   }
 
-  if (!allowInput) trigger.addEventListener('focus', () => controller.show(), { signal });
+  if (!allowInput) trigger.addEventListener('focus', keys.showOnFocus, { signal });
   trigger.addEventListener('click', () => controller.show(), { signal });
   closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());
   document.addEventListener('mousedown', outside, true);
@@ -539,6 +587,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   portal.className = 'ndp-panel-root';
   portal.style.display = 'none';
   resolveAppendTo(target, merged.appendTo ?? merged.container).appendChild(portal);
+  const keys = popupKeyboard(trigger, portal, controller, signal);
   const unsubscribe = (controller as unknown as { onStateChange: (cb: () => void) => () => void }).onStateChange(render);
   const outside = (event: MouseEvent) => {
     // A tap on the portal itself (not the panel inside it) is the bottom
@@ -595,6 +644,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
   let wasOpen = false;
   function render(): void {
     const state = controller.getState();
+    if (!state.isOpen && wasOpen) keys.beforeClose();
     trigger.setAttribute('aria-expanded', state.isOpen ? 'true' : 'false');
     updateInput();
     syncMachine();
@@ -620,7 +670,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
         formatted: () => controller.getValue()?.formatted ?? '',
         validate: (ascii) => controller.validateTyped(ascii),
         commit: (ascii) => controller.commitTyped(ascii),
-        open: () => controller.show(),
+        open: keys.showOnFocus,
         close: () => controller.hide(),
       });
     }
@@ -631,7 +681,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
       if (e.key === 'Escape' && controller.getState().isOpen) { e.preventDefault(); controller.hide(); }
       else if ((e.key === 'ArrowDown' || e.key === 'Down') && !controller.getState().isOpen) { e.preventDefault(); controller.show(); }
     }, { signal });
-    trigger.addEventListener('focus', () => controller.show(), { signal });
+    trigger.addEventListener('focus', keys.showOnFocus, { signal });
   }
   trigger.addEventListener('click', () => controller.show(), { signal });
   closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());

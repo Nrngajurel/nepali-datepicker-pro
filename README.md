@@ -61,6 +61,7 @@ Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and 
 - [Shared options](#shared-options)
 - [One calendar for the whole app](#one-calendar-for-the-whole-app)
 - [Events](#events)
+- [Keyboard](#keyboard)
 - [Styling](#styling)
 - [TypeScript](#typescript)
 - [Browser support](#browser-support)
@@ -92,7 +93,7 @@ Most "Nepali date picker" packages on npm are jQuery plugins from 2016, ship no 
 - 🌐 **Locale-aware** — Nepali (`ne`) or English (`en`) digits and month names
 - 🚫 **Disabling** — `minDate`/`maxDate` (absolute or relative, e.g. `'+7d'`), `disabledWeekdays`, `disabledDates(date) => boolean`
 - 🎯 **Decoupled machine value** — `valueFormat: 'iso' | 'iso-bs' | 'timestamp'`, plus `submitName` / `altField` to wire straight into a native `<form>` POST
-- ⌨️ **Keyboard-editable, masked inputs** — no read-only trap; type or arrow-key through segments
+- ⌨️ **Keyboard-first** — type or arrow-key through the field's segments; **Alt+↓** moves into the calendar, where arrows / PageUp / PageDown / Home / End move by day, week, month or year, Enter picks, Escape closes; **Ctrl/⌘+Backspace** clears
 - 🖼️ **Portal-based popup** — `appendTo`, `opens`, `drops` for layout-safe positioning inside modals/tables
 - 📱 **Phone-friendly** — on narrow screens (≤ 560px) the popup becomes a bottom sheet with a tap-to-close backdrop, range presets turn into a swipeable chip row, and the year view is a single scrollable list of every supported year
 - 🧩 **Five entry points** — `vanilla`, `/react`, `/vue`, `/jquery`, and a UMD build for a plain `<script>` tag
@@ -483,6 +484,21 @@ In Vue 3 you can use `@event` syntax directly instead of passing callbacks throu
 Passing the same callback both via `:options` and `@event` is safe — both will fire.
 
 ---
+
+## Keyboard
+
+| Where | Key | Does |
+|---|---|---|
+| Field | digits, ←/→, ↑/↓ | Type or step the focused segment (year, month, day, time) |
+| Field | **Alt+↓** (↓ on a read-only field) | Open the popup and move focus into the calendar |
+| Field | **Ctrl/⌘+Backspace** (Backspace on a read-only field) | Clear the value |
+| Calendar | ←/→, ↑/↓ | Previous/next day, previous/next week |
+| Calendar | PageUp / PageDown (+Shift) | Previous/next month (year) — the calendar turns the page |
+| Calendar | Home / End | Start/end of the week |
+| Calendar | Enter / Space | Pick the focused day |
+| Popup | Escape | Close and return focus to the field |
+
+Only one popup is open at a time, and tabbing out of a field closes its popup.
 
 ## Styling
 
