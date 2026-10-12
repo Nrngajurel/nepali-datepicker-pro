@@ -165,3 +165,44 @@ test('update({ mode }) switches an already-mounted picker', async () => {
   assert.equal((range.getState() as { mode: string }).mode, 'AD');
   assert.equal(a.value, '2024-04-15', 'input re-renders in the new calendar');
 });
+
+test('destroy() hands the input back: same place, original attributes, no stale listeners', async () => {
+  const { mountDateRangePicker, mountMonthPicker } = await import('../src/index');
+  const mounts = [
+    (el: HTMLInputElement) => mountDateTimePicker(el, { submitName: 'when', value: new Date(2024, 3, 15) }),
+    (el: HTMLInputElement) => mountDateRangePicker(el, { submitName: 'span' }),
+    (el: HTMLInputElement) => mountMonthPicker(el, { submitName: 'month' }),
+  ];
+  for (const mount of mounts) {
+    document.body.innerHTML = '<form><label>A</label><input id="x" name="orig" class="mine"><span id="after"></span></form>';
+    const input = document.querySelector<HTMLInputElement>('#x')!;
+    const picker = mount(input);
+    assert.ok(input.closest('.ndp-trigger-wrap'), 'wrapped while mounted');
+    picker.destroy();
+
+    assert.ok(input.isConnected, 'input still in the document');
+    assert.equal(input.nextElementSibling?.id, 'after', 'input back in its original position');
+    assert.equal(document.querySelector('.ndp-trigger-wrap'), null, 'wrapper removed');
+    assert.equal(document.querySelector('.ndp-panel-root'), null, 'portal removed');
+    assert.equal(document.querySelectorAll('input[type="hidden"]').length, 0, 'hidden submit inputs removed');
+    assert.equal(input.getAttribute('name'), 'orig', 'original name restored');
+    assert.equal(input.className, 'mine', 'picker classes removed');
+    assert.equal(input.getAttribute('role'), null);
+    assert.equal(input.hasAttribute('readonly'), false);
+
+    input.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    assert.equal(document.querySelector('.ndp-panel'), null, 'clicking after destroy opens nothing');
+
+    const again = mount(input);
+    input.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    assert.ok(document.querySelector('.ndp-panel'), 'the input can be mounted again');
+    again.destroy();
+  }
+});
+
+test('destroy() on a non-input target removes the generated trigger button', () => {
+  const host = document.createElement('div');
+  document.body.appendChild(host);
+  mountDateTimePicker(host).destroy();
+  assert.equal(host.children.length, 0);
+});

@@ -21,6 +21,45 @@ export function setDefaults(options: Partial<DateTimePickerOptions & DateRangePi
   defaults = { ...defaults, ...options };
 }
 
+/** Takes over the element a picker is mounted on and records what mounting
+ *  changes, so `destroy()` can hand it back untouched: the input is moved back
+ *  out of the input-group wrapper (rather than removed with it), its original
+ *  attributes are restored, and every listener the mount added to it — passed
+ *  `{ signal }` — is dropped. A non-input target gets a generated button
+ *  trigger, which `release` removes. */
+function claimTrigger(target: HTMLInputElement | HTMLElement): {
+  trigger: HTMLInputElement | HTMLButtonElement;
+  signal: AbortSignal;
+  release: (wrapper: HTMLElement | null) => void;
+} {
+  const created = !(target instanceof HTMLInputElement);
+  const trigger = target instanceof HTMLInputElement ? target : document.createElement('button');
+  if (created) {
+    trigger.setAttribute('type', 'button');
+    target.appendChild(trigger);
+  }
+  const saved = ['class', 'role', 'aria-haspopup', 'aria-expanded', 'name', 'readonly']
+    .map((name) => [name, trigger.getAttribute(name)] as const);
+  trigger.classList.add('ndp-trigger');
+  trigger.setAttribute('role', 'combobox');
+  trigger.setAttribute('aria-haspopup', 'dialog');
+  const listeners = new AbortController();
+  return {
+    trigger,
+    signal: listeners.signal,
+    release(wrapper) {
+      listeners.abort();
+      if (wrapper?.contains(trigger)) wrapper.replaceWith(trigger);
+      else wrapper?.remove();
+      if (created) {
+        trigger.remove();
+        return;
+      }
+      saved.forEach(([name, value]) => (value === null ? trigger.removeAttribute(name) : trigger.setAttribute(name, value)));
+    },
+  };
+}
+
 function resolveAppendTo(target: HTMLElement, appendTo?: string | HTMLElement): HTMLElement {
   if (appendTo instanceof HTMLElement) return appendTo;
   if (typeof appendTo === 'string') return document.querySelector<HTMLElement>(appendTo) ?? document.body;
@@ -144,14 +183,7 @@ function trackPosition(trigger: HTMLElement, portal: HTMLElement, options: { ope
 export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, options: DateRangePickerOptions = {}): PickerInstance<DateRangeResult, DateRangePickerOptions> {
   const merged = { ...defaults, ...options } as DateRangePickerOptions;
   const controller = createDateRangeController(merged);
-  const trigger = target instanceof HTMLInputElement ? target : document.createElement('button');
-  if (!(target instanceof HTMLInputElement)) {
-    trigger.setAttribute('type', 'button');
-    target.appendChild(trigger);
-  }
-  trigger.classList.add('ndp-trigger');
-  trigger.setAttribute('role', 'combobox');
-  trigger.setAttribute('aria-haspopup', 'dialog');
+  const { trigger, signal, release } = claimTrigger(target);
   const allowInput = trigger instanceof HTMLInputElement && merged.allowInput !== false;
   let segmented: SegmentedField | null = null;
   const portal = document.createElement('div');
@@ -256,10 +288,10 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
       const e = event as KeyboardEvent;
       if (e.key === 'Escape' && controller.getState().isOpen) { e.preventDefault(); controller.hide(); }
       else if ((e.key === 'ArrowDown' || e.key === 'Down') && !controller.getState().isOpen) { e.preventDefault(); controller.show(); }
-    });
-    trigger.addEventListener('focus', () => controller.show());
+    }, { signal });
+    trigger.addEventListener('focus', () => controller.show(), { signal });
   }
-  trigger.addEventListener('click', () => controller.show());
+  trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
   controller.onChange((value) => {
     updateInput(value);
@@ -280,7 +312,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
     unsubscribe();
     stopTracking();
     segmented?.destroy();
-    if (igWrapper) igWrapper.remove();
+    release(igWrapper);
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();
@@ -291,14 +323,7 @@ export function mountDateRangePicker(target: HTMLInputElement | HTMLElement, opt
 export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, options: DateTimePickerOptions = {}): PickerInstance<DateTimeResult, DateTimePickerOptions> {
   const merged = { ...defaults, ...options } as DateTimePickerOptions;
   const controller = createDateTimeController(merged);
-  const trigger = target instanceof HTMLInputElement ? target : document.createElement('button');
-  if (!(target instanceof HTMLInputElement)) {
-    trigger.setAttribute('type', 'button');
-    target.appendChild(trigger);
-  }
-  trigger.classList.add('ndp-trigger');
-  trigger.setAttribute('role', 'combobox');
-  trigger.setAttribute('aria-haspopup', 'dialog');
+  const { trigger, signal, release } = claimTrigger(target);
   const portal = document.createElement('div');
   portal.className = 'ndp-panel-root';
   portal.style.display = 'none';
@@ -403,11 +428,11 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
         e.preventDefault();
         controller.show();
       }
-    });
+    }, { signal });
   }
 
-  if (!allowInput) trigger.addEventListener('focus', () => controller.show());
-  trigger.addEventListener('click', () => controller.show());
+  if (!allowInput) trigger.addEventListener('focus', () => controller.show(), { signal });
+  trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
   controller.onChange((value) => {
     updateInput(value);
@@ -428,7 +453,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
     unsubscribe();
     stopTracking();
     segmented?.destroy();
-    if (igWrapper) igWrapper.remove();
+    release(igWrapper);
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();
@@ -439,14 +464,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
 export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options: MonthPickerOptions = {}): PickerInstance<MonthResult, MonthPickerOptions> {
   const merged = { ...defaults, ...options } as MonthPickerOptions;
   const controller = createMonthPickerController(merged);
-  const trigger = target instanceof HTMLInputElement ? target : document.createElement('button');
-  if (!(target instanceof HTMLInputElement)) {
-    trigger.setAttribute('type', 'button');
-    target.appendChild(trigger);
-  }
-  trigger.classList.add('ndp-trigger');
-  trigger.setAttribute('role', 'combobox');
-  trigger.setAttribute('aria-haspopup', 'dialog');
+  const { trigger, signal, release } = claimTrigger(target);
   const allowInput = trigger instanceof HTMLInputElement && merged.allowInput !== false;
   let segmented: SegmentedField | null = null;
   const portal = document.createElement('div');
@@ -543,10 +561,10 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
       const e = event as KeyboardEvent;
       if (e.key === 'Escape' && controller.getState().isOpen) { e.preventDefault(); controller.hide(); }
       else if ((e.key === 'ArrowDown' || e.key === 'Down') && !controller.getState().isOpen) { e.preventDefault(); controller.show(); }
-    });
-    trigger.addEventListener('focus', () => controller.show());
+    }, { signal });
+    trigger.addEventListener('focus', () => controller.show(), { signal });
   }
-  trigger.addEventListener('click', () => controller.show());
+  trigger.addEventListener('click', () => controller.show(), { signal });
   document.addEventListener('mousedown', outside, true);
   controller.onChange((value) => {
     updateInput(value);
@@ -566,7 +584,7 @@ export function mountMonthPicker(target: HTMLInputElement | HTMLElement, options
     unsubscribe();
     stopTracking();
     segmented?.destroy();
-    if (igWrapper) igWrapper.remove();
+    release(igWrapper);
     document.removeEventListener('mousedown', outside, true);
     portal.remove();
     baseDestroy();
