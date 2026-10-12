@@ -26,7 +26,7 @@ test('withTime: opening the picker shows the time panel with wheels', () => {
   assert.ok(panel, 'datetime panel is rendered on open');
   const timePanel = panel!.querySelector('.ndp-time-panel');
   assert.ok(timePanel, 'time panel is present in the opened popup');
-  assert.equal(timePanel!.querySelectorAll('.ndp-wheel').length, 2, 'hour + minute wheels present');
+  assert.equal(timePanel!.querySelectorAll('.ndp-wheel').length, 3, 'hour + minute + AM/PM wheels (12-hour by default)');
 });
 
 test('clicking a day does NOT close the picker when withTime is on', () => {

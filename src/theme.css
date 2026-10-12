@@ -918,6 +918,12 @@
   margin-top: 12px;
 }
 
+/* The date-time footer spans the panel under both columns — inset it so the
+   buttons don't run into the panel's edges. */
+.ndp-panel--datetime > .ndp-button-row {
+  padding: 0 12px 12px;
+}
+
 .ndp-today-row {
   display: flex;
   justify-content: flex-end;
@@ -1279,6 +1285,129 @@
   .ndp-panel--compact .ndp-cell {
     height: 40px;
   }
+}
+
+/* Phone date-time step 2 (see renderTimeStep in render/dom.ts): the chosen
+   date as a "back" chip, a big time readout, and large touch wheels. */
+.ndp-time-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 6px;
+}
+
+.ndp-step-back {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: flex-start;
+  border: 1px solid var(--ndp-color-border);
+  border-radius: 999px;
+  padding: 6px 14px 6px 10px;
+  background: var(--ndp-color-surface);
+  color: var(--ndp-color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--ndp-transition);
+}
+
+.ndp-step-back:hover {
+  background: var(--ndp-color-surface-subtle);
+}
+
+.ndp-step-back:focus-visible {
+  outline: 2px solid var(--ndp-color-focus);
+  outline-offset: 2px;
+}
+
+.ndp-step-back-icon {
+  color: var(--ndp-color-primary);
+  font: 700 22px/1 var(--ndp-font);
+}
+
+.ndp-step-date {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.ndp-step-date-primary {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.ndp-step-date-secondary {
+  color: var(--ndp-color-text-muted);
+  font-size: 12px;
+}
+
+.ndp-time-readout {
+  margin-top: 6px;
+  color: var(--ndp-color-text);
+  font: 800 34px/1.1 var(--ndp-font);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  text-align: center;
+}
+
+/* Specific enough to beat the narrow-screen `.ndp-time-panel` border/width rules. */
+.ndp-panel .ndp-time-step .ndp-time-panel.ndp-time-panel--touch {
+  width: 100%;
+  gap: 12px;
+  border: 0;
+  padding: 4px 0 8px;
+  background: transparent;
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-time-wheels {
+  gap: 14px;
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-time-wheels::before {
+  height: 46px;
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-wheel {
+  width: 72px;
+  height: 230px;
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-wheel::after {
+  background: linear-gradient(var(--ndp-color-surface), transparent 34%, transparent 66%, var(--ndp-color-surface));
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-wheel-list {
+  padding: 92px 0; /* (230 − 46) / 2: centers the first and last rows in the band */
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-wheel-item {
+  height: 46px;
+  font-size: 20px;
+  line-height: 46px;
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-wheel-item.is-selected {
+  font-size: 24px;
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-wheel-colon {
+  font-size: 22px;
+}
+
+.ndp-panel .ndp-time-panel--touch .ndp-time-now {
+  align-self: center;
+  margin-top: 4px;
+  padding: 8px 18px;
+  border-radius: 999px;
+}
+
+.ndp-apply:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
 }
 
 /* Bottom sheet (phone widths — see isSheetViewport in render/dom.ts). The

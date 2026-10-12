@@ -90,17 +90,52 @@ test.describe('layout', () => {
     }
   });
 
-  test('datetime: Done stays reachable and the time panel spans the sheet on phones', async ({ page, isMobile }) => {
+  test('datetime: desktop shows date + time side by side; phones go date → time in two steps', async ({ page, isMobile }) => {
     const root = await open(page, 'datetime');
-    const done = root.locator('.ndp-apply', { hasText: 'Done' });
-    await expect(done).toBeInViewport({ ratio: 1 });
-    if (isMobile) {
-      const panelBox = (await root.locator('.ndp-panel').boundingBox())!;
-      const timeBox = (await root.locator('.ndp-time-panel').boundingBox())!;
-      expect(timeBox.width).toBeGreaterThan(panelBox.width * 0.9);
+    if (!isMobile) {
+      await expect(root.locator('.ndp-grid')).toBeVisible();
+      await expect(root.locator('.ndp-time-panel')).toBeVisible();
+      await expect(root.locator('.ndp-time-entry')).toBeVisible(); // typed entry on desktop
+      await expect(root.locator('.ndp-apply', { hasText: 'Done' })).toBeInViewport({ ratio: 1 });
+      return;
     }
-    await done.click();
+    // Step 1: calendar only, with Next.
+    await expect(root.locator('.ndp-time-panel')).toHaveCount(0);
+    const next = root.locator('.ndp-apply', { hasText: 'Next' });
+    await expect(next).toBeInViewport({ ratio: 1 });
+    // Picking a day moves on to step 2 by itself.
+    await root.locator('.ndp-cell:not(.ndp-cell--empty) .ndp-cell-primary', { hasText: new RegExp(`^${ne(10)}$`) }).click();
+    await expect(root.locator('.ndp-time-step')).toBeVisible();
+    await expect(root.locator('.ndp-grid')).toHaveCount(0);
+    await expect(root.locator('.ndp-step-date-primary')).toHaveText(`${ne(10)} बैशाख ${ne(2081)}`);
+    await expect(root.locator('.ndp-time-entry')).toHaveCount(0); // wheels only on touch
+    const panelBox = (await root.locator('.ndp-panel').boundingBox())!;
+    const timeBox = (await root.locator('.ndp-time-panel').boundingBox())!;
+    expect(timeBox.width).toBeGreaterThan(panelBox.width * 0.8);
+    // Pick 2 PM on the wheels, then Done.
+    await root.locator('.ndp-wheel[aria-label="Hour"] .ndp-wheel-item', { hasText: /^02$/ }).click();
+    await root.locator('.ndp-wheel[aria-label="AM/PM"] .ndp-wheel-item', { hasText: 'PM' }).click();
+    await expect(root.locator('.ndp-time-readout')).toHaveText('02:00 PM');
+    await root.locator('.ndp-apply', { hasText: 'Done' }).click();
     await expect(root).toHaveCount(0);
+    const value = await page.evaluate(() => window.pickers.datetime.getValue());
+    expect(value.bs).toEqual({ year: 2081, month: 1, day: 10 });
+    expect(value.value).toMatch(/T14:00$/);
+    expect(await page.locator('#datetime').inputValue()).toBe('2081-01-10 02:00 PM');
+  });
+
+  test('datetime phone: the date chip goes back to the calendar; reopening starts on the date step', async ({ page, isMobile }) => {
+    test.skip(!isMobile, 'two-step flow is phone-only');
+    const root = await open(page, 'datetime');
+    await root.locator('.ndp-apply', { hasText: 'Next' }).click(); // a value is preset, so Next is enabled
+    await expect(root.locator('.ndp-time-step')).toBeVisible();
+    await root.locator('.ndp-step-back').click();
+    await expect(root.locator('.ndp-grid')).toBeVisible();
+    await root.locator('.ndp-apply', { hasText: 'Next' }).click();
+    await page.mouse.click(10, 10); // backdrop closes
+    await expect(root).toHaveCount(0);
+    const again = await open(page, 'datetime');
+    await expect(again.locator('.ndp-grid')).toBeVisible();
   });
 
   test('range: presets are a swipeable chip row on phones, a side list on desktop', async ({ page, isMobile }) => {

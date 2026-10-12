@@ -84,7 +84,7 @@ test('setTimeToNow sets a valid current time', () => {
 });
 
 test('renders calendar and time panel together on one screen', () => {
-  const c = createDateTimeController({ withTime: true, value: base() });
+  const c = createDateTimeController({ withTime: true, timeFormat: '24h', value: base() });
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
@@ -113,7 +113,7 @@ test('clicking an hour on the wheel steps the controller and re-renders', () => 
 });
 
 test('time picker has no seconds — hour and minute wheels only', () => {
-  const c = createDateTimeController({ withTime: true, value: base() });
+  const c = createDateTimeController({ withTime: true, timeFormat: '24h', value: base() });
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
@@ -133,7 +133,7 @@ test('12h format shows an AM/PM wheel and 12-hour value', () => {
 });
 
 test('minTime/maxTime mark out-of-range hours disabled on the wheel', () => {
-  const c = createDateTimeController({ withTime: true, minTime: { hour: 10, minute: 0 }, maxTime: { hour: 18, minute: 0 }, value: new Date(2024, 3, 13, 12, 0, 0) });
+  const c = createDateTimeController({ withTime: true, timeFormat: '24h', minTime: { hour: 10, minute: 0 }, maxTime: { hour: 18, minute: 0 }, value: new Date(2024, 3, 13, 12, 0, 0) });
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
@@ -170,7 +170,7 @@ test('setHour / setMinute reject values outside minTime/maxTime instead of clamp
 // --- editable, accessible time entry in the panel -------------------------
 
 test('renders accessible spinbutton time inputs alongside the wheels', () => {
-  const c = createDateTimeController({ withTime: true, value: base() });
+  const c = createDateTimeController({ withTime: true, timeFormat: '24h', value: base() });
   c.show();
   const root = document.createElement('div');
   renderDateTimePanel(root, c);
@@ -255,4 +255,62 @@ test('setValue keeps the given time and moves the calendar to that month', () =>
   const bs = defaultCalendarAdapter.adToBs(new Date(2030, 5, 1));
   assert.equal(c.getState().viewYear, bs.year);
   assert.equal(c.getState().viewMonth, bs.month);
+});
+
+test('12-hour is the default: AM/PM wheel, 12h display, 24h machine value', () => {
+  const c = createDateTimeController({ withTime: true, value: new Date(2024, 3, 13, 14, 5) });
+  c.show();
+  const root = document.createElement('div');
+  renderDateTimePanel(root, c);
+  assert.equal(c.getState().timeFormat, '12h');
+  const wheels = [...root.querySelectorAll('.ndp-wheel')].map((n) => n.getAttribute('aria-label'));
+  assert.deepEqual(wheels, ['Hour', 'Min', 'AM/PM']);
+  const v = c.getValue()!;
+  assert.match(v.formatted, /02:05 PM$/);
+  assert.equal(v.value, '2024-04-13T14:05', 'submitted value stays 24-hour ISO');
+});
+
+function withPhoneViewport(run: () => void): void {
+  const original = window.matchMedia;
+  window.matchMedia = ((q: string) => ({ matches: q.includes('max-width: 560px'), media: q })) as unknown as typeof window.matchMedia;
+  try { run(); } finally { window.matchMedia = original; }
+}
+
+test('phone width: date-time is two steps — calendar with Next, then the time step', () => withPhoneViewport(() => {
+  const c = createDateTimeController({ withTime: true });
+  c.show();
+  const root = document.createElement('div');
+  const draw = () => renderDateTimePanel(root, c);
+  (c as unknown as { onStateChange: (cb: () => void) => void }).onStateChange(draw);
+  draw();
+
+  assert.equal(root.querySelector('.ndp-time-panel'), null, 'step 1 has no time panel');
+  const next = [...root.querySelectorAll<HTMLButtonElement>('.ndp-apply')].find((b) => b.textContent!.startsWith('Next'))!;
+  assert.ok(next.disabled, 'Next is disabled until a date is picked');
+  c.setPanelStep('time');
+  assert.equal(c.getState().panelStep, 'date', 'cannot skip to time without a date');
+
+  root.querySelector<HTMLButtonElement>('.ndp-cell:not(.ndp-cell--empty)')!.click();
+  assert.equal(c.getState().panelStep, 'time', 'picking a day advances');
+  assert.ok(root.querySelector('.ndp-time-step'));
+  assert.equal(root.querySelector('.ndp-grid'), null, 'calendar hidden on the time step');
+  assert.equal(root.querySelector('.ndp-time-entry'), null, 'touch step uses wheels, not typed boxes');
+
+  root.querySelector<HTMLButtonElement>('.ndp-step-back')!.click();
+  assert.equal(c.getState().panelStep, 'date');
+  c.setPanelStep('time');
+  c.hide();
+  c.show();
+  assert.equal(c.getState().panelStep, 'date', 'reopening starts on the date step');
+}));
+
+test('wide screens ignore the step and keep date + time side by side', () => {
+  const c = createDateTimeController({ withTime: true, value: base() });
+  c.show();
+  c.setPanelStep('time');
+  const root = document.createElement('div');
+  renderDateTimePanel(root, c);
+  assert.ok(root.querySelector('.ndp-grid'));
+  assert.ok(root.querySelector('.ndp-time-panel'));
+  assert.equal(root.querySelector('.ndp-time-step'), null);
 });

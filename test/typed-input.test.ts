@@ -200,7 +200,7 @@ test('Escape discards the edit and closes', () => {
 test('withTime adds hour and minute sections (24h)', () => {
   const input = document.createElement('input');
   document.body.appendChild(input);
-  const inst = mountDateTimePicker(input, { withTime: true, value: null });
+  const inst = mountDateTimePicker(input, { withTime: true, timeFormat: '24h', value: null });
   input.dispatchEvent(new FocusEvent('focus'));
   assert.equal(input.value, 'YYYY-MM-DD HH:mm', 'time sections shown with separators');
 
@@ -242,7 +242,7 @@ test('ArrowUp toggles the AM/PM section', () => {
 test('toggling withTime via update() adds the time sections live', () => {
   const input = document.createElement('input');
   document.body.appendChild(input);
-  const inst = mountDateTimePicker(input, { value: null });
+  const inst = mountDateTimePicker(input, { timeFormat: '24h', value: null });
   input.dispatchEvent(new FocusEvent('focus'));
   assert.equal(input.value, 'YYYY-MM-DD', 'date-only initially');
   input.dispatchEvent(new FocusEvent('blur'));

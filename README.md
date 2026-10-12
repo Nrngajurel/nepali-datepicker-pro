@@ -11,7 +11,7 @@ A **framework-agnostic** Bikram Sambat (BS) ↔ Gregorian (AD) date picker, with
 Zero runtime dependencies. Works from plain `<script>` tags, jQuery, Vue 3, and React — same core, five entry points.
 
 ```
-📅 Date & Time   —  BS/AD toggle, 12h/24h wheel time picker, keyboard-editable input
+📅 Date & Time   —  BS/AD toggle, 12h/24h wheel time picker (two-step on phones), keyboard-editable input
 📆 Date Range    —  presets rail, fiscal-year helpers, min/max span
 🗓️  Month         —  pick a BS month, get the AD start/end range for reporting
 ```
@@ -86,7 +86,7 @@ Most "Nepali date picker" packages on npm are jQuery plugins from 2016, ship no 
 ## Features
 
 - 🔁 **BS ⇄ AD mode** — a swap button on the input, or pick one calendar for the whole app and hide the switcher (`setDefaults({ mode, allowModeToggle: false })`)
-- 🕐 **Same-screen time picker** — 12h/24h, minute-step control, min/max hour clamping, disabled times
+- 🕐 **Time picker** — 12-hour (default) or 24-hour, minute-step control, min/max hour clamping, disabled times. Date and time side by side on wide screens; on phones it's two steps, the date then the time on big wheels
 - 📏 **Date range picker** — presets rail (incl. "Pick a Month"), configurable Nepali **fiscal year** start month, auto-apply, max span
 - 🗓️ **Month picker** — returns the full AD `{ start, end }` range for the selected BS month, ideal for payroll/report filters
 - 🌐 **Locale-aware** — Nepali (`ne`) or English (`en`) digits and month names
@@ -321,7 +321,7 @@ Single date, optional same-screen time picker. Click the header to jump by month
 | `showSecondaryCalendar` | `boolean` | `true` | Show the other calendar as a small hint on the header, month/year grid, and day cells. `false` shows only the active `mode` |
 | `value` / `defaultValue` | `Date \| null` | — | Controlled / initial selected date |
 | `withTime` | `boolean` | `false` | Show the time picker (keyboard-accessible spinbuttons + wheel) |
-| `timeFormat` | `'12h' \| '24h'` | `'24h'` | Clock style when `withTime` is on |
+| `timeFormat` | `'12h' \| '24h'` | `'12h'` | Clock style when `withTime` is on (12-hour with AM/PM by default; the submitted `value` is always 24-hour ISO) |
 | `minuteStep` | `number` | `1` | Increment of the minute spinner |
 | `minTime` / `maxTime` | `{ hour, minute }` | — | Clamp the selectable time of day |
 | `disabledTimes` | `(h, m) => boolean` | — | Disable specific hours/minutes |

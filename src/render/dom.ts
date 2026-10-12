@@ -436,6 +436,9 @@ function timeWheel(label: string, items: WheelItem[], selectedValue: number, onS
   list.addEventListener('scroll', () => {
     window.clearTimeout(settle);
     settle = window.setTimeout(() => {
+      // A tap re-renders the panel, replacing this wheel; a settle timer still
+      // pending on the old one must not override what was just tapped.
+      if (!list.isConnected) return;
       const mid = list.scrollTop + list.clientHeight / 2;
       let bestIndex = selectedIndex;
       let bestDist = Infinity;
@@ -501,7 +504,9 @@ function timeInput(opts: {
   return input;
 }
 
-function renderTimeControls(controller: DateTimeController): HTMLElement | null {
+// `touch` is the phone time step: just big wheels (spinning is the touch idiom;
+// typing digits on an on-screen keyboard is not), without the typed entry.
+function renderTimeControls(controller: DateTimeController, touch = false): HTMLElement | null {
   const state = controller.getState();
   if (!state.time) return null;
   const { hour, minute, second } = state.time;
@@ -509,8 +514,8 @@ function renderTimeControls(controller: DateTimeController): HTMLElement | null 
   const step = state.minuteStep > 0 ? state.minuteStep : 1;
   const pm = meridiemOf(hour) === 'PM';
 
-  const panel = el('div', 'ndp-time-panel');
-  panel.appendChild(setText(el('div', 'ndp-time-title'), 'समय / Time'));
+  const panel = el('div', touch ? 'ndp-time-panel ndp-time-panel--touch' : 'ndp-time-panel');
+  if (!touch) panel.appendChild(setText(el('div', 'ndp-time-title'), 'समय / Time'));
 
   const to24 = (display: number): number => (is12h ? (display % 12) + (pm ? 12 : 0) : display);
   const hourDisplay = is12h ? to12h(hour) : hour;
@@ -560,10 +565,10 @@ function renderTimeControls(controller: DateTimeController): HTMLElement | null 
     });
     entry.appendChild(ampm);
   }
-  panel.appendChild(entry);
-
-  const wheelsLabel = setText(el('div', 'ndp-time-scroll-hint', { 'aria-hidden': 'true' }), 'or scroll');
-  panel.appendChild(wheelsLabel);
+  if (!touch) {
+    panel.appendChild(entry);
+    panel.appendChild(setText(el('div', 'ndp-time-scroll-hint', { 'aria-hidden': 'true' }), 'or scroll'));
+  }
 
   const wheels = el('div', 'ndp-time-wheels');
 
@@ -600,6 +605,35 @@ function renderTimeControls(controller: DateTimeController): HTMLElement | null 
   return panel;
 }
 
+// Step 2 of the phone date-time sheet: which date you picked (tap to go back
+// and change it), the time as a big readout, and the wheels.
+function renderTimeStep(controller: DateTimeController): HTMLElement {
+  const adapter = defaultCalendarAdapter;
+  const state = controller.getState();
+  const selected = state.selected!;
+  const time = state.time!;
+  const wrap = el('div', 'ndp-time-step');
+
+  const bsLabel = `${adapter.toLocaleDigits(selected.bs.day, 'ne')} ${adapter.bsMonthNames('ne')[selected.bs.month - 1]} ${adapter.toLocaleDigits(selected.bs.year, 'ne')}`;
+  const adLabel = `${selected.ad.getDate()} ${GREGORIAN_MONTHS_SHORT[selected.ad.getMonth()]} ${selected.ad.getFullYear()}`;
+  const back = el('button', 'ndp-step-back', { type: 'button', 'aria-label': 'Change date' });
+  back.appendChild(setText(el('span', 'ndp-step-back-icon', { 'aria-hidden': 'true' }), '‹'));
+  const dateText = el('span', 'ndp-step-date');
+  dateText.appendChild(setText(el('span', 'ndp-step-date-primary'), state.mode === 'AD' ? adLabel : bsLabel));
+  if (state.showSecondaryCalendar) dateText.appendChild(setText(el('span', 'ndp-step-date-secondary'), state.mode === 'AD' ? bsLabel : adLabel));
+  back.appendChild(dateText);
+  back.addEventListener('click', () => controller.setPanelStep('date'));
+  wrap.appendChild(back);
+
+  const is12h = state.timeFormat === '12h';
+  const readout = is12h
+    ? `${pad2(to12h(time.hour))}:${pad2(time.minute)} ${meridiemOf(time.hour)}`
+    : `${pad2(time.hour)}:${pad2(time.minute)}`;
+  wrap.appendChild(setText(el('div', 'ndp-time-readout', { 'aria-live': 'polite' }), readout));
+  wrap.appendChild(renderTimeControls(controller, true)!);
+  return wrap;
+}
+
 export function renderDateTimePanel(root: HTMLElement, controller: DateTimeController): void {
   const state = controller.getState();
   const adapter = defaultCalendarAdapter;
@@ -611,6 +645,28 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   const dateOnly = !state.time;
   const panelClass = `ndp-panel ndp-panel--datetime${dateOnly ? ' ndp-panel--date-only' : ''}`;
   const panel = el('div', panelClass, { role: 'dialog', 'aria-label': 'Date time picker' });
+  const footerRow = (secondary: [string, () => void], primary: [string, () => void, boolean?]): HTMLElement => {
+    const footer = el('div', 'ndp-button-row');
+    const a = setText(el('button', 'ndp-secondary', { type: 'button' }), secondary[0]);
+    const b = setText(el('button', 'ndp-apply', { type: 'button' }), primary[0]);
+    a.addEventListener('click', secondary[1]);
+    if (primary[2]) b.setAttribute('disabled', '');
+    else b.addEventListener('click', primary[1]);
+    footer.append(a, b);
+    return footer;
+  };
+
+  // On a phone (bottom sheet) a date-time pick is two steps — calendar, then
+  // time — instead of one long scroll. Wider screens keep both side by side.
+  const stepped = !dateOnly && isSheetViewport();
+  if (stepped && state.panelStep === 'time' && state.selected) {
+    panel.classList.add('ndp-panel--time-step');
+    panel.appendChild(renderTimeStep(controller));
+    panel.appendChild(footerRow(['Clear', () => controller.clear()], ['Done', () => controller.confirm()]));
+    root.appendChild(panel);
+    return;
+  }
+
   const calCol = el('div', 'ndp-cal-col');
   calCol.appendChild(renderHeader(controller));
 
@@ -661,21 +717,18 @@ export function renderDateTimePanel(root: HTMLElement, controller: DateTimeContr
   // in the day view — month/year views are just for navigating.
   const body = el('div', 'ndp-datetime-body');
   body.appendChild(calCol);
-  const timeControls = state.view === 'day' ? renderTimeControls(controller) : null;
+  const timeControls = state.view === 'day' && !stepped ? renderTimeControls(controller) : null;
   if (timeControls) body.appendChild(timeControls);
   panel.appendChild(body);
 
   // Show Clear/Done only when the panel stays open after selecting a date
   // (i.e. withTime mode). In date-only mode the panel auto-closes on pick
-  // so the footer buttons would never be seen.
+  // so the footer buttons would never be seen. The phone date step offers
+  // Next (to the time step) instead of Done.
   if (timeControls) {
-    const footer = el('div', 'ndp-button-row');
-    const clear = setText(el('button', 'ndp-secondary', { type: 'button' }), 'Clear');
-    const done = setText(el('button', 'ndp-apply', { type: 'button' }), 'Done');
-    clear.addEventListener('click', () => controller.clear());
-    done.addEventListener('click', () => controller.confirm());
-    footer.append(clear, done);
-    panel.appendChild(footer);
+    panel.appendChild(footerRow(['Clear', () => controller.clear()], ['Done', () => controller.confirm()]));
+  } else if (stepped && state.view === 'day') {
+    panel.appendChild(footerRow(['Clear', () => controller.clear()], ['Next: time ›', () => controller.setPanelStep('time'), !state.selected]));
   }
 
   root.appendChild(panel);
@@ -713,12 +766,20 @@ export function isSheetViewport(): boolean {
 // Slide the bottom sheet up once per open. The panel element is rebuilt on
 // every state change, so a plain CSS animation on it would replay on each tap
 // inside the sheet; the enter class scopes it to the opening moment.
+const sheetEnterCleanup = new WeakMap<HTMLElement, () => void>();
+
 export function playSheetEnter(popup: HTMLElement): void {
   if (!popup.classList.contains('ndp-sheet')) return;
+  // A quick close + reopen must not let the previous open's fallback timer
+  // cut this slide short.
+  sheetEnterCleanup.get(popup)?.();
   popup.classList.add('ndp-sheet--enter');
+  let timer = 0;
   const done = (): void => {
+    window.clearTimeout(timer);
     popup.classList.remove('ndp-sheet--enter');
     popup.removeEventListener('animationend', onEnd);
+    sheetEnterCleanup.delete(popup);
   };
   // The backdrop's shorter fade ends first and bubbles here too — wait for
   // the slide itself, or it would be cut off mid-way.
@@ -726,7 +787,11 @@ export function playSheetEnter(popup: HTMLElement): void {
     if (event.animationName === 'ndp-sheet-up') done();
   };
   popup.addEventListener('animationend', onEnd);
-  window.setTimeout(done, 1000); // reduced motion: no animation, no animationend
+  timer = window.setTimeout(done, 1000); // reduced motion: no animation, no animationend
+  sheetEnterCleanup.set(popup, () => {
+    window.clearTimeout(timer);
+    popup.removeEventListener('animationend', onEnd);
+  });
 }
 
 export function positionPopup(trigger: HTMLElement, popup: HTMLElement, options: { opens?: 'left' | 'right' | 'center' | 'auto'; drops?: 'down' | 'up' | 'auto' } = {}): void {

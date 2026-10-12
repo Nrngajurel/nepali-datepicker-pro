@@ -12,10 +12,10 @@ const range = DEFS.find((d) => d.id === 'range')!;
 const month = DEFS.find((d) => d.id === 'month')!;
 
 test('buildOptions omits defaults and keeps changed values', () => {
-  expect(datetime.buildOptions({ withTime: false, timeFormat: '24h', minuteStep: 1, locale: 'en', closeOnSelect: 'default', displayFormat: '' })).toEqual({});
-  expect(datetime.buildOptions({ withTime: true, timeFormat: '12h', minuteStep: 5, locale: 'ne', closeOnSelect: 'false', displayFormat: '' }))
-    .toEqual({ withTime: true, timeFormat: '12h', minuteStep: 5, locale: 'ne', closeOnSelect: false });
-  expect(datetime.buildOptions({ showSecondaryCalendar: false, timeFormat: '24h', minuteStep: 1, locale: 'en', closeOnSelect: 'default', displayFormat: '' }))
+  expect(datetime.buildOptions({ withTime: false, timeFormat: '12h', minuteStep: 1, locale: 'en', closeOnSelect: 'default', displayFormat: '' })).toEqual({});
+  expect(datetime.buildOptions({ withTime: true, timeFormat: '24h', minuteStep: 5, locale: 'ne', closeOnSelect: 'false', displayFormat: '' }))
+    .toEqual({ withTime: true, timeFormat: '24h', minuteStep: 5, locale: 'ne', closeOnSelect: false });
+  expect(datetime.buildOptions({ showSecondaryCalendar: false, timeFormat: '12h', minuteStep: 1, locale: 'en', closeOnSelect: 'default', displayFormat: '' }))
     .toEqual({ showSecondaryCalendar: false });
   expect(range.buildOptions({ mode: 'BS', fiscalStartMonth: 4, autoApply: false, presets: 'default', displayFormat: '' })).toEqual({});
   expect(range.buildOptions({ mode: 'AD', fiscalStartMonth: 1, autoApply: true, presets: 'none', displayFormat: '' }))

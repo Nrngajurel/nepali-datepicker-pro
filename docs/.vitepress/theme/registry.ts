@@ -140,7 +140,7 @@ export const DEFS: PickerDef[] = [
       { key: 'allowModeToggle', label: 'Allow BS/AD toggle', hint: 'swap button on input', type: 'bool', def: true },
       { key: 'showSecondaryCalendar', label: 'Show secondary calendar', hint: 'small BS/AD hint on header & cells', type: 'bool', def: true },
       { key: 'withTime', label: 'Include time', type: 'bool', def: false },
-      { key: 'timeFormat', label: 'Time format', type: 'select', def: '24h', choices: [{ value: '24h', label: '24-hour' }, { value: '12h', label: '12-hour (AM/PM)' }], enabledWhen: (v) => !!v.withTime },
+      { key: 'timeFormat', label: 'Time format', type: 'select', def: '12h', choices: [{ value: '12h', label: '12-hour (AM/PM)' }, { value: '24h', label: '24-hour' }], enabledWhen: (v) => !!v.withTime },
       { key: 'minuteStep', label: 'Minute step', type: 'number', def: 1, min: 1, max: 30, enabledWhen: (v) => !!v.withTime },
       { key: 'minHour', label: 'Earliest hour', hint: '0–23 (minTime)', type: 'number', def: 0, min: 0, max: 23, enabledWhen: (v) => !!v.withTime },
       { key: 'maxHour', label: 'Latest hour', hint: '0–23 (maxTime)', type: 'number', def: 23, min: 0, max: 23, enabledWhen: (v) => !!v.withTime },
@@ -165,7 +165,7 @@ export const DEFS: PickerDef[] = [
       { name: 'showSecondaryCalendar', type: 'boolean', def: 'true', desc: 'Show the other calendar as a small hint on the header, month/year grid, and day cells. false shows only the active mode.' },
       { name: 'value / defaultValue', type: 'Date | null', def: '— (empty)', desc: 'Controlled / initial selected date. Empty until set.' },
       { name: 'withTime', type: 'boolean', def: 'false', desc: 'Show a same-screen time picker: type into the accessible HH:mm spinbutton fields (Arrow keys step, Nepali digits accepted) or scroll the wheel.' },
-      { name: 'timeFormat', type: "'12h' | '24h'", def: "'24h'", desc: 'Clock style when withTime is on.' },
+      { name: 'timeFormat', type: "'12h' | '24h'", def: "'12h'", desc: 'Clock style when withTime is on.' },
       { name: 'minuteStep', type: 'number', def: '1', desc: 'Increment of the minute spinner.' },
       { name: 'minTime / maxTime', type: '{ hour, minute }', def: '—', desc: 'Clamp the selectable time of day; out-of-range hours show disabled on the wheel.' },
       { name: 'disabledTimes', type: '(h, m) => boolean', def: '—', desc: 'Disable specific hours/minutes on the time wheel.' },
@@ -195,7 +195,7 @@ export const DEFS: PickerDef[] = [
       if (v.allowModeToggle === false) o.allowModeToggle = false;
       if (v.showSecondaryCalendar === false) o.showSecondaryCalendar = false;
       if (v.withTime) o.withTime = true;
-      if (v.withTime && v.timeFormat !== '24h') o.timeFormat = v.timeFormat;
+      if (v.withTime && v.timeFormat !== '12h') o.timeFormat = v.timeFormat;
       if (v.withTime && Number(v.minuteStep) !== 1) o.minuteStep = Number(v.minuteStep);
       if (v.withTime && Number(v.minHour) > 0) o.minTime = { hour: Number(v.minHour), minute: 0 };
       if (v.withTime && Number(v.maxHour) < 23) o.maxTime = { hour: Number(v.maxHour), minute: 0 };

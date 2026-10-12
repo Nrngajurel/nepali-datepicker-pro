@@ -430,7 +430,7 @@ export function mountDateTimePicker(target: HTMLInputElement | HTMLElement, opti
         ...dateSchema({
           yearBounds: () => controller.yearBounds(),
           withTime: () => !!merged.withTime,
-          hour12: () => merged.timeFormat === '12h',
+          hour12: () => controller.getState().timeFormat === '12h',
         }),
         committed: () => controller.typedString(),
         reference: () => controller.typedReference(),

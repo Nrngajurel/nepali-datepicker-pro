@@ -14,7 +14,7 @@ Single date, optional same-screen time picker.
 | `showSecondaryCalendar` | `boolean` | `true` | Show the other calendar as a hint on header/grid/day cells |
 | `value` / `defaultValue` | `Date \| null` | — | Controlled / initial selected date |
 | `withTime` | `boolean` | `false` | Show the time picker (spinbuttons + wheel) |
-| `timeFormat` | `'12h' \| '24h'` | `'24h'` | Clock style when `withTime` is on |
+| `timeFormat` | `'12h' \| '24h'` | `'12h'` | Clock style when `withTime` is on (12-hour with AM/PM by default; the submitted `value` is always 24-hour ISO) |
 | `minuteStep` | `number` | `1` | Increment of the minute spinner |
 | `minTime` / `maxTime` | `{ hour, minute }` | — | Clamp the selectable time of day |
 | `disabledTimes` | `(h, m) => boolean` | — | Disable specific hours/minutes |

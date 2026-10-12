@@ -20,6 +20,9 @@ export interface DateTimeControllerState {
   yearGroupStart: number;
   timeFormat: '12h' | '24h';
   minuteStep: number;
+  /** Which step a phone-width (bottom sheet) date-time panel shows: the
+   *  calendar, then the time. Wider panels show both side by side and ignore it. */
+  panelStep: 'date' | 'time';
 }
 
 export interface DateTimeController extends PickerInstance<DateTimeResult, DateTimePickerOptions> {
@@ -56,6 +59,7 @@ export interface DateTimeController extends PickerInstance<DateTimeResult, DateT
   yearBounds(): { min: number; max: number };
   isHourDisabled(hour: number): boolean;
   isMinuteDisabled(hour: number, minute: number): boolean;
+  setPanelStep(step: 'date' | 'time'): void;
   cellForBs(year: number, month: number, day: number): DateValue;
   buildMonthCells(year: number, month: number): Array<DateValue | null>;
 }
@@ -86,8 +90,9 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     time: options.withTime ? { hour: defaultTime.hour, minute: defaultTime.minute, second: 0 } : null,
     view: 'day',
     yearGroupStart: initialView.year - 6,
-    timeFormat: options.timeFormat ?? '24h',
+    timeFormat: options.timeFormat ?? '12h',
     minuteStep: options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1,
+    panelStep: 'date',
   };
 
   function setState(patch: Partial<DateTimeControllerState>): void {
@@ -240,7 +245,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
     },
     show() {
       if (!state.isOpen) {
-        setState({ isOpen: true });
+        setState({ isOpen: true, panelStep: 'date' });
         options.onOpen?.();
       }
     },
@@ -259,7 +264,7 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
       }
       if ('allowModeToggle' in patch) next.allowModeToggle = options.allowModeToggle !== false;
       if ('showSecondaryCalendar' in patch) next.showSecondaryCalendar = options.showSecondaryCalendar !== false;
-      if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '24h';
+      if ('timeFormat' in patch) next.timeFormat = options.timeFormat ?? '12h';
       if ('minuteStep' in patch) next.minuteStep = options.minuteStep && options.minuteStep > 0 ? options.minuteStep : 1;
       if (('minTime' in patch || 'maxTime' in patch) && state.time) next.time = clampTime(state.time);
       if ('withTime' in patch) {
@@ -284,10 +289,15 @@ export function createDateTimeController(initialOptions: DateTimePickerOptions =
         listeners = listeners.filter((listener) => listener !== cb);
       };
     },
+    setPanelStep(step) {
+      if (step === 'time' && !state.selected) return;
+      setState({ panelStep: step });
+    },
     selectDay(value) {
       if (controller.isDisabled(value)) return;
       const view = viewYearMonthOf(state.mode, adapter, value.ad);
-      setState({ selected: value, viewYear: view.year, viewMonth: view.month });
+      // With time, picking a day moves a phone-width panel on to the time step.
+      setState({ selected: value, viewYear: view.year, viewMonth: view.month, ...(state.time ? { panelStep: 'time' as const } : {}) });
       if (options.closeOnSelect ?? !options.withTime) {
         emit(value);
         controller.hide();

@@ -136,6 +136,7 @@ needed on your end:
 - Vue: passing options as top-level component props (React-style) instead of `:options="{...}"` silently does nothing.
 - jQuery: methods return the plugin (chainable) except `'getValue'`/`'getState'`, which return a value/`undefined` for the *first* matched element only.
 - Range picker's `onChange` fires on every click/preset selection *before* Apply; `onApply` is the commit event — don't treat `onChange` as "range is final."
+- `withTime` defaults to a **12-hour** clock (`timeFormat: '12h'`); pass `timeFormat: '24h'` for 24-hour. The submitted `value` is 24-hour ISO either way. On phone widths (≤ 560px) the date-time picker is two steps: date, then time.
 - One calendar for the whole app (no BS/AD switcher): `setDefaults({ mode: 'AD', allowModeToggle: false })` once at the app entry, **before** any picker mounts — it only affects pickers mounted afterwards. Works the same under React/Vue/jQuery. Live pickers switch with `picker.update({ mode })`. The month picker is BS-only and ignores `mode`.
 - `minDate`/`maxDate` accept relative string tokens (`'+7d'`, `'-1y'`, `'today'`) as well as `Date` objects.
 - BS year support is `1970`–`2100` (`BS_YEAR_MIN`/`BS_YEAR_MAX`); dates outside that range aren't representable.

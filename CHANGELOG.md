@@ -9,6 +9,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- Date-time picker on phones is now two steps: pick the date, then the time on large wheels with a
+  big readout. A chip with the chosen date goes back to the calendar. Desktop keeps date and time
+  side by side.
 - Phone-friendly popup: on screens 560px wide or less, every picker opens as a bottom sheet —
   full width, docked to the bottom, scrollable, with Done/Apply kept in reach and a dimmed
   backdrop you tap to close. Previously the dropdown could run off the bottom of the screen.
@@ -17,6 +20,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **The time picker defaults to 12-hour (AM/PM)** instead of 24-hour. Pass `timeFormat: '24h'` to
+  keep the old behavior. The display and typed input follow `timeFormat`; the submitted `value`
+  (e.g. `2024-04-13T14:05`) is unchanged and always 24-hour.
 - Clearing is keyboard-first: **Ctrl/⌘ + Backspace** (or Delete) clears the field, and a read-only
   field also clears with plain Backspace/Delete. The × button is now a small, quiet control that
   appears on hover or focus (always visible on touch screens) and is skipped when tabbing through a
@@ -40,6 +46,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Tapping a time on the wheel could be overridden a moment later by the row the wheel had been
+  scrolled to (a leftover scroll timer from before the tap).
+- Date-time picker: the Clear/Done buttons no longer run into the panel's edges.
 - The focused input no longer shows a stray vertical line next to the × (its outline was clipped by
   the input group). The whole field now gets one soft focus ring instead.
 - Date-time `setValue` (and so Vue `v-model` / jQuery `'setValue'`) now keeps the time of the
