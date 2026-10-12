@@ -7,6 +7,18 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-12
+
+**Upgrading from 0.4:** a few defaults changed, see "Changed" below for details.
+
+- The time picker is 12-hour by default (`timeFormat: '24h'` for the old behavior).
+- A range can't run across a disabled day (`allowDisabledInRange: true` for the old behavior).
+- `value` is now controlled: passing a new one replaces the picker's value.
+- "Last N days" presets span exactly N days, including today.
+- The popup draws a moment after its first `show()`; tests that inspect it right away should
+  `await preloadPickers()` first.
+- `require('nepali-datepicker-pro')` loads the CommonJS build, not the UMD bundle.
+
 ### Added
 
 - **New pickers:** `mountYearPicker` (BS or AD year), `mountTimePicker` (time of day only) and
@@ -170,10 +182,14 @@ and this project follows [Semantic Versioning](https://semver.org/).
 - **Core `<script>` build:** `dist/nepali-datepicker-pro.core.umd.cjs` has the date / date-time
   and range pickers only, with the same global `NepaliPicker`, `autoInit` and jQuery plugins. It's
   about 35 KB gzipped, against 39 KB for the full `nepali-datepicker-pro.umd.cjs`.
-- **Smaller package:** `npm install` is about 1.2 MB unpacked (was 2.5 MB). The ES/CJS builds no
+- **Smaller package:** `npm install` is about 1.7 MB unpacked (was 2.5 MB). The ES/CJS builds no
   longer ship source maps, since they're unminified and readable as is; the minified UMD keeps its
   map. The custom elements' type declarations went from 134 KB to about 1 KB.
 - `images/` is no longer in the npm package; the README loads its images from the docs site.
+- `require('nepali-datepicker-pro')` now loads the CommonJS build instead of the UMD bundle, so it
+  shares one copy with `/react`, `/vue` and the other subpaths: `setDefaults` from the main entry
+  now reaches their components under CommonJS (e.g. Jest). The UMD-only `installJQuery` is
+  `install` from `nepali-datepicker-pro/jquery`.
 
 - On phone widths, tapping a typeable field no longer raises the on-screen keyboard over the bottom
   sheet; the sheet (calendar and time wheels) is the input there. Wider screens still get the

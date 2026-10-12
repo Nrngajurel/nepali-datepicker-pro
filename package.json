@@ -1,6 +1,6 @@
 {
   "name": "nepali-datepicker-pro",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Framework-agnostic, accessible Nepali BS/AD date, date-time, range, month, year, time and multi-date picker. Works from vanilla JS, a <script> tag, jQuery, Vue, React and as custom elements.",
   "type": "module",
   "license": "MIT",
@@ -51,7 +51,7 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/nepali-datepicker-pro.umd.cjs"
+      "require": "./dist/index.cjs"
     },
     "./jquery": {
       "types": "./dist/jquery.d.ts",

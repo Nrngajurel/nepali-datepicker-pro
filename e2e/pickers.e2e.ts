@@ -58,6 +58,9 @@ async function openYearView(root: Locator): Promise<Locator> {
   await root.locator('.ndp-cal-label').first().click();
   const grid = root.locator('.ndp-yeargrid');
   await expect(grid).toBeVisible();
+  // Let the cross-fade finish: the grid centres on the selected year a frame
+  // after it's drawn, which would undo a scroll made before then.
+  await settle(root);
   return grid;
 }
 
