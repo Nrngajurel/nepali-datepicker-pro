@@ -1,3 +1,4 @@
+import { parseLocalDateString } from '../date-math/native-date-math.js';
 import type { BsDate, CalendarAdapter, CalendarMode, PickerLocale, ValueFormat } from '../types.js';
 
 const WEEKDAYS_NE = ['आइतबार', 'सोमबार', 'मङ्गलबार', 'बुधबार', 'बिहिबार', 'शुक्रबार', 'शनिबार'];
@@ -49,6 +50,7 @@ export function formatDateValue(date: Date, adapter: CalendarAdapter, options: {
 export function parseDateValue(value: Date | string | number | null | undefined): Date | null {
   if (value == null) return null;
   if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : new Date(value);
+  if (typeof value === 'string') return parseLocalDateString(value);
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
 }

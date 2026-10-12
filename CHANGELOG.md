@@ -46,6 +46,9 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- Date strings like `minDate: '2025-01-05'` (and `parseDateValue('2025-01-05')`) now mean that day
+  everywhere. They were read as UTC midnight, which is the previous day west of UTC (the Americas),
+  so bounds landed a day early. Impossible dates like `'2025-02-30'` are rejected.
 - The `value` option is now actually controlled, as documented: passing a new `value` (a React
   prop, or `update({ value })`) replaces the picker's value instead of only applying at mount. It's
   applied silently, with no change event. In Vue, `v-model` remains the controlled value.

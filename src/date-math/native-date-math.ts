@@ -14,6 +14,20 @@ function pad2(value: number): string {
   return String(value).padStart(2, '0');
 }
 
+/** `new Date('2025-01-05')` is UTC midnight — the previous day anywhere west of
+ *  UTC. A date-only ISO string names a calendar day, so read it as local
+ *  midnight; anything else (with a time or zone) goes to the Date parser. */
+export function parseLocalDateString(value: string): Date | null {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (dateOnly) {
+    const [, y, m, d] = dateOnly;
+    const date = new Date(Number(y), Number(m) - 1, Number(d));
+    return date.getMonth() === Number(m) - 1 ? date : null; // reject 2025-02-30
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 export const nativeDateMath: DateMath = {
   add(date: Date, amount: number, unit: DateMathUnit): Date {
     const next = clone(date);
@@ -59,8 +73,7 @@ export const nativeDateMath: DateMath = {
       const unit = rawUnit === 'd' ? 'day' : rawUnit === 'm' ? 'month' : 'year';
       return nativeDateMath.add(new Date(), amount, unit);
     }
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? null : date;
+    return parseLocalDateString(value);
   },
   startOf(date: Date, unit: DateMathUnit): Date {
     const next = clone(date);
