@@ -591,7 +591,7 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
   // Disabled pickers don't open.
   const baseShow = controller.show.bind(controller);
   controller.show = () => {
-    if (merged.disabled && !inline) return;
+    if (!inline && (merged.disabled || trigger?.matches(':disabled'))) return;
     baseShow();
   };
   // Inline calendars never close.
@@ -787,6 +787,15 @@ export function mountShell<C extends ShellController>(target: HTMLInputElement |
     ['pointerenter', 'focusin', 'touchstart'].forEach((type) => node?.addEventListener(type, prefetch, { signal, passive: true }));
   });
   if (!inline && trigger) {
+    const closeIfTriggerDisabled = (event: Event): void => {
+      if (!trigger.matches(':disabled')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      controller.hide();
+    };
+    ['click', 'keydown', 'input', 'change'].forEach((type) => {
+      portal.addEventListener(type, closeIfTriggerDisabled, { capture: true, signal });
+    });
     closeWhenFocusLeaves([trigger, portal], [portal, inputGroup?.wrapper ?? trigger], signal, () => controller.hide());
     document.addEventListener('mousedown', outside, true);
   }
