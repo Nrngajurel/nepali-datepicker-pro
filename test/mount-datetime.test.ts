@@ -363,3 +363,32 @@ test('phone width: a typeable field asks for no on-screen keyboard (the sheet is
     window.matchMedia = original;
   }
 });
+
+test('an open popup ignores selection after its fieldset is disabled', () => {
+  const fieldset = document.createElement('fieldset');
+  const input = document.createElement('input');
+  fieldset.append(input);
+  document.body.append(fieldset);
+  let changes = 0;
+  const inst = mountDateTimePicker(input, {
+    mode: 'AD',
+    value: new Date(2027, 4, 5),
+    onChange: () => { changes++; },
+  });
+
+  try {
+    const day = open(input)!.querySelector('[data-ndp-day="2027-5-12"]')!;
+    fieldset.disabled = true;
+    day.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    assert.equal(inst.getValue()?.ad.getDate(), 5);
+    assert.equal(changes, 0);
+
+    fieldset.disabled = false;
+    const enabledDay = open(input)!.querySelector('[data-ndp-day="2027-5-12"]')!;
+    enabledDay.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    assert.equal(inst.getValue()?.ad.getDate(), 12);
+    assert.equal(changes, 1);
+  } finally {
+    inst.destroy();
+  }
+});

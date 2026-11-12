@@ -7,6 +7,10 @@ and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Prevent open pickers from changing their value when the trigger becomes disabled, including through an enclosing fieldset.
+
 ## [0.5.0] - 2026-10-12
 
 **Upgrading from 0.4:** a few defaults changed, see "Changed" below for details.
